@@ -13,7 +13,8 @@ from src.database.connection import DatabaseManager
 from .handlers import (
     register_command_handlers,
     register_query_handlers,
-    register_registration_handlers
+    register_registration_handlers,
+    register_tools_handlers
 )
 from .middleware import setup_logging_middleware, setup_auth_middleware
 
@@ -93,7 +94,11 @@ class TelegramBot:
         # Registrar command handlers (/start, /help, /stats, etc.)
         register_command_handlers(self.application)
 
-        # Registrar query handlers (mensajes de texto)
+        # Registrar tools handlers (/ia, /query) - Sistema de Tools
+        # IMPORTANTE: Va antes de query_handlers para que los comandos tengan prioridad
+        register_tools_handlers(self.application)
+
+        # Registrar query handlers (mensajes de texto sin comando)
         register_query_handlers(self.application, self.agent)
 
         # TODO: Registrar handlers adicionales cuando se implementen:
