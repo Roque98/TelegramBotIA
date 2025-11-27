@@ -189,7 +189,7 @@ class ToolOrchestrator:
         Verificar que el usuario está autenticado.
 
         Args:
-            user_id: ID del usuario
+            user_id: ID del usuario (chat_id de Telegram)
             context: Contexto de ejecución
 
         Returns:
@@ -199,17 +199,22 @@ class ToolOrchestrator:
             logger.warning("No hay UserManager en el contexto para verificar auth")
             return ToolResult.success_result(None)
 
-        # Verificar si el usuario existe y está activo
-        user_exists = await context.user_manager.user_exists(user_id)
-        if not user_exists:
+        # Verificar si el usuario existe (user_id es el chat_id en Telegram)
+        if not context.user_manager.is_user_registered(user_id):
             return ToolResult.error_result(
                 error=f"Usuario {user_id} no está registrado",
-                user_friendly_error="❌ Debes registrarte primero. Usa /registro"
+                user_friendly_error="❌ Debes registrarte primero. Usa /register"
             )
 
-        # Verificar si está activo
-        is_active = await context.user_manager.is_active(user_id)
-        if not is_active:
+        # Obtener usuario y verificar si está activo
+        user = context.user_manager.get_user_by_chat_id(user_id)
+        if not user:
+            return ToolResult.error_result(
+                error=f"Usuario {user_id} no encontrado",
+                user_friendly_error="❌ Error al obtener información de usuario"
+            )
+
+        if not user.is_active:
             return ToolResult.error_result(
                 error=f"Usuario {user_id} está inactivo",
                 user_friendly_error="❌ Tu cuenta está inactiva. Contacta al administrador"
