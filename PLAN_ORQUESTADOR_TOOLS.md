@@ -69,10 +69,52 @@ Implementar un **sistema de orquestación de Tools** que permita:
 
 ## 🏗️ Arquitectura Propuesta
 
+### 🔄 Integración con LLM Refactorizado (YA IMPLEMENTADO)
+
+El sistema de Tools se construirá sobre la **arquitectura LLM ya refactorizada** (completada en v0.1.0-base), que proporciona una base sólida y modular:
+
+#### Componentes LLM Existentes (✅ Disponibles)
+
+```
+src/agent/
+├── llm_agent.py                    # ✅ Orquestador principal (refactorizado)
+├── providers/                       # ✅ Strategy Pattern
+│   ├── base_provider.py            # Interfaz común
+│   ├── openai_provider.py          # Implementación OpenAI
+│   └── anthropic_provider.py       # Implementación Anthropic
+├── classifiers/
+│   └── query_classifier.py         # ✅ Clasificación de queries
+├── sql/
+│   ├── sql_generator.py            # ✅ Generación de SQL
+│   └── sql_validator.py            # ✅ Validación y seguridad
+├── formatters/
+│   └── response_formatter.py       # ✅ Formateo de respuestas
+└── prompts/
+    ├── prompt_manager.py           # ✅ Sistema de prompts versionado
+    └── prompt_templates.py         # ✅ Templates con Jinja2
+```
+
+**Beneficios de la integración:**
+- ✅ **Modularidad:** Componentes LLM reutilizables desde tools
+- ✅ **Estrategia:** Cambio dinámico entre OpenAI/Anthropic
+- ✅ **Versionado:** Sistema de prompts con A/B testing
+- ✅ **Seguridad:** Validación SQL ya implementada
+- ✅ **Formateo:** Respuestas consistentes y bien formateadas
+
+---
+
 ### Estructura de Directorios
 
 ```
 src/
+├── agent/                      # ✅ LLM Components (YA IMPLEMENTADO)
+│   ├── llm_agent.py           # Orquestador LLM
+│   ├── providers/             # Strategy pattern para LLMs
+│   ├── classifiers/           # Clasificación de queries
+│   ├── sql/                   # Generación y validación SQL
+│   ├── formatters/            # Formateo de respuestas
+│   └── prompts/               # Sistema de prompts versionado
+│
 ├── tools/                      # Sistema de Tools (NUEVO)
 │   ├── __init__.py
 │   ├── tool_base.py           # Clases base abstractas
@@ -81,7 +123,7 @@ src/
 │   ├── tool_config.py         # Configuración de tools
 │   └── builtin/               # Tools incorporados
 │       ├── __init__.py
-│       ├── query_tool.py      # Consultas BD (migrado)
+│       ├── query_tool.py      # Consultas BD (usa LLMAgent)
 │       ├── help_tool.py       # Sistema de ayuda
 │       ├── stats_tool.py      # Estadísticas
 │       ├── registration_tool.py # Registro de usuarios
@@ -98,7 +140,7 @@ src/
 │   ├── __init__.py
 │   ├── auth_service.py        # Lógica de autenticación
 │   ├── permission_service.py  # Lógica de permisos
-│   ├── query_service.py       # Lógica de queries
+│   ├── query_service.py       # Lógica de queries (usa LLMAgent)
 │   └── notification_service.py # Notificaciones (futuro)
 │
 └── bot/
@@ -196,7 +238,17 @@ class ExecutionContext:
     telegram_update: Update
     telegram_context: ContextTypes.DEFAULT_TYPE
     db_manager: DatabaseManager
-    llm_agent: LLMAgent
+    llm_agent: LLMAgent  # ✅ LLMAgent refactorizado disponible
+
+    # Acceso a componentes LLM específicos
+    @property
+    def llm_provider(self) -> LLMProvider
+    @property
+    def query_classifier(self) -> QueryClassifier
+    @property
+    def sql_generator(self) -> SQLGenerator
+    @property
+    def prompt_manager(self) -> PromptManager
 
     def get_service(self, name: str) -> Any
     def get_user_id(self) -> int
@@ -207,6 +259,106 @@ class ExecutionContext:
 - Proveer dependencias a tools
 - Desacoplar tools de Telegram
 - Facilitar testing con mocks
+- **Exponer componentes LLM a tools** (QueryClassifier, SQLGenerator, etc.)
+- **Proveer acceso al sistema de prompts versionado**
+
+---
+
+### 🤖 Uso del LLM desde Tools
+
+Los tools pueden aprovechar los componentes LLM refactorizados de múltiples formas:
+
+#### Patrón 1: Uso Completo del LLMAgent
+
+```python
+class QueryTool(BaseTool):
+    """Tool para consultas a base de datos."""
+
+    async def execute(self, user_id: int, params: Dict, context: ExecutionContext) -> ToolResult:
+        # Usar el LLMAgent completo (orquestación automática)
+        response = await context.llm_agent.process_query(params['query'])
+        return ToolResult(success=True, data=response)
+```
+
+**Cuándo usar:** Queries complejas que requieren el flujo completo (clasificar → generar SQL → validar → ejecutar → formatear)
+
+---
+
+#### Patrón 2: Uso de Componentes Específicos
+
+```python
+class SmartAnalysisTool(BaseTool):
+    """Tool que analiza datos usando LLM."""
+
+    async def execute(self, user_id: int, params: Dict, context: ExecutionContext) -> ToolResult:
+        # Usar solo el SQL Generator
+        schema = await context.db_manager.get_schema()
+        sql = await context.sql_generator.generate_sql(params['analysis_request'], schema)
+
+        # Validar con el SQL Validator
+        is_valid, error = context.llm_agent.sql_validator.validate(sql)
+
+        if not is_valid:
+            return ToolResult(success=False, error=error)
+
+        # Ejecutar y formatear
+        results = await context.db_manager.execute_query(sql)
+        formatted = context.llm_agent.response_formatter.format_query_results(
+            user_query=params['analysis_request'],
+            sql_query=sql,
+            results=results
+        )
+
+        return ToolResult(success=True, data=formatted)
+```
+
+**Cuándo usar:** Tools que necesitan control fino sobre el flujo de procesamiento
+
+---
+
+#### Patrón 3: Uso del Sistema de Prompts
+
+```python
+class ReportGeneratorTool(BaseTool):
+    """Tool que genera reportes con LLM."""
+
+    async def execute(self, user_id: int, params: Dict, context: ExecutionContext) -> ToolResult:
+        # Usar el sistema de prompts versionado
+        prompt = context.prompt_manager.get_prompt(
+            'generate_report',
+            report_type=params['type'],
+            data=params['data']
+        )
+
+        # Generar reporte con el LLM provider
+        report = await context.llm_provider.generate(prompt, max_tokens=2048)
+
+        return ToolResult(success=True, data=report)
+```
+
+**Cuándo usar:** Tools que necesitan generar texto con prompts personalizados
+
+---
+
+#### Patrón 4: Clasificación Inteligente
+
+```python
+class SmartRoutingTool(BaseTool):
+    """Tool que enruta consultas según su tipo."""
+
+    async def execute(self, user_id: int, params: Dict, context: ExecutionContext) -> ToolResult:
+        # Clasificar la consulta primero
+        query_type = await context.query_classifier.classify(params['query'])
+
+        if query_type == QueryType.DATABASE:
+            return await self._handle_database_query(params, context)
+        elif query_type == QueryType.GENERAL:
+            return await self._handle_general_query(params, context)
+        else:
+            return await self._handle_ambiguous_query(params, context)
+```
+
+**Cuándo usar:** Tools que necesitan comportamiento diferente según el tipo de consulta
 
 ---
 
@@ -344,15 +496,83 @@ src/tools/builtin/
 - [ ] Implementar `get_metadata()`
 - [ ] Implementar `get_parameters()`
 - [ ] Migrar lógica de `query_handlers.py` a `execute()`
+- [ ] **Integrar con LLMAgent refactorizado (Patrón 1: uso completo)**
 - [ ] Integrar con `StatusMessage`
 - [ ] Escribir tests unitarios
 - [ ] Probar en paralelo con handler actual
 
+**Implementación del QueryTool:**
+```python
+class QueryTool(BaseTool):
+    """
+    Tool para procesar consultas a base de datos en lenguaje natural.
+
+    Usa el LLMAgent completo para:
+    - Clasificar queries (DATABASE vs GENERAL)
+    - Generar SQL automáticamente
+    - Validar seguridad del SQL
+    - Ejecutar en BD
+    - Formatear respuestas
+    """
+
+    def get_metadata(self) -> ToolMetadata:
+        return ToolMetadata(
+            name="query",
+            description="Consultar base de datos en lenguaje natural",
+            commands=["/ia", "/query"],
+            category=ToolCategory.DATABASE,
+            requires_auth=True,
+            required_permissions=["/ia"]
+        )
+
+    async def execute(
+        self,
+        user_id: int,
+        params: Dict[str, Any],
+        context: ExecutionContext
+    ) -> ToolResult:
+        """
+        Ejecutar consulta usando LLMAgent.
+
+        Aprovecha TODA la arquitectura refactorizada:
+        - QueryClassifier
+        - SQLGenerator
+        - SQLValidator
+        - ResponseFormatter
+        - PromptManager
+        """
+        try:
+            # Usar LLMAgent completo (✅ ya refactorizado)
+            response = await context.llm_agent.process_query(params['query'])
+
+            return ToolResult(
+                success=True,
+                data=response,
+                metadata={'query_type': 'processed_by_llm_agent'}
+            )
+
+        except Exception as e:
+            logger.error(f"Error en QueryTool: {e}")
+            return ToolResult(
+                success=False,
+                error=str(e),
+                user_friendly_error="No pude procesar tu consulta"
+            )
+```
+
 **Entregable:** QueryTool funcional en paralelo con handler actual
+
+**Ventajas de usar LLM refactorizado:**
+- ✅ Implementación ~30 líneas vs ~150 líneas del handler actual
+- ✅ Testing más fácil (mock del LLMAgent)
+- ✅ Reusa toda la lógica de validación y seguridad
+- ✅ Formateo consistente automático
+- ✅ Sistema de prompts versionado incluido
 
 **Notas:**
 - Mantener `query_handlers.py` temporalmente
 - Probar ambos en paralelo antes de eliminar handler antiguo
+- La migración es simplificada porque el LLM **ya está refactorizado**
 
 ---
 
@@ -687,27 +907,61 @@ Directorio público de tools disponibles.
 
 ## 🎁 Beneficios Esperados
 
+### Beneficios de la Integración LLM + Tools
+
+**Sinergia Arquitectónica:**
+El sistema de Tools se beneficia enormemente de tener el **LLM ya refactorizado** (v0.1.0-base):
+
+1. **Reutilización Inmediata** ✅
+   - Tools pueden usar componentes LLM probados en producción
+   - QueryClassifier, SQLGenerator, SQLValidator ya validados
+   - Sistema de prompts versionado con A/B testing funcional
+   - ResponseFormatter consistente en todo el sistema
+
+2. **Desarrollo Acelerado** 🚀
+   - Implementar QueryTool: ~30 líneas vs ~150 sin LLM refactorizado
+   - No necesidad de re-implementar validación SQL
+   - No necesidad de re-implementar formateo
+   - Sistema de prompts listo para usar
+
+3. **Consistencia Garantizada** ✨
+   - Todas las respuestas usan el mismo ResponseFormatter
+   - Todas las queries SQL pasan por el mismo SQLValidator
+   - Todos los prompts vienen del PromptManager centralizado
+   - Switching entre OpenAI/Anthropic transparente
+
+4. **Testing Simplificado** 🧪
+   - Mock del LLMAgent completo para tests
+   - Componentes LLM ya testeados individualmente
+   - Menos superficie de testing por tool
+   - Mayor confianza en herencia de calidad
+
+---
+
 ### Beneficios Técnicos
 
 1. **Extensibilidad 10x**
    - De 5+ archivos a 1 archivo por feature
-   - De 200+ líneas a ~80 líneas
+   - De 200+ líneas a ~80 líneas (o ~30 si usa LLMAgent completo)
    - De 4-6 horas a 1-2 horas
 
 2. **Testing Mejorado**
    - Tests unitarios aislados por tool
-   - Mocks fáciles de crear
+   - Mocks fáciles de crear (incluyendo LLMAgent)
    - Coverage >80% alcanzable
+   - **Componentes LLM ya testeados** ✅
 
 3. **Mantenibilidad**
    - Código más organizado
    - Menos acoplamiento
    - Cambios localizados
+   - **Lógica LLM centralizada en un solo lugar** ✅
 
 4. **Seguridad**
    - Auth/permisos centralizados
    - Auditoría automática
    - Validación consistente
+   - **SQLValidator reforzado con blacklist y regex** ✅
 
 ### Beneficios de Negocio
 
@@ -799,10 +1053,30 @@ Directorio público de tools disponibles.
 
 ### Documentos Relacionados
 
-- [ROADMAP.md](ROADMAP.md) - Roadmap general del proyecto
+- [ROADMAP.md](ROADMAP.md) - Roadmap general del proyecto (incluye refactoring LLM completado)
 - [PENDIENTES.md](PENDIENTES.md) - Lista de pendientes
 - [COMMIT_GUIDELINES.md](COMMIT_GUIDELINES.md) - Guías de commits
 - [GITFLOW.md](GITFLOW.md) - Estrategia de branches
+- [docs/prompts/BEST_PRACTICES.md](docs/prompts/BEST_PRACTICES.md) - Mejores prácticas de prompts
+
+### Componentes LLM Refactorizados (✅ Disponibles)
+
+**Arquitectura Base:**
+- `src/agent/llm_agent.py` - Orquestador principal (197 líneas)
+- `src/agent/providers/base_provider.py` - Interface Strategy Pattern
+- `src/agent/providers/openai_provider.py` - Implementación OpenAI
+- `src/agent/providers/anthropic_provider.py` - Implementación Anthropic
+
+**Componentes Especializados:**
+- `src/agent/classifiers/query_classifier.py` - Clasificación DATABASE/GENERAL
+- `src/agent/sql/sql_generator.py` - Generación SQL con LLM
+- `src/agent/sql/sql_validator.py` - Validación seguridad SQL
+- `src/agent/formatters/response_formatter.py` - Formateo respuestas
+
+**Sistema de Prompts:**
+- `src/agent/prompts/prompt_manager.py` - Gestión versionada (341 líneas)
+- `src/agent/prompts/prompt_templates.py` - 8 versiones de prompts (336 líneas)
+- `src/agent/prompts/README.md` - Documentación completa
 
 ### Análisis Técnico
 
@@ -810,18 +1084,25 @@ Este plan está basado en el análisis arquitectónico detallado realizado el 20
 
 - Revisión de 47 archivos Python (~8,000+ líneas)
 - Identificación de patrones de diseño existentes
+- **Aprovechamiento del LLM refactorizado (v0.1.0-base)** ✅
 - Comparación con mejores prácticas de la industria
 - Estimaciones de esfuerzo basadas en experiencia
 
 ### Patrones de Diseño Utilizados
 
-- **Strategy Pattern:** Para LLM providers
-- **Adapter Pattern:** Para APIs de LLM
+**Ya implementados (LLM):** ✅
+- **Strategy Pattern:** Para LLM providers (OpenAI/Anthropic)
+- **Adapter Pattern:** Para diferentes APIs de LLM
+- **Orchestrator Pattern:** LLMAgent coordina componentes
+- **Template Method:** Sistema de prompts
+
+**A implementar (Tools):**
 - **Singleton Pattern:** Para ToolRegistry
 - **Factory Pattern:** Para creación de tools
 - **Template Method:** En BaseTool
 - **Dependency Injection:** En ExecutionContext
 - **Service Layer:** Para lógica de negocio
+- **Registry Pattern:** Para descubrimiento de tools
 
 ### Inspiración de Proyectos
 
@@ -946,7 +1227,89 @@ test(tools): agregar tests de integración
 
 ---
 
+## 🎯 Resumen Ejecutivo: Integración LLM + Tools
+
+### El Contexto Perfecto
+
+Este proyecto tiene una **ventaja estratégica única**: el LLM ya fue refactorizado completamente (v0.1.0-base) **antes** de implementar el sistema de Tools. Esto significa:
+
+1. **Fundamentos Sólidos** ✅
+   - LLMAgent modular y testeado
+   - Componentes especializados (QueryClassifier, SQLGenerator, SQLValidator)
+   - Sistema de prompts versionado con A/B testing
+   - Strategy Pattern para múltiples proveedores LLM
+
+2. **Desarrollo Acelerado** 🚀
+   - QueryTool: ~30 líneas de código (vs ~150 sin LLM refactorizado)
+   - No reinventar la rueda en validación SQL
+   - No reinventar el formateo de respuestas
+   - Reutilización inmediata de componentes probados
+
+3. **Arquitectura Coherente** 🏗️
+   - Tools orquestan componentes LLM existentes
+   - Patrón consistente: Tool → LLMAgent → Componentes
+   - Separación clara de responsabilidades
+   - Testing simplificado con mocks
+
+### Hoja de Ruta Integrada
+
+```
+✅ COMPLETADO (v0.1.0-base)
+│
+├── Refactoring LLM
+│   ├── Strategy Pattern para providers
+│   ├── Componentes especializados
+│   ├── Sistema de prompts versionado
+│   └── Validación y formateo modular
+│
+🚧 EN PROGRESO (Este Plan)
+│
+└── Sistema de Tools
+    ├── FASE 1: Fundamentos (1-2 semanas)
+    │   ├── BaseTool, ToolMetadata, ToolRegistry
+    │   ├── ExecutionContext (expone LLMAgent)
+    │   └── ToolOrchestrator
+    │
+    ├── FASE 2: Migración (2-3 semanas)
+    │   ├── QueryTool (usa LLMAgent completo)
+    │   ├── UniversalHandler
+    │   └── Command Tools (help, stats, register)
+    │
+    ├── FASE 3: Features Avanzadas (3-4 semanas)
+    │   ├── Auto-selección con LLM
+    │   ├── Chaining de tools
+    │   └── Sistema de plugins
+    │
+    └── FASE 4: Ecosystem (2-3 semanas)
+        ├── Analytics
+        ├── Tool Composition
+        └── Marketplace
+```
+
+### Valor Diferencial
+
+**Sin LLM refactorizado:**
+- Implementar QueryTool: ~150 líneas + validación + formateo
+- Re-implementar seguridad SQL en cada tool
+- Sistema de prompts inconsistente
+- Testing complejo de cada componente
+
+**Con LLM refactorizado:** ✅
+- Implementar QueryTool: ~30 líneas
+- Validación SQL centralizada y probada
+- Sistema de prompts consistente
+- Testing simplificado (mock LLMAgent)
+
+**Resultado:**
+- 80% menos código por tool
+- 66% menos tiempo de desarrollo
+- Mayor calidad y consistencia
+- Arquitectura escalable y mantenible
+
+---
+
 **Documento vivo - Se actualizará conforme avance la implementación**
 
-**Última actualización:** 2025-11-26
+**Última actualización:** 2025-11-27
 **Próxima revisión:** Después de completar Fase 1
+**Versión:** 2.0 (Integración LLM + Tools)
