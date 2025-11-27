@@ -38,6 +38,12 @@ class TelegramBot:
         # Inicializar gestor de base de datos
         self.db_manager = DatabaseManager()
 
+        # Inicializar sistema de Tools
+        logger.info("Inicializando sistema de Tools...")
+        from src.tools import initialize_builtin_tools
+        initialize_builtin_tools()
+        logger.info("Sistema de Tools inicializado correctamente")
+
         # Inicializar aplicación de Telegram
         self.application = (
             Application.builder()
