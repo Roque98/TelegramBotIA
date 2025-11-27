@@ -56,8 +56,8 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Crear mensaje de estado
-    status_msg = StatusMessage(update, context)
-    await status_msg.send("🔍 Analizando tu consulta...")
+    status_msg = StatusMessage(update, initial_message="🔍 Analizando tu consulta...")
+    await status_msg.start()
 
     try:
         # Obtener registry y crear orquestador
@@ -79,9 +79,6 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 .build()
             )
 
-            # Actualizar estado
-            await status_msg.update("🤖 Procesando con IA...")
-
             # Ejecutar comando a través del orquestador
             result = await orchestrator.execute_command(
                 user_id=user_id,
@@ -90,15 +87,9 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context=exec_context
             )
 
-            # Eliminar mensaje de estado
-            await status_msg.delete()
-
-            # Enviar respuesta
+            # Completar con resultado o error
             if result.success:
-                await update.message.reply_text(
-                    result.data,
-                    parse_mode='Markdown'
-                )
+                await status_msg.complete(result.data)
 
                 logger.info(
                     f"Comando /ia ejecutado exitosamente para usuario {user_id} "
@@ -106,15 +97,13 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 error_msg = result.user_friendly_error or result.error
-                await update.message.reply_text(f"❌ {error_msg}")
+                await status_msg.error(error_msg)
                 logger.warning(f"Comando /ia falló para usuario {user_id}: {result.error}")
 
     except Exception as e:
         logger.error(f"Error en handle_ia_command: {e}", exc_info=True)
-        await status_msg.delete()
-        await update.message.reply_text(
-            "❌ Ocurrió un error al procesar tu consulta.\n"
-            "Por favor, intenta nuevamente."
+        await status_msg.error(
+            "Ocurrió un error al procesar tu consulta"
         )
 
 

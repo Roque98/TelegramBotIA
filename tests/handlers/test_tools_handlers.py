@@ -2,7 +2,7 @@
 Tests para tools_handlers - Integración de Tools con Telegram.
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, ANY
 from telegram import Update, User, Message, Chat
 from telegram.ext import ContextTypes
 from src.bot.handlers.tools_handlers import (
@@ -62,6 +62,64 @@ class TestHandleIACommand:
         mock_update.message.reply_text.assert_called_once()
         call_args = mock_update.message.reply_text.call_args[0][0]
         assert "error de configuración" in call_args.lower()
+
+    @pytest.mark.asyncio
+    async def test_ia_command_uses_status_message_correctly(self, mock_update, mock_context):
+        """Test que handle_ia_command usa StatusMessage correctamente."""
+        mock_update.message.text = "/ia ¿Cuántos usuarios hay?"
+
+        # Mock StatusMessage
+        with patch('src.bot.handlers.tools_handlers.StatusMessage') as mock_status_class:
+            mock_status = MagicMock()
+            mock_status.start = AsyncMock()
+            mock_status.complete = AsyncMock()
+            mock_status.error = AsyncMock()
+            mock_status_class.return_value = mock_status
+
+            # Mock ToolOrchestrator y sus dependencias
+            with patch('src.bot.handlers.tools_handlers.get_registry') as mock_get_registry, \
+                 patch('src.bot.handlers.tools_handlers.ToolOrchestrator') as mock_orchestrator_class, \
+                 patch('src.bot.handlers.tools_handlers.ExecutionContextBuilder') as mock_builder_class, \
+                 patch('src.bot.handlers.tools_handlers.UserManager'), \
+                 patch('src.bot.handlers.tools_handlers.PermissionChecker'):
+
+                # Configurar mock de session
+                mock_context.bot_data['db_manager'].get_session = MagicMock()
+                mock_session = MagicMock()
+                mock_session.__enter__ = MagicMock(return_value=mock_session)
+                mock_session.__exit__ = MagicMock(return_value=False)
+                mock_context.bot_data['db_manager'].get_session.return_value = mock_session
+
+                # Configurar mock de ExecutionContextBuilder
+                mock_builder = MagicMock()
+                mock_builder.with_telegram.return_value = mock_builder
+                mock_builder.with_db_manager.return_value = mock_builder
+                mock_builder.with_llm_agent.return_value = mock_builder
+                mock_builder.with_user_manager.return_value = mock_builder
+                mock_builder.with_permission_checker.return_value = mock_builder
+                mock_builder.build.return_value = MagicMock()
+                mock_builder_class.return_value = mock_builder
+
+                # Configurar mock de ToolOrchestrator
+                mock_orchestrator = MagicMock()
+                mock_result = MagicMock()
+                mock_result.success = True
+                mock_result.data = "Respuesta de prueba"
+                mock_result.execution_time_ms = 100.0
+                mock_orchestrator.execute_command = AsyncMock(return_value=mock_result)
+                mock_orchestrator_class.return_value = mock_orchestrator
+
+                # Ejecutar handler
+                await handle_ia_command(mock_update, mock_context)
+
+                # Verificar que StatusMessage se usó correctamente
+                mock_status_class.assert_called_once_with(
+                    mock_update,
+                    initial_message="🔍 Analizando tu consulta..."
+                )
+                mock_status.start.assert_called_once()
+                mock_status.complete.assert_called_once_with("Respuesta de prueba")
+                mock_status.error.assert_not_called()
 
 
 class TestHandleQueryCommand:
