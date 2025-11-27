@@ -40,3 +40,63 @@ Ver la carpeta `docs/` para documentación detallada sobre la estructura del pro
 ## Estructura
 
 Ver [docs/estructura.md](docs/estructura.md) para detalles sobre la organización del proyecto.
+
+## 🔄 Flujo de Trabajo (GitFlow)
+
+Este proyecto utiliza GitFlow para el manejo de branches y versiones.
+
+### Ramas Principales
+
+- **`master`**: Código en producción, protegida
+- **`develop`**: Desarrollo activo, donde se integran las features
+
+### Trabajar en el Proyecto
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/Roque98/TelegramBotIA.git
+cd TelegramBotIA
+
+# 2. Crear feature desde develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/mi-nueva-funcionalidad
+
+# 3. Hacer cambios y commits (seguir Conventional Commits)
+git add .
+git commit -m "feat(bot): agregar nueva funcionalidad"
+
+# 4. Push y crear Pull Request
+git push origin feature/mi-nueva-funcionalidad
+```
+
+### Usar como Template/Base
+
+Esta versión está etiquetada como `v0.1.0-base` y puede usarse como template:
+
+```bash
+# Opción 1: Comenzar desde la versión base
+git clone https://github.com/Roque98/TelegramBotIA.git
+git checkout v0.1.0-base
+git checkout -b develop-mi-proyecto
+
+# Opción 2: Fork del repositorio en GitHub
+```
+
+### Documentación Completa
+
+- **[COMMIT_GUIDELINES.md](COMMIT_GUIDELINES.md)**: Guía de commits y convenciones
+- **[GITFLOW.md](GITFLOW.md)**: Estrategia completa de branches y versionado
+
+## 🤝 Contribuir
+
+1. Fork del proyecto
+2. Crear feature branch desde `develop` (`git checkout -b feature/AmazingFeature`)
+3. Commit con mensajes descriptivos siguiendo [Conventional Commits](COMMIT_GUIDELINES.md)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir Pull Request hacia `develop`
+
+## 📋 Versiones
+
+- **v0.1.0-base**: Versión base/template del proyecto
+- Ver [GITFLOW.md](GITFLOW.md) para información sobre versionado semántico
