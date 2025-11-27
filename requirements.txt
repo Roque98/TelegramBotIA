@@ -1,0 +1,25 @@
+# Telegram Bot
+python-telegram-bot==21.7
+
+# LLM Libraries
+openai==v2.6.1
+anthropic==0.39.0
+langchain==0.3.7
+langchain-community==0.3.7
+
+# Database
+sqlalchemy>=2.0.0,<2.0.36  # Versión flexible compatible
+pyodbc==5.2.0  # SQL Server
+
+# Configuration
+python-dotenv==1.0.1
+pydantic==2.10.2
+pydantic-settings==2.6.1
+
+# Utilities
+loguru==0.7.3
+tenacity==9.0.0  # Para reintentos
+nest-asyncio==1.6.0  # Para manejar event loops anidados
+
+# Prompts System
+jinja2>=3.1.0  # Sistema de plantillas para prompts modulares
