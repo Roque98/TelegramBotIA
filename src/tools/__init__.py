@@ -15,6 +15,7 @@ from .tool_base import (
 from .tool_registry import ToolRegistry, get_registry
 from .execution_context import ExecutionContext, ExecutionContextBuilder
 from .tool_orchestrator import ToolOrchestrator
+from .tool_initializer import initialize_builtin_tools, get_tool_summary
 
 __all__ = [
     # Clases base
@@ -31,7 +32,10 @@ __all__ = [
     "ExecutionContext",
     "ExecutionContextBuilder",
     # Orquestador
-    "ToolOrchestrator"
+    "ToolOrchestrator",
+    # Inicialización
+    "initialize_builtin_tools",
+    "get_tool_summary"
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
