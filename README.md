@@ -8,6 +8,7 @@ Bot de Telegram con capacidades de agente LLM para realizar consultas a bases de
 - Agente LLM que interpreta consultas en lenguaje natural
 - Conexión a base de datos para ejecutar consultas
 - Respuestas contextuales y conversacionales
+- **Mensajes de estado progresivo** - Feedback visual en tiempo real del procesamiento
 
 ## Instalación
 

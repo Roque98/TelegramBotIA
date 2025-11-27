@@ -11,6 +11,7 @@ from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes, Application
 from src.agent.llm_agent import LLMAgent
 from src.auth import PermissionChecker
+from src.utils.status_message import StatusMessage
 
 logger = logging.getLogger(__name__)
 
@@ -128,59 +129,68 @@ class QueryHandler:
                 )
                 return
 
-        # Mostrar indicador de "escribiendo..."
-        await update.message.chat.send_action("typing")
+        # Usar StatusMessage para mostrar progreso visual
+        async with StatusMessage(update) as status:
+            try:
+                # Procesar la consulta con el agente
+                response = await self.agent.process_query(user_message)
 
-        try:
-            # Procesar la consulta con el agente
-            response = await self.agent.process_query(user_message)
+                # Completar con la respuesta (esto edita el mensaje de estado)
+                await status.complete(response)
 
-            # Enviar respuesta al usuario
-            await self._send_response(update, response)
+                # Calcular duración
+                duration_ms = int((time.time() - start_time) * 1000)
 
-            # Calcular duración
-            duration_ms = int((time.time() - start_time) * 1000)
+                # Registrar operación exitosa
+                with db_manager.get_session() as session:
+                    permission_checker = PermissionChecker(session)
+                    permission_checker.log_operation(
+                        user_id=telegram_user.id_usuario,
+                        comando='/ia',
+                        telegram_chat_id=chat_id,
+                        telegram_username=user.username,
+                        parametros={'query': user_message[:200]},
+                        resultado='EXITOSO',
+                        duracion_ms=duration_ms
+                    )
 
-            # Registrar operación exitosa
-            with db_manager.get_session() as session:
-                permission_checker = PermissionChecker(session)
-                permission_checker.log_operation(
-                    user_id=telegram_user.id_usuario,
-                    comando='/ia',
-                    telegram_chat_id=chat_id,
-                    telegram_username=user.username,
-                    parametros={'query': user_message[:200]},
-                    resultado='EXITOSO',
-                    duracion_ms=duration_ms
+                logger.info(
+                    f"Respuesta enviada exitosamente a usuario {telegram_user.id_usuario} "
+                    f"({duration_ms}ms)"
                 )
 
-            logger.info(
-                f"Respuesta enviada exitosamente a usuario {telegram_user.id_usuario} "
-                f"({duration_ms}ms)"
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Error procesando mensaje de usuario {telegram_user.id_usuario}: {e}",
-                exc_info=True
-            )
-
-            # Registrar error
-            duration_ms = int((time.time() - start_time) * 1000)
-            with db_manager.get_session() as session:
-                permission_checker = PermissionChecker(session)
-                permission_checker.log_operation(
-                    user_id=telegram_user.id_usuario,
-                    comando='/ia',
-                    telegram_chat_id=chat_id,
-                    telegram_username=user.username,
-                    parametros={'query': user_message[:200]},
-                    resultado='ERROR',
-                    mensaje_error=str(e),
-                    duracion_ms=duration_ms
+            except Exception as e:
+                logger.error(
+                    f"Error procesando mensaje de usuario {telegram_user.id_usuario}: {e}",
+                    exc_info=True
                 )
 
-            await self._send_error_message(update, user_friendly=True)
+                # Registrar error
+                duration_ms = int((time.time() - start_time) * 1000)
+                with db_manager.get_session() as session:
+                    permission_checker = PermissionChecker(session)
+                    permission_checker.log_operation(
+                        user_id=telegram_user.id_usuario,
+                        comando='/ia',
+                        telegram_chat_id=chat_id,
+                        telegram_username=user.username,
+                        parametros={'query': user_message[:200]},
+                        resultado='ERROR',
+                        mensaje_error=str(e),
+                        duracion_ms=duration_ms
+                    )
+
+                # El StatusMessage manejará el error automáticamente en __aexit__
+                # pero también enviamos un mensaje más detallado
+                error_msg = (
+                    "Lo siento, ocurrió un error al procesar tu consulta. "
+                    "Por favor, intenta de nuevo o reformula tu pregunta.\n\n"
+                    "Si el problema persiste, usa /help para más información."
+                )
+                await status.error(error_msg)
+
+                # Re-lanzar la excepción para que el context manager la maneje
+                raise
 
     async def _send_response(self, update: Update, response: str):
         """
