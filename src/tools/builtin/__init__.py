@@ -1,8 +1,12 @@
 """
 Tools incorporados del sistema.
 
-Este paquete contendrá los tools built-in que vienen por defecto
+Este paquete contiene los tools built-in que vienen por defecto
 con el sistema (QueryTool, HelpTool, etc.)
 """
+from .query_tool import QueryTool, IACommandHandler
 
-__all__ = []
+__all__ = [
+    "QueryTool",
+    "IACommandHandler"
+]
