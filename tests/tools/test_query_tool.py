@@ -223,7 +223,7 @@ class TestIACommandHandler:
         mock_telegram_context
     ):
         """Test comando /ia exitoso."""
-        with patch('src.tools.builtin.query_tool.StatusMessage') as mock_status:
+        with patch('src.utils.status_message.StatusMessage') as mock_status:
             mock_status_instance = AsyncMock()
             mock_status.return_value = mock_status_instance
 
@@ -265,7 +265,7 @@ class TestIACommandHandler:
             side_effect=Exception("Error de prueba")
         )
 
-        with patch('src.tools.builtin.query_tool.StatusMessage') as mock_status:
+        with patch('src.utils.status_message.StatusMessage') as mock_status:
             mock_status_instance = AsyncMock()
             mock_status.return_value = mock_status_instance
 

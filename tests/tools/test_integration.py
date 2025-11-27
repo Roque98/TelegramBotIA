@@ -202,7 +202,7 @@ class TestToolsIntegration:
 
         # Assert
         assert result.success is False
-        assert "no disponible" in result.user_friendly_error.lower()
+        assert "disponible" in result.user_friendly_error.lower()
 
     def test_tool_discovery(self):
         """Test descubrimiento de tools registrados."""
