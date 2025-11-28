@@ -167,10 +167,17 @@ class StatusMessage:
 
             if len(full_message) > MAX_LENGTH:
                 # Si es muy largo, enviar mensaje nuevo y eliminar el de estado
-                await self.update.message.reply_text(
-                    final_text,
-                    parse_mode='Markdown'
-                )
+                try:
+                    await self.update.message.reply_text(
+                        final_text,
+                        parse_mode='Markdown'
+                    )
+                except TelegramError as parse_error:
+                    if "can't parse entities" in str(parse_error).lower():
+                        # Reintento sin Markdown
+                        await self.update.message.reply_text(final_text)
+                    else:
+                        raise
                 await self._delete_status_message()
             else:
                 # Editar mensaje existente con la respuesta final
@@ -181,16 +188,29 @@ class StatusMessage:
 
             logger.debug(f"Operación completada en {total_duration:.2f}s")
         except TelegramError as e:
-            logger.error(f"Error al completar mensaje de estado: {e}")
-            # Intentar enviar como mensaje nuevo
-            try:
-                await self.update.message.reply_text(
-                    final_text,
-                    parse_mode='Markdown'
-                )
-                await self._delete_status_message()
-            except TelegramError as e2:
-                logger.error(f"Error al enviar mensaje final alternativo: {e2}")
+            # Si falla el parseo de Markdown, intentar sin parse_mode
+            if "can't parse entities" in str(e).lower():
+                logger.warning(f"Error parseando Markdown, reintentando sin formato: {e}")
+                try:
+                    # Intentar editar sin Markdown
+                    await self._status_message.edit_text(final_text + footer)
+                    logger.debug(f"Mensaje enviado sin Markdown en {total_duration:.2f}s")
+                except TelegramError as e2:
+                    logger.error(f"Error al editar sin Markdown: {e2}")
+                    # Último intento: enviar mensaje nuevo sin Markdown
+                    try:
+                        await self.update.message.reply_text(final_text)
+                        await self._delete_status_message()
+                    except TelegramError as e3:
+                        logger.error(f"Error al enviar mensaje final sin Markdown: {e3}")
+            else:
+                # Otro tipo de error, intentar enviar como mensaje nuevo
+                logger.error(f"Error al completar mensaje de estado: {e}")
+                try:
+                    await self.update.message.reply_text(final_text)
+                    await self._delete_status_message()
+                except TelegramError as e2:
+                    logger.error(f"Error al enviar mensaje final alternativo: {e2}")
 
     async def error(self, error_message: str = "Lo siento, ocurrió un error al procesar tu solicitud") -> None:
         """
