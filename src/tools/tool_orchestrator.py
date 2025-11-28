@@ -243,17 +243,29 @@ class ToolOrchestrator:
             logger.warning("No hay PermissionChecker en el contexto")
             return ToolResult.success_result(None)
 
+        # Obtener usuario para el check de permisos
+        if not context.user_manager:
+            logger.warning("No hay UserManager en el contexto para verificar permisos")
+            return ToolResult.success_result(None)
+
+        user = context.user_manager.get_user_by_chat_id(user_id)
+        if not user:
+            return ToolResult.error_result(
+                error=f"Usuario {user_id} no encontrado",
+                user_friendly_error="❌ Error al verificar permisos"
+            )
+
         # Verificar cada permiso requerido
         for permission in tool.required_permissions:
-            has_permission = context.permission_checker.has_permission(
-                user_id,
+            perm_result = context.permission_checker.check_permission(
+                user.id_usuario,  # Usar el ID de usuario de la BD, no el chat_id
                 permission
             )
 
-            if not has_permission:
+            if not perm_result.is_allowed:
                 return ToolResult.error_result(
                     error=f"Usuario {user_id} no tiene permiso: {permission}",
-                    user_friendly_error=f"❌ No tienes permiso para usar {permission}"
+                    user_friendly_error=f"❌ {perm_result.mensaje}"
                 )
 
         return ToolResult.success_result(None)
