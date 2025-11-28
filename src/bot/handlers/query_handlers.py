@@ -61,7 +61,6 @@ class QueryHandler:
 
         # Si no hay usuario autenticado, verificar autenticación
         if not telegram_user:
-            from src.auth import UserManager
             db_manager = context.bot_data.get('db_manager')
 
             if not db_manager:

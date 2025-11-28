@@ -123,7 +123,6 @@ class ToolSelector:
             # Llamar al LLM para selección
             llm_response = await self.llm_provider.generate(
                 prompt=prompt,
-                temperature=0.1,  # Baja temperatura para más determinismo
                 max_tokens=200
             )
 
@@ -178,13 +177,14 @@ class ToolSelector:
 
         for tool in tools:
             metadata = tool.get_metadata()
+            parameters = tool.get_parameters()
 
             # Formatear comandos
             commands = ", ".join(metadata.commands)
 
             # Formatear parámetros
             params_desc = []
-            for param in metadata.parameters.values():
+            for param in parameters:
                 required = "requerido" if param.required else "opcional"
                 params_desc.append(f"  - {param.name} ({param.type}): {param.description} [{required}]")
 

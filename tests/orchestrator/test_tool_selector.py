@@ -260,7 +260,6 @@ class TestToolSelectorIntegration:
         # Verificar que el LLM fue llamado
         assert mock_llm_provider.generate.called
         call_kwargs = mock_llm_provider.generate.call_args[1]
-        assert call_kwargs['temperature'] == 0.1
         assert call_kwargs['max_tokens'] == 200
 
         # Verificar resultado
