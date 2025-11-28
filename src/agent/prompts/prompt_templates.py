@@ -179,6 +179,33 @@ Responde con JSON:
 }""")
 
     # ==========================================
+    # SELECCIÓN AUTOMÁTICA DE TOOLS
+    # ==========================================
+
+    TOOL_SELECTION_V1 = Template("""Eres un selector inteligente de herramientas (tools). Analiza la consulta del usuario y selecciona la herramienta más apropiada para responderla.
+
+Consulta del usuario: "{{ user_query }}"
+
+Herramientas disponibles:
+{{ tools_description }}
+
+Analiza la consulta y selecciona el tool más apropiado. Responde SOLO con un objeto JSON en este formato exacto:
+{
+  "tool": "nombre_del_tool",
+  "confidence": 0.9,
+  "reasoning": "breve explicación de por qué seleccionaste este tool"
+}
+
+Criterios para la selección:
+- Si la consulta solicita datos específicos, estadísticas o información de base de datos → usa "query"
+- Si la consulta solicita ayuda, lista de comandos o información sobre funcionalidades → usa "help" si existe
+- Si la consulta solicita estadísticas del sistema → usa "stats" si existe
+- Prioriza tools especializados sobre genéricos
+- El campo "confidence" debe estar entre 0.0 y 1.0
+
+Tu respuesta (JSON únicamente):""")
+
+    # ==========================================
     # MÉTODOS DE AYUDA
     # ==========================================
 
