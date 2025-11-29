@@ -38,6 +38,33 @@ Responde con UNA palabra:
 
 Tu respuesta:""")
 
+    CLASSIFICATION_V3 = Template("""Eres un clasificador inteligente de consultas. Determina el tipo de consulta del usuario.
+
+Pregunta del usuario: "{{ user_query }}"
+
+{% if knowledge_available %}
+CONOCIMIENTO INSTITUCIONAL ENCONTRADO:
+{{ knowledge_context }}
+
+Si la pregunta puede responderse completamente con el conocimiento institucional mostrado arriba, clasifica como "knowledge".
+{% endif %}
+
+REGLAS DE CLASIFICACIÓN:
+1. "knowledge" → La pregunta puede responderse con el conocimiento institucional proporcionado (políticas, procesos, FAQs, contactos)
+2. "database" → La pregunta requiere consultar datos específicos de la base de datos (conteos, registros, estadísticas en tiempo real)
+3. "general" → Pregunta general que no requiere conocimiento institucional ni base de datos (saludos, conversación, conceptos generales)
+
+EJEMPLOS:
+- "¿Cómo solicito vacaciones?" → knowledge (proceso institucional)
+- "¿Cuántos usuarios hay registrados?" → database (requiere consulta en BD)
+- "Hola, ¿cómo estás?" → general (conversación)
+- "¿Cuál es el horario de trabajo?" → knowledge (política de empresa)
+- "¿Olvidé mi contraseña?" → knowledge (FAQ común)
+
+Responde con UNA SOLA palabra: "knowledge", "database" o "general"
+
+Tu respuesta:""")
+
     # ==========================================
     # GENERACIÓN DE SQL
     # ==========================================
