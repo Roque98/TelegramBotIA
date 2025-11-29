@@ -141,30 +141,38 @@ class LLMAgent:
         """
         Procesar una consulta general que no requiere base de datos.
 
+        El bot solo responde información empresarial y de BD, por lo que
+        redirige al usuario a usar las funcionalidades correctas.
+
         Args:
             user_query: Consulta del usuario
 
         Returns:
-            Respuesta del LLM
+            Mensaje informativo sobre el propósito del bot
         """
-        logger.info("Procesando consulta general")
+        logger.info("Consulta general detectada - recordando propósito del bot")
 
-        # Usar el nuevo sistema de prompts
-        prompt = self.prompt_manager.get_prompt(
-            'general_response',
-            user_query=user_query
+        return (
+            "👋 ¡Hola! Soy un asistente especializado en información empresarial y consultas de base de datos.\n\n"
+            "🎯 **Puedo ayudarte con:**\n\n"
+            "📋 **Información Institucional:**\n"
+            "• Políticas de la empresa\n"
+            "• Procesos y procedimientos\n"
+            "• Preguntas frecuentes (FAQs)\n"
+            "• Contactos de departamentos\n"
+            "• Información de sistemas\n\n"
+            "📊 **Consultas de Base de Datos:**\n"
+            "• Análisis de ventas\n"
+            "• Reportes de productos\n"
+            "• Estadísticas y métricas\n"
+            "• Información de clientes\n\n"
+            "💡 **Ejemplos de preguntas:**\n"
+            "• `/ia ¿Cómo solicito vacaciones?`\n"
+            "• `/ia ¿Qué tablas están disponibles?`\n"
+            "• `/ia ¿Cuántas ventas hay del producto X?`\n"
+            "• `/ia ¿Cuál es el horario de trabajo?`\n\n"
+            "✨ **¿En qué puedo ayudarte hoy?**"
         )
-
-        try:
-            response = await self.llm_provider.generate(prompt, max_tokens=1024)
-            return self.response_formatter.format_general_response(response)
-
-        except Exception as e:
-            logger.error(f"Error procesando consulta general: {e}")
-            return self.response_formatter.format_error(
-                "No pude procesar tu pregunta en este momento.",
-                user_friendly=True
-            )
 
     async def _process_knowledge_query(self, user_query: str) -> str:
         """

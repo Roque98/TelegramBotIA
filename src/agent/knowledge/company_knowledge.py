@@ -92,6 +92,29 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
 
     KnowledgeEntry(
         category=KnowledgeCategory.POLITICAS,
+        question="¿Qué políticas tiene la empresa?",
+        answer=(
+            "📋 **Políticas de la Empresa:**\n\n"
+            "Tenemos políticas en las siguientes áreas:\n\n"
+            "⏰ **Horarios de Trabajo:**\n"
+            "• Lunes a Viernes: 8:00 AM - 6:00 PM\n"
+            "• 9 horas diarias, 45 horas semanales\n"
+            "• Pregunta: `/ia ¿Cuál es el horario de trabajo?`\n\n"
+            "🏖️ **Vacaciones:**\n"
+            "• 15-25 días según antigüedad\n"
+            "• Pregunta: `/ia ¿Cuántos días de vacaciones tengo?`\n\n"
+            "🏠 **Trabajo Remoto:**\n"
+            "• Hasta 2 días por semana (modalidad híbrida)\n"
+            "• Pregunta: `/ia ¿Cuál es la política de trabajo remoto?`\n\n"
+            "💡 **Tip:** Haz preguntas específicas sobre cada política para obtener información detallada"
+        ),
+        keywords=["políticas", "política", "reglas", "normas", "reglamento", "normativa", "directrices"],
+        related_commands=["/help", "/ia"],
+        priority=3
+    ),
+
+    KnowledgeEntry(
+        category=KnowledgeCategory.POLITICAS,
         question="¿Cuál es el horario de trabajo?",
         answer=(
             "El horario laboral estándar es:\n"
@@ -101,7 +124,7 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
             "Algunos departamentos tienen horarios especiales. "
             "Consulta con tu supervisor."
         ),
-        keywords=["horario", "hora", "entrada", "salida", "jornada", "trabajo"],
+        keywords=["horario", "hora", "entrada", "salida", "jornada", "trabajo", "políticas", "política"],
         related_commands=[],
         priority=2
     ),
@@ -117,7 +140,7 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
             "Los días se acumulan por año trabajado y deben usarse antes del 31 de diciembre. "
             "No se pueden transferir al siguiente año salvo autorización especial."
         ),
-        keywords=["vacaciones", "días", "cuántos", "derecho", "corresponden"],
+        keywords=["vacaciones", "días", "cuántos", "derecho", "corresponden", "políticas", "política"],
         related_commands=[],
         priority=2
     ),
@@ -133,7 +156,7 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
             "• Debes estar disponible en horario laboral y con conexión estable\n"
             "• Aplican mismas reglas de productividad y entregas"
         ),
-        keywords=["remoto", "home office", "casa", "teletrabajo", "virtual"],
+        keywords=["remoto", "home office", "casa", "teletrabajo", "virtual", "políticas", "política"],
         related_commands=[],
         priority=1
     ),
