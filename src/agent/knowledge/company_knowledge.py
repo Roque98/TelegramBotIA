@@ -38,13 +38,13 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.PROCESOS,
         question="¿Cómo solicito vacaciones?",
         answer=(
-            "Para solicitar vacaciones debes:\n"
-            "1. Ingresar al portal de empleados con tu usuario y contraseña\n"
-            "2. Ir a la sección 'Solicitudes > Vacaciones'\n"
-            "3. Llenar el formulario indicando las fechas deseadas\n"
-            "4. La solicitud debe hacerse con al menos 15 días de anticipación\n"
-            "5. Esperar aprobación de tu supervisor directo\n"
-            "6. Recibirás notificación por email cuando sea aprobada"
+            "🏖️ **Para solicitar vacaciones:**\n\n"
+            "1️⃣ Ingresar al portal de empleados con tu usuario y contraseña\n"
+            "2️⃣ Ir a la sección 'Solicitudes > Vacaciones'\n"
+            "3️⃣ Llenar el formulario indicando las fechas deseadas\n"
+            "4️⃣ La solicitud debe hacerse con al menos **15 días de anticipación** ⏰\n"
+            "5️⃣ Esperar aprobación de tu supervisor directo ✅\n"
+            "6️⃣ Recibirás notificación por email cuando sea aprobada 📧"
         ),
         keywords=["vacaciones", "solicitar", "pedir", "días libres", "descanso", "ausentarse"],
         related_commands=["/help"],
@@ -55,12 +55,15 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.PROCESOS,
         question="¿Cómo creo un ticket de soporte?",
         answer=(
-            "Puedes crear un ticket de soporte de 3 formas:\n"
-            "1. Usando el comando /crear_ticket en este bot\n"
-            "2. Enviando un email a soporte@empresa.com\n"
-            "3. Llamando a la extensión 123\n\n"
-            "Asegúrate de incluir: descripción del problema, departamento, "
-            "y nivel de urgencia (bajo/medio/alto)"
+            "🎫 **Crear un ticket de soporte:**\n\n"
+            "Tienes 3 opciones:\n\n"
+            "📱 **Opción 1:** Usar el comando /crear_ticket en este bot\n"
+            "📧 **Opción 2:** Enviar email a soporte@empresa.com\n"
+            "☎️ **Opción 3:** Llamar a la extensión 123\n\n"
+            "⚠️ **Incluye siempre:**\n"
+            "• Descripción del problema\n"
+            "• Departamento\n"
+            "• Nivel de urgencia (🔵 bajo / 🟡 medio / 🔴 alto)"
         ),
         keywords=["ticket", "soporte", "ayuda", "problema", "incidencia", "reporte"],
         related_commands=["/crear_ticket"],
@@ -143,12 +146,12 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.FAQS,
         question="¿Qué hacer si olvido mi contraseña?",
         answer=(
-            "Si olvidaste tu contraseña:\n"
-            "1. En la pantalla de login, haz clic en '¿Olvidaste tu contraseña?'\n"
-            "2. Ingresa tu email corporativo\n"
-            "3. Recibirás un enlace para resetearla\n"
-            "4. Si no recibes el email en 5 minutos, contacta a IT (ext. 123)\n\n"
-            "También puedes crear un ticket usando /crear_ticket"
+            "🔑 **Recuperar contraseña:**\n\n"
+            "1️⃣ En la pantalla de login, haz clic en '¿Olvidaste tu contraseña?'\n"
+            "2️⃣ Ingresa tu email corporativo 📧\n"
+            "3️⃣ Recibirás un enlace para resetearla 🔗\n"
+            "4️⃣ Si no recibes el email en 5 minutos, contacta a IT (ext. 123) ⏱️\n\n"
+            "💡 **Tip:** También puedes crear un ticket usando /crear_ticket"
         ),
         keywords=["contraseña", "password", "olvidé", "resetear", "cambiar", "recuperar"],
         related_commands=["/crear_ticket"],
@@ -338,15 +341,19 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.BASE_DATOS,
         question="¿Qué información contiene la tabla Ventas?",
         answer=(
-            "La tabla **Ventas** ([Pruebas].[dbo].[Ventas]) contiene información sobre transacciones de ventas. "
-            "Incluye los siguientes campos:\n\n"
-            "• **customer_id**: Identificador único del cliente que realizó la compra\n"
-            "• **product_name**: Nombre del producto vendido\n"
-            "• **quantity**: Cantidad de unidades vendidas\n"
-            "• **unit_price**: Precio unitario del producto\n"
-            "• **total_price**: Precio total de la venta (quantity × unit_price)\n\n"
-            "Esta tabla se usa para consultas sobre ventas, productos más vendidos, "
-            "ingresos totales, análisis de clientes y reportes financieros."
+            "📊 **Tabla Ventas** ([Pruebas].[dbo].[Ventas])\n\n"
+            "Contiene información sobre transacciones de ventas:\n\n"
+            "🔑 **customer_id** → Identificador único del cliente\n"
+            "📦 **product_name** → Nombre del producto vendido\n"
+            "🔢 **quantity** → Cantidad de unidades vendidas\n"
+            "💵 **unit_price** → Precio unitario del producto\n"
+            "💰 **total_price** → Precio total (quantity × unit_price)\n\n"
+            "✨ **Úsala para:**\n"
+            "• Consultas sobre ventas\n"
+            "• Productos más vendidos\n"
+            "• Ingresos totales\n"
+            "• Análisis de clientes\n"
+            "• Reportes financieros"
         ),
         keywords=[
             "ventas", "tabla ventas", "productos", "clientes", "transacciones",
@@ -361,13 +368,14 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.BASE_DATOS,
         question="¿Qué tablas están disponibles en la base de datos?",
         answer=(
-            "Actualmente tienes acceso a las siguientes tablas:\n\n"
-            "**1. Ventas** ([Pruebas].[dbo].[Ventas])\n"
-            "   - Contiene: Transacciones de ventas con información de clientes, productos, cantidades y precios\n"
-            "   - Campos principales: customer_id, product_name, quantity, unit_price, total_price\n"
-            "   - Usa para: Consultas de ventas, análisis de productos, reportes financieros\n\n"
-            "Para consultar datos de estas tablas, usa el comando /ia seguido de tu pregunta. "
-            "El sistema generará automáticamente la consulta SQL necesaria."
+            "🗄️ **Tablas Disponibles:**\n\n"
+            "📊 **1. Ventas** ([Pruebas].[dbo].[Ventas])\n"
+            "   • Contiene: Transacciones de ventas con info de clientes, productos, cantidades y precios\n"
+            "   • Campos: customer_id, product_name, quantity, unit_price, total_price\n"
+            "   • Usa para: Ventas, análisis de productos, reportes financieros\n\n"
+            "💡 **¿Cómo consultar?**\n"
+            "Usa el comando `/ia` seguido de tu pregunta. "
+            "El sistema generará automáticamente la consulta SQL necesaria ✨"
         ),
         keywords=[
             "tablas", "base de datos", "bd", "esquema", "estructura",
@@ -381,18 +389,23 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         category=KnowledgeCategory.BASE_DATOS,
         question="¿Cómo puedo consultar información de la base de datos?",
         answer=(
-            "Para consultar la base de datos, simplemente usa el comando /ia seguido de tu pregunta en lenguaje natural.\n\n"
-            "**Ejemplos:**\n"
-            "• `/ia ¿Cuántas ventas hay?` - Cuenta total de registros\n"
-            "• `/ia ¿Cuál es el producto más vendido?` - Análisis de productos\n"
-            "• `/ia Muéstrame las ventas del cliente 123` - Filtrado por cliente\n"
-            "• `/ia ¿Cuál es el total de ingresos?` - Suma de total_price\n\n"
-            "El sistema:\n"
-            "1. Analiza tu pregunta\n"
-            "2. Genera la consulta SQL automáticamente\n"
-            "3. Ejecuta la consulta de forma segura\n"
-            "4. Te responde en lenguaje natural\n\n"
-            "No necesitas saber SQL, solo pregunta de forma natural."
+            "🤖 **Consultar la base de datos es súper fácil:**\n\n"
+            "Simplemente usa `/ia` + tu pregunta en lenguaje natural\n\n"
+            "📝 **Ejemplos:**\n\n"
+            "🔢 `/ia ¿Cuántas ventas hay?`\n"
+            "   → Cuenta total de registros\n\n"
+            "🏆 `/ia ¿Cuál es el producto más vendido?`\n"
+            "   → Análisis de productos\n\n"
+            "👤 `/ia Muéstrame las ventas del cliente 123`\n"
+            "   → Filtrado por cliente\n\n"
+            "💰 `/ia ¿Cuál es el total de ingresos?`\n"
+            "   → Suma de ventas\n\n"
+            "✨ **El sistema hace esto por ti:**\n"
+            "1️⃣ Analiza tu pregunta\n"
+            "2️⃣ Genera el SQL automáticamente\n"
+            "3️⃣ Ejecuta la consulta de forma segura\n"
+            "4️⃣ Te responde en lenguaje natural\n\n"
+            "💡 **No necesitas saber SQL**, solo pregunta naturalmente"
         ),
         keywords=[
             "consultar", "query", "preguntar", "datos", "información",

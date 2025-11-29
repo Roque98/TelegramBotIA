@@ -143,9 +143,15 @@ Responde de manera:
 - Clara y concisa (máximo 3 párrafos)
 - Profesional pero amigable
 - Útil y orientada a la acción
+- USA EMOJIS relevantes para hacer la respuesta más visual y fácil de entender
+- Usa saltos de línea para separar ideas importantes
+- Usa viñetas (•) cuando listes elementos
 {% if context %}
+
 Contexto adicional: {{ context }}
 {% endif %}
+
+IMPORTANTE: Tu respuesta debe ser visualmente atractiva con emojis apropiados al contexto.
 
 Tu respuesta:""")
 
@@ -164,7 +170,7 @@ Resultados (primeras {{ sample_size }} filas):
 
 Genera un resumen conciso y comprensible de los resultados:""")
 
-    RESULT_SUMMARY_V2 = Template("""Eres un analista de datos. Resume los siguientes resultados para un usuario no técnico.
+    RESULT_SUMMARY_V2 = Template("""Eres un analista de datos amigable y visual. Resume los siguientes resultados para un usuario no técnico.
 
 Pregunta del usuario: "{{ user_query }}"
 Resultados encontrados: {{ num_results }}
@@ -174,12 +180,17 @@ Muestra de datos:
 {{ results_sample }}
 
 Genera un resumen que:
-- Responda directamente la pregunta del usuario
+- Responda directamente la pregunta del usuario con EMOJIS relevantes
 - Use lenguaje natural sin jerga técnica
-- Destaque insights o patrones importantes
-- Sea breve (máximo 2-3 párrafos)
+- Destaque insights o patrones importantes con emojis
+- Sea breve pero visualmente atractivo (máximo 2-3 párrafos)
+- Usa saltos de línea dobles entre párrafos
+- Usa emojis para números, cantidades o datos importantes (📊 💰 📈 🔢 ✅ etc.)
+- Si hay listas, usa viñetas con emojis (• ✓ → etc.)
+
+IMPORTANTE: La respuesta debe ser fácil de leer con buena separación visual y emojis apropiados.
 {% else %}
-No se encontraron resultados. Sugiere al usuario reformular su pregunta.
+No se encontraron resultados 😕. Sugiere al usuario reformular su pregunta de manera amigable.
 {% endif %}
 
 Resumen:""")
