@@ -330,6 +330,78 @@ KNOWLEDGE_BASE: List[KnowledgeEntry] = [
         priority=3
     ),
 
+    # ========================================================================
+    # BASE DE DATOS
+    # ========================================================================
+
+    KnowledgeEntry(
+        category=KnowledgeCategory.BASE_DATOS,
+        question="¿Qué información contiene la tabla Ventas?",
+        answer=(
+            "La tabla **Ventas** ([Pruebas].[dbo].[Ventas]) contiene información sobre transacciones de ventas. "
+            "Incluye los siguientes campos:\n\n"
+            "• **customer_id**: Identificador único del cliente que realizó la compra\n"
+            "• **product_name**: Nombre del producto vendido\n"
+            "• **quantity**: Cantidad de unidades vendidas\n"
+            "• **unit_price**: Precio unitario del producto\n"
+            "• **total_price**: Precio total de la venta (quantity × unit_price)\n\n"
+            "Esta tabla se usa para consultas sobre ventas, productos más vendidos, "
+            "ingresos totales, análisis de clientes y reportes financieros."
+        ),
+        keywords=[
+            "ventas", "tabla ventas", "productos", "clientes", "transacciones",
+            "customer_id", "product_name", "quantity", "unit_price", "total_price",
+            "base de datos", "bd", "tabla", "campos"
+        ],
+        related_commands=["/ia", "/query"],
+        priority=2
+    ),
+
+    KnowledgeEntry(
+        category=KnowledgeCategory.BASE_DATOS,
+        question="¿Qué tablas están disponibles en la base de datos?",
+        answer=(
+            "Actualmente tienes acceso a las siguientes tablas:\n\n"
+            "**1. Ventas** ([Pruebas].[dbo].[Ventas])\n"
+            "   - Contiene: Transacciones de ventas con información de clientes, productos, cantidades y precios\n"
+            "   - Campos principales: customer_id, product_name, quantity, unit_price, total_price\n"
+            "   - Usa para: Consultas de ventas, análisis de productos, reportes financieros\n\n"
+            "Para consultar datos de estas tablas, usa el comando /ia seguido de tu pregunta. "
+            "El sistema generará automáticamente la consulta SQL necesaria."
+        ),
+        keywords=[
+            "tablas", "base de datos", "bd", "esquema", "estructura",
+            "disponibles", "qué tablas", "cuáles tablas", "acceso"
+        ],
+        related_commands=["/ia"],
+        priority=3
+    ),
+
+    KnowledgeEntry(
+        category=KnowledgeCategory.BASE_DATOS,
+        question="¿Cómo puedo consultar información de la base de datos?",
+        answer=(
+            "Para consultar la base de datos, simplemente usa el comando /ia seguido de tu pregunta en lenguaje natural.\n\n"
+            "**Ejemplos:**\n"
+            "• `/ia ¿Cuántas ventas hay?` - Cuenta total de registros\n"
+            "• `/ia ¿Cuál es el producto más vendido?` - Análisis de productos\n"
+            "• `/ia Muéstrame las ventas del cliente 123` - Filtrado por cliente\n"
+            "• `/ia ¿Cuál es el total de ingresos?` - Suma de total_price\n\n"
+            "El sistema:\n"
+            "1. Analiza tu pregunta\n"
+            "2. Genera la consulta SQL automáticamente\n"
+            "3. Ejecuta la consulta de forma segura\n"
+            "4. Te responde en lenguaje natural\n\n"
+            "No necesitas saber SQL, solo pregunta de forma natural."
+        ),
+        keywords=[
+            "consultar", "query", "preguntar", "datos", "información",
+            "cómo consulto", "cómo pregunto", "usar ia", "comando ia"
+        ],
+        related_commands=["/ia", "/help"],
+        priority=3
+    ),
+
 ]
 
 

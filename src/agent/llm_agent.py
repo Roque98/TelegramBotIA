@@ -48,7 +48,11 @@ class LLMAgent:
         self.query_classifier = QueryClassifier(self.llm_provider)
         self.sql_generator = SQLGenerator(self.llm_provider)
         self.sql_validator = SQLValidator()
-        self.response_formatter = ResponseFormatter(max_results_display=10)
+        self.response_formatter = ResponseFormatter(
+            max_results_display=10,
+            llm_provider=self.llm_provider,
+            use_natural_language=True
+        )
 
         logger.info(
             f"Agente LLM inicializado con proveedor: {self.llm_provider.get_provider_name()}, "
@@ -105,7 +109,8 @@ class LLMAgent:
         Este método orquesta todo el flujo:
         1. Clasificar la consulta
         2. Si es general, responder con el LLM
-        3. Si requiere BD, generar SQL, validar, ejecutar y formatear
+        3. Si es conocimiento institucional, responder con knowledge base
+        4. Si requiere BD, generar SQL, validar, ejecutar y formatear
 
         Args:
             user_query: Consulta en lenguaje natural del usuario
@@ -121,7 +126,11 @@ class LLMAgent:
             if query_type == QueryType.GENERAL:
                 return await self._process_general_query(user_query)
 
-            # 3. Si requiere base de datos, seguir el flujo completo
+            # 3. Si es conocimiento institucional, responder con knowledge base
+            if query_type == QueryType.KNOWLEDGE:
+                return await self._process_knowledge_query(user_query)
+
+            # 4. Si requiere base de datos, seguir el flujo completo
             return await self._process_database_query(user_query)
 
         except Exception as e:
@@ -152,6 +161,44 @@ class LLMAgent:
 
         except Exception as e:
             logger.error(f"Error procesando consulta general: {e}")
+            return self.response_formatter.format_error(
+                "No pude procesar tu pregunta en este momento.",
+                user_friendly=True
+            )
+
+    async def _process_knowledge_query(self, user_query: str) -> str:
+        """
+        Procesar una consulta de conocimiento institucional.
+
+        Args:
+            user_query: Consulta del usuario
+
+        Returns:
+            Respuesta con conocimiento institucional
+        """
+        logger.info("Procesando consulta de conocimiento institucional")
+
+        # Obtener contexto de conocimiento
+        knowledge_context = self.query_classifier.get_knowledge_context(user_query, top_k=3)
+
+        if not knowledge_context:
+            # Si por alguna razón no hay contexto, responder con LLM general
+            return await self._process_general_query(user_query)
+
+        # Usar el sistema de prompts con contexto de conocimiento
+        prompt = self.prompt_manager.get_prompt(
+            'general_response',
+            version=2,
+            user_query=user_query,
+            context=knowledge_context
+        )
+
+        try:
+            response = await self.llm_provider.generate(prompt, max_tokens=1024)
+            return self.response_formatter.format_general_response(response)
+
+        except Exception as e:
+            logger.error(f"Error procesando consulta de conocimiento: {e}")
             return self.response_formatter.format_error(
                 "No pude procesar tu pregunta en este momento.",
                 user_friendly=True
@@ -199,7 +246,7 @@ class LLMAgent:
             )
 
         # 5. Formatear respuesta
-        return self.response_formatter.format_query_results(
+        return await self.response_formatter.format_query_results(
             user_query=user_query,
             sql_query=sql_query,
             results=results,

@@ -248,8 +248,8 @@ class TestQueryClassifierErrorHandling:
         # Simular error en LLM
         mock_llm_provider.generate.side_effect = Exception("LLM Error")
 
-        # Query irrelevante que no debería encontrar conocimiento
-        result = await classifier.classify("xyz123abc query random")
+        # Query totalmente irrelevante que no debería encontrar conocimiento
+        result = await classifier.classify("xyzabc123 qwerty456 asdfgh789")
 
         # Debe retornar DATABASE como fallback seguro
         assert result == QueryType.DATABASE

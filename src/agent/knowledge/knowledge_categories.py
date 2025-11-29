@@ -27,6 +27,9 @@ class KnowledgeCategory(Enum):
     RECURSOS_HUMANOS = "recursos_humanos"
     """Temas de RRHH: vacaciones, permisos, beneficios"""
 
+    BASE_DATOS = "base_datos"
+    """Información sobre tablas y estructura de la base de datos"""
+
     def __str__(self) -> str:
         """Representación en string."""
         return self.value
@@ -45,6 +48,7 @@ class KnowledgeCategory(Enum):
             cls.FAQS: "Preguntas Frecuentes",
             cls.CONTACTOS: "Contactos",
             cls.SISTEMAS: "Sistemas",
-            cls.RECURSOS_HUMANOS: "Recursos Humanos"
+            cls.RECURSOS_HUMANOS: "Recursos Humanos",
+            cls.BASE_DATOS: "Base de Datos"
         }
         return names.get(category, category.value.title())
