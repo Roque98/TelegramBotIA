@@ -38,6 +38,33 @@ Responde con UNA palabra:
 
 Tu respuesta:""")
 
+    CLASSIFICATION_V3 = Template("""Eres un clasificador inteligente de consultas. Determina el tipo de consulta del usuario.
+
+Pregunta del usuario: "{{ user_query }}"
+
+{% if knowledge_available %}
+CONOCIMIENTO INSTITUCIONAL ENCONTRADO:
+{{ knowledge_context }}
+
+Si la pregunta puede responderse completamente con el conocimiento institucional mostrado arriba, clasifica como "knowledge".
+{% endif %}
+
+REGLAS DE CLASIFICACIÓN:
+1. "knowledge" → La pregunta puede responderse con el conocimiento institucional proporcionado (políticas, procesos, FAQs, contactos)
+2. "database" → La pregunta requiere consultar datos específicos de la base de datos (conteos, registros, estadísticas en tiempo real)
+3. "general" → Pregunta general que no requiere conocimiento institucional ni base de datos (saludos, conversación, conceptos generales)
+
+EJEMPLOS:
+- "¿Cómo solicito vacaciones?" → knowledge (proceso institucional)
+- "¿Cuántos usuarios hay registrados?" → database (requiere consulta en BD)
+- "Hola, ¿cómo estás?" → general (conversación)
+- "¿Cuál es el horario de trabajo?" → knowledge (política de empresa)
+- "¿Olvidé mi contraseña?" → knowledge (FAQ común)
+
+Responde con UNA SOLA palabra: "knowledge", "database" o "general"
+
+Tu respuesta:""")
+
     # ==========================================
     # GENERACIÓN DE SQL
     # ==========================================
@@ -116,9 +143,15 @@ Responde de manera:
 - Clara y concisa (máximo 3 párrafos)
 - Profesional pero amigable
 - Útil y orientada a la acción
+- USA EMOJIS relevantes para hacer la respuesta más visual y fácil de entender
+- Usa saltos de línea para separar ideas importantes
+- Usa viñetas (•) cuando listes elementos
 {% if context %}
+
 Contexto adicional: {{ context }}
 {% endif %}
+
+IMPORTANTE: Tu respuesta debe ser visualmente atractiva con emojis apropiados al contexto.
 
 Tu respuesta:""")
 
@@ -137,7 +170,7 @@ Resultados (primeras {{ sample_size }} filas):
 
 Genera un resumen conciso y comprensible de los resultados:""")
 
-    RESULT_SUMMARY_V2 = Template("""Eres un analista de datos. Resume los siguientes resultados para un usuario no técnico.
+    RESULT_SUMMARY_V2 = Template("""Eres un analista de datos amigable y visual. Resume los siguientes resultados para un usuario no técnico.
 
 Pregunta del usuario: "{{ user_query }}"
 Resultados encontrados: {{ num_results }}
@@ -147,12 +180,17 @@ Muestra de datos:
 {{ results_sample }}
 
 Genera un resumen que:
-- Responda directamente la pregunta del usuario
+- Responda directamente la pregunta del usuario con EMOJIS relevantes
 - Use lenguaje natural sin jerga técnica
-- Destaque insights o patrones importantes
-- Sea breve (máximo 2-3 párrafos)
+- Destaque insights o patrones importantes con emojis
+- Sea breve pero visualmente atractivo (máximo 2-3 párrafos)
+- Usa saltos de línea dobles entre párrafos
+- Usa emojis para números, cantidades o datos importantes (📊 💰 📈 🔢 ✅ etc.)
+- Si hay listas, usa viñetas con emojis (• ✓ → etc.)
+
+IMPORTANTE: La respuesta debe ser fácil de leer con buena separación visual y emojis apropiados.
 {% else %}
-No se encontraron resultados. Sugiere al usuario reformular su pregunta.
+No se encontraron resultados 😕. Sugiere al usuario reformular su pregunta de manera amigable.
 {% endif %}
 
 Resumen:""")
@@ -177,6 +215,33 @@ Responde con JSON:
   "reason": "explicación breve",
   "risk_level": "none/low/medium/high"
 }""")
+
+    # ==========================================
+    # SELECCIÓN AUTOMÁTICA DE TOOLS
+    # ==========================================
+
+    TOOL_SELECTION_V1 = Template("""Eres un selector inteligente de herramientas (tools). Analiza la consulta del usuario y selecciona la herramienta más apropiada para responderla.
+
+Consulta del usuario: "{{ user_query }}"
+
+Herramientas disponibles:
+{{ tools_description }}
+
+Analiza la consulta y selecciona el tool más apropiado. Responde SOLO con un objeto JSON en este formato exacto:
+{
+  "tool": "nombre_del_tool",
+  "confidence": 0.9,
+  "reasoning": "breve explicación de por qué seleccionaste este tool"
+}
+
+Criterios para la selección:
+- Si la consulta solicita datos específicos, estadísticas o información de base de datos → usa "query"
+- Si la consulta solicita ayuda, lista de comandos o información sobre funcionalidades → usa "help" si existe
+- Si la consulta solicita estadísticas del sistema → usa "stats" si existe
+- Prioriza tools especializados sobre genéricos
+- El campo "confidence" debe estar entre 0.0 y 1.0
+
+Tu respuesta (JSON únicamente):""")
 
     # ==========================================
     # MÉTODOS DE AYUDA

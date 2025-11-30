@@ -2,6 +2,7 @@
 Handlers para consultas en lenguaje natural.
 
 Maneja mensajes de texto que no son comandos y los procesa con el agente LLM.
+Utiliza ToolSelector para detectar automáticamente el tool apropiado.
 
 Requiere autenticación y validación de permisos.
 """
@@ -10,8 +11,10 @@ import time
 from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes, Application
 from src.agent.llm_agent import LLMAgent
-from src.auth import PermissionChecker
+from src.auth import PermissionChecker, UserManager
 from src.utils.status_message import StatusMessage
+from src.orchestrator import ToolSelector
+from src.tools import get_registry, ToolOrchestrator, ExecutionContextBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,12 @@ class QueryHandler:
             agent: Instancia del agente LLM
         """
         self.agent = agent
-        logger.info("QueryHandler inicializado")
+
+        # Crear selector de tools (FASE 3 - Hito 1)
+        self.tool_selector = ToolSelector(agent.llm_provider)
+        self.tool_orchestrator = ToolOrchestrator(get_registry())
+
+        logger.info("QueryHandler inicializado con ToolSelector (auto-selección habilitada)")
 
     async def handle_text_message(
         self,
@@ -53,7 +61,6 @@ class QueryHandler:
 
         # Si no hay usuario autenticado, verificar autenticación
         if not telegram_user:
-            from src.auth import UserManager
             db_manager = context.bot_data.get('db_manager')
 
             if not db_manager:
@@ -130,10 +137,57 @@ class QueryHandler:
                 return
 
         # Usar StatusMessage para mostrar progreso visual
-        async with StatusMessage(update) as status:
+        async with StatusMessage(update, initial_message="🔍 Analizando tu consulta...") as status:
             try:
-                # Procesar la consulta con el agente
-                response = await self.agent.process_query(user_message)
+                # FASE 3 - Hito 1: Auto-selección de tool
+                selection_result = await self.tool_selector.select_tool(user_message)
+
+                logger.info(
+                    f"Tool seleccionado para usuario {telegram_user.id_usuario}: "
+                    f"{selection_result.selected_tool} (confidence: {selection_result.confidence:.2f})"
+                )
+
+                # Construir contexto de ejecución
+                with db_manager.get_session() as session:
+                    user_manager = UserManager(session)
+                    permission_checker = PermissionChecker(session)
+
+                    exec_context = (
+                        ExecutionContextBuilder()
+                        .with_telegram(update, context)
+                        .with_db_manager(db_manager)
+                        .with_llm_agent(self.agent)
+                        .with_user_manager(user_manager)
+                        .with_permission_checker(permission_checker)
+                        .build()
+                    )
+
+                    # Si hay tool seleccionado, ejecutar a través del orchestrator
+                    if selection_result.has_selection:
+                        # Obtener el comando del tool seleccionado
+                        tool = get_registry().get_tool_by_name(selection_result.selected_tool)
+                        command = tool.commands[0] if tool and tool.commands else "/ia"
+
+                        # Ejecutar tool via orchestrator
+                        tool_result = await self.tool_orchestrator.execute_command(
+                            user_id=chat_id,
+                            command=command,
+                            params={"query": user_message},
+                            context=exec_context
+                        )
+
+                        if tool_result.success:
+                            response = tool_result.data
+                        else:
+                            # Si el tool falló, usar fallback a proceso directo
+                            logger.warning(
+                                f"Tool execution failed, using fallback: {tool_result.error}"
+                            )
+                            response = await self.agent.process_query(user_message)
+                    else:
+                        # No hay tool seleccionado, usar proceso directo como fallback
+                        logger.info("No tool selected, using direct agent processing")
+                        response = await self.agent.process_query(user_message)
 
                 # Completar con la respuesta (esto edita el mensaje de estado)
                 await status.complete(response)
