@@ -8,6 +8,8 @@ import logging
 from typing import List, Optional, Dict, Tuple
 from .company_knowledge import KnowledgeEntry, get_knowledge_base, get_entries_by_category
 from .knowledge_categories import KnowledgeCategory
+from .knowledge_repository import KnowledgeRepository
+from src.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +21,55 @@ class KnowledgeManager:
     Proporciona búsqueda inteligente en la base de conocimiento
     usando keywords y scoring.
 
+    Lee primero desde base de datos (abcmasplus) y usa fallback
+    a código si la BD no está disponible.
+
     Examples:
         >>> manager = KnowledgeManager()
         >>> results = manager.search("¿Cómo pido vacaciones?")
         >>> print(results[0].answer)
     """
 
-    def __init__(self):
-        """Inicializar el gestor de conocimiento."""
-        self.knowledge_base = get_knowledge_base()
-        logger.info(f"KnowledgeManager inicializado con {len(self.knowledge_base)} entradas")
+    def __init__(self, db_manager: Optional[DatabaseManager] = None):
+        """
+        Inicializar el gestor de conocimiento.
+
+        Args:
+            db_manager: Gestor de base de datos (opcional)
+        """
+        self.repository = KnowledgeRepository(db_manager)
+        self.knowledge_base = []
+        self.source = "unknown"
+
+        # Intentar cargar desde BD primero
+        try:
+            if self.repository.health_check():
+                self.knowledge_base = self.repository.get_all_entries()
+                if self.knowledge_base:
+                    self.source = "database"
+                    logger.info(
+                        f"✅ KnowledgeManager inicializado desde BD "
+                        f"con {len(self.knowledge_base)} entradas"
+                    )
+                else:
+                    # BD vacía, usar código
+                    raise ValueError("Base de datos sin entradas")
+            else:
+                # Health check falló
+                raise ConnectionError("Base de datos no disponible")
+
+        except Exception as e:
+            # Fallback a código
+            logger.warning(
+                f"⚠️ No se pudo cargar desde BD ({e}), "
+                f"usando conocimiento desde código"
+            )
+            self.knowledge_base = get_knowledge_base()
+            self.source = "code"
+            logger.info(
+                f"📝 KnowledgeManager inicializado desde código "
+                f"con {len(self.knowledge_base)} entradas"
+            )
 
     def search(
         self,
@@ -229,6 +270,39 @@ class KnowledgeManager:
         """Obtener entradas de alta prioridad (útil para FAQs destacadas)."""
         return [entry for entry in self.knowledge_base if entry.priority >= 2]
 
+    def get_source(self) -> str:
+        """
+        Obtener la fuente de datos actual.
+
+        Returns:
+            'database' si está usando BD, 'code' si está usando código
+        """
+        return self.source
+
+    def reload_from_database(self) -> bool:
+        """
+        Intentar recargar datos desde la base de datos.
+
+        Útil si la BD no estaba disponible al iniciar pero ahora sí.
+
+        Returns:
+            True si se recargó exitosamente desde BD
+        """
+        try:
+            if self.repository.health_check():
+                entries = self.repository.get_all_entries()
+                if entries:
+                    self.knowledge_base = entries
+                    self.source = "database"
+                    logger.info(
+                        f"✅ Conocimiento recargado desde BD: {len(entries)} entradas"
+                    )
+                    return True
+            return False
+        except Exception as e:
+            logger.error(f"Error al recargar desde BD: {e}")
+            return False
+
     def __repr__(self) -> str:
         """Representación del manager."""
-        return f"KnowledgeManager(entries={len(self.knowledge_base)})"
+        return f"KnowledgeManager(entries={len(self.knowledge_base)}, source='{self.source}')"

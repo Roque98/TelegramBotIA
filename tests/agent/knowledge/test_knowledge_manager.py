@@ -4,6 +4,7 @@ Tests para KnowledgeManager.
 Valida búsqueda, scoring, filtrado y generación de contexto.
 """
 import pytest
+from unittest.mock import Mock
 from src.agent.knowledge import (
     KnowledgeManager,
     KnowledgeCategory,
@@ -343,6 +344,53 @@ class TestKnowledgeManagerEdgeCases:
         repr_str = repr(manager)
         assert "KnowledgeManager" in repr_str
         assert "entries=" in repr_str
+        assert "source=" in repr_str
+
+
+class TestKnowledgeManagerDatabaseIntegration:
+    """Tests de integración con base de datos."""
+
+    def test_manager_has_source_attribute(self):
+        """Debe tener atributo source."""
+        manager = KnowledgeManager()
+        assert hasattr(manager, 'source')
+        assert manager.source in ['database', 'code']
+
+    def test_get_source_returns_valid_value(self):
+        """Debe retornar fuente válida."""
+        manager = KnowledgeManager()
+        source = manager.get_source()
+        assert source in ['database', 'code']
+
+    def test_fallback_to_code_if_db_unavailable(self):
+        """Debe usar código si BD no está disponible."""
+        # Mock db_manager que falla
+        mock_db = Mock()
+        mock_db.execute_query.side_effect = Exception("Connection error")
+
+        manager = KnowledgeManager(db_manager=mock_db)
+
+        # Debe haberse inicializado con código como fallback
+        assert manager.source == 'code'
+        assert len(manager.knowledge_base) > 0
+
+    def test_reload_from_database_method_exists(self):
+        """Debe tener método reload_from_database."""
+        manager = KnowledgeManager()
+        assert hasattr(manager, 'reload_from_database')
+        assert callable(manager.reload_from_database)
+
+    def test_reload_from_database_with_unavailable_db(self):
+        """Debe retornar False si BD no está disponible."""
+        # Crear manager con DB mock que falla
+        mock_db = Mock()
+        mock_db.execute_query.side_effect = Exception("Connection error")
+
+        manager = KnowledgeManager(db_manager=mock_db)
+        result = manager.reload_from_database()
+
+        assert result is False
+        assert manager.source == 'code'  # Debe mantener código
 
 
 class TestKnowledgeManagerRealWorldScenarios:
