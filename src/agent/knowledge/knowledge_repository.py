@@ -240,6 +240,65 @@ class KnowledgeRepository:
             logger.error(f"Error al cargar categorías: {e}")
             raise
 
+    def get_categories_info(self) -> List[Dict[str, Any]]:
+        """
+        Obtener información completa de categorías desde BD.
+
+        Returns:
+            Lista de diccionarios con {name, display_name, icon, entry_count}
+
+        Example:
+            [
+                {'name': 'PROCESOS', 'display_name': 'Procesos', 'icon': '⚙️', 'entry_count': 5},
+                {'name': 'POLITICAS', 'display_name': 'Políticas', 'icon': '📋', 'entry_count': 3}
+            ]
+        """
+        query = """
+        SELECT
+            c.name,
+            c.display_name,
+            c.icon,
+            COUNT(e.id) as entry_count
+        FROM abcmasplus.dbo.knowledge_categories c
+        LEFT JOIN abcmasplus.dbo.knowledge_entries e ON c.id = e.category_id AND e.active = 1
+        WHERE c.active = 1
+        GROUP BY c.id, c.name, c.display_name, c.icon
+        ORDER BY c.display_name
+        """
+
+        try:
+            results = self.db_manager.execute_query(query)
+            return results
+
+        except Exception as e:
+            logger.error(f"Error al obtener info de categorías: {e}")
+            raise
+
+    def get_example_questions(self, limit: int = 4) -> List[str]:
+        """
+        Obtener preguntas de ejemplo de alta prioridad desde BD.
+
+        Args:
+            limit: Número máximo de preguntas a retornar
+
+        Returns:
+            Lista de preguntas de ejemplo
+        """
+        query = """
+        SELECT TOP (?) question
+        FROM abcmasplus.dbo.knowledge_entries
+        WHERE active = 1 AND priority >= 2
+        ORDER BY priority DESC, id
+        """
+
+        try:
+            results = self.db_manager.execute_query(query, (limit,))
+            return [row['question'] for row in results]
+
+        except Exception as e:
+            logger.error(f"Error al obtener preguntas de ejemplo: {e}")
+            raise
+
     def health_check(self) -> bool:
         """
         Verificar si la conexión a BD está funcionando.
