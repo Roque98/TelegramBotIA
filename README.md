@@ -36,11 +36,39 @@ python main.py
 
 ## Documentación
 
-Ver la carpeta `docs/` para documentación detallada sobre la estructura del proyecto y guías de uso.
+### Para Desarrolladores
 
-## Estructura
+**[docs/desarrollador/](docs/desarrollador/)** - Documentación completa para desarrolladores:
 
-Ver [docs/estructura.md](docs/estructura.md) para detalles sobre la organización del proyecto.
+- **[GUIA_DESARROLLADOR.md](docs/desarrollador/GUIA_DESARROLLADOR.md)** - Guía completa del proyecto
+  - Arquitectura y stack tecnológico
+  - Componentes principales y flujos
+  - Sistema de Tools y Knowledge Base
+  - Patrones de diseño y testing
+  - GitFlow y guía de contribución
+
+- **[QUICK_START_TOOLS.md](docs/desarrollador/QUICK_START_TOOLS.md)** - Inicio rápido con el sistema de Tools
+- **[TESTING_TOOLS.md](docs/desarrollador/TESTING_TOOLS.md)** - Guía de testing
+- **[COMMIT_GUIDELINES.md](docs/desarrollador/COMMIT_GUIDELINES.md)** - Convenciones de commits
+- **[GITFLOW.md](docs/desarrollador/GITFLOW.md)** - Estrategia de branches y versionado
+- **[DIAGRAMA_FLUJO_ACTUAL.md](docs/desarrollador/DIAGRAMA_FLUJO_ACTUAL.md)** - Diagramas de flujo
+
+### Planificación y Features
+
+**[docs/futuros-features/](docs/futuros-features/)** - Roadmap y planificación:
+
+- **[RESUMEN.md](docs/futuros-features/RESUMEN.md)** - Resumen de features completados y pendientes
+- **[ROADMAP.md](docs/futuros-features/ROADMAP.md)** - Hoja de ruta del proyecto
+- **[PENDIENTES.md](docs/futuros-features/PENDIENTES.md)** - Lista de TODOs priorizados
+- **[PLAN_FASE3_TOOLS.md](docs/futuros-features/PLAN_FASE3_TOOLS.md)** - Plan del sistema de Tools
+- **[PLAN_ORQUESTADOR_TOOLS.md](docs/futuros-features/PLAN_ORQUESTADOR_TOOLS.md)** - Plan del orquestador
+- **[PLAN_KNOWLEDGE_BASE_RAG.md](docs/futuros-features/PLAN_KNOWLEDGE_BASE_RAG.md)** - Plan de Knowledge Base + RAG
+
+### Documentación Técnica
+
+- [docs/estructura.md](docs/estructura.md) - Estructura detallada del código
+- [docs/SISTEMA_AUTENTICACION.md](docs/SISTEMA_AUTENTICACION.md) - Sistema de autenticación
+- [docs/GuiaKeyboards.md](docs/GuiaKeyboards.md) - Guía de teclados de Telegram
 
 ## 🔄 Flujo de Trabajo (GitFlow)
 
