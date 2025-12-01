@@ -176,10 +176,17 @@ class LLMAgent:
         try:
             from src.agent.knowledge import KnowledgeRepository
 
+            # Usar el mismo db_manager que el agente
             repository = KnowledgeRepository(self.db_manager)
+
+            # Verificar health check primero
+            if not repository.health_check():
+                logger.warning("BD no disponible para generar saludo, usando fallback")
+                raise ConnectionError("BD no responde al health check")
 
             # Obtener categorías con conteo
             categories = repository.get_categories_info()
+            logger.debug(f"Categorías obtenidas: {len(categories)}")
 
             # Construir texto de categorías
             categories_text = ""
@@ -189,8 +196,10 @@ class LLMAgent:
 
             # Obtener ejemplos de preguntas
             examples = repository.get_example_questions(limit=3)
+            logger.debug(f"Ejemplos obtenidos: {len(examples)}")
             examples_text = "\n".join([f"• `{q}`" for q in examples])
 
+            logger.info("✅ Saludo generado dinámicamente desde BD")
             return (
                 "👋 ¡Hola! Soy **Amber**, analista del Centro de Operaciones ✨\n\n"
                 "Estoy aquí para ayudarte con información sobre:\n\n"
@@ -201,7 +210,7 @@ class LLMAgent:
             )
 
         except Exception as e:
-            logger.warning(f"Error generando saludo desde BD: {e}, usando fallback")
+            logger.error(f"❌ Error generando saludo desde BD: {e}", exc_info=True)
             # Fallback básico si falla la BD
             return (
                 "👋 ¡Hola! Soy **Amber**, analista del Centro de Operaciones ✨\n\n"
@@ -222,10 +231,17 @@ class LLMAgent:
         try:
             from src.agent.knowledge import KnowledgeRepository
 
+            # Usar el mismo db_manager que el agente
             repository = KnowledgeRepository(self.db_manager)
+
+            # Verificar health check primero
+            if not repository.health_check():
+                logger.warning("BD no disponible para generar respuesta general, usando fallback")
+                raise ConnectionError("BD no responde al health check")
 
             # Obtener categorías con conteo
             categories = repository.get_categories_info()
+            logger.debug(f"Categorías obtenidas para respuesta general: {len(categories)}")
 
             # Construir texto de especialidades (solo categorías con contenido)
             specialties_text = ""
@@ -233,6 +249,7 @@ class LLMAgent:
                 if cat.get('entry_count', 0) > 0:
                     specialties_text += f"{cat['icon']} {cat['display_name']}\n"
 
+            logger.info("✅ Respuesta general generada dinámicamente desde BD")
             return (
                 "💭 Hmm, esa es una pregunta interesante, pero estoy especializada en información empresarial y consultas de datos.\n\n"
                 "🎯 **Mis especialidades:**\n\n"
@@ -242,7 +259,7 @@ class LLMAgent:
             )
 
         except Exception as e:
-            logger.warning(f"Error generando respuesta general desde BD: {e}, usando fallback")
+            logger.error(f"❌ Error generando respuesta general desde BD: {e}", exc_info=True)
             # Fallback básico si falla la BD
             return (
                 "💭 Hmm, esa es una pregunta interesante, pero estoy especializada en información empresarial y consultas de datos.\n\n"
