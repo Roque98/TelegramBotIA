@@ -143,6 +143,7 @@ class LLMAgent:
 
         Responde con la personalidad de Amber, recordando al usuario
         sobre sus capacidades de información empresarial y consultas de BD.
+        El mensaje se genera dinámicamente desde la base de datos.
 
         Args:
             user_query: Consulta del usuario
@@ -157,30 +158,98 @@ class LLMAgent:
         es_saludo = any(saludo in user_query.lower() for saludo in saludos)
 
         if es_saludo:
+            # Generar mensaje dinámico desde BD
+            greeting_message = self._generate_greeting_from_db()
+            return greeting_message
+        else:
+            # Generar respuesta general con categorías desde BD
+            general_response = self._generate_general_response_from_db()
+            return general_response
+
+    def _generate_greeting_from_db(self) -> str:
+        """
+        Generar mensaje de saludo dinámicamente desde la BD.
+
+        Returns:
+            Mensaje de saludo con categorías y ejemplos desde BD
+        """
+        try:
+            from src.agent.knowledge import KnowledgeRepository
+
+            repository = KnowledgeRepository(self.db_manager)
+
+            # Obtener categorías con conteo
+            categories = repository.get_categories_info()
+
+            # Construir texto de categorías
+            categories_text = ""
+            for cat in categories:
+                if cat.get('entry_count', 0) > 0:
+                    categories_text += f"• {cat['icon']} {cat['display_name']}\n"
+
+            # Obtener ejemplos de preguntas
+            examples = repository.get_example_questions(limit=3)
+            examples_text = "\n".join([f"• `{q}`" for q in examples])
+
+            return (
+                "👋 ¡Hola! Soy **Amber**, analista del Centro de Operaciones ✨\n\n"
+                "Estoy aquí para ayudarte con información sobre:\n\n"
+                f"{categories_text}\n"
+                "💡 **Ejemplos de preguntas:**\n"
+                f"{examples_text}\n\n"
+                "¿En qué puedo ayudarte hoy? 🎯"
+            )
+
+        except Exception as e:
+            logger.warning(f"Error generando saludo desde BD: {e}, usando fallback")
+            # Fallback básico si falla la BD
             return (
                 "👋 ¡Hola! Soy **Amber**, analista del Centro de Operaciones ✨\n\n"
                 "Estoy aquí para ayudarte con:\n\n"
-                "📋 **Información Institucional:**\n"
-                "• Políticas y procedimientos\n"
-                "• Preguntas frecuentes (FAQs)\n"
-                "• Contactos y sistemas\n\n"
-                "📊 **Consultas de Datos:**\n"
-                "• Análisis y reportes\n"
-                "• Estadísticas y métricas\n"
-                "• Información de clientes y ventas\n\n"
-                "💡 **Ejemplos de preguntas:**\n"
-                "• `/ia ¿Cómo solicito vacaciones?`\n"
-                "• `/ia ¿Qué tablas están disponibles?`\n"
-                "• `/ia ¿Cuántas ventas hay este mes?`\n\n"
+                "📋 Información Institucional\n"
+                "📊 Consultas de Datos\n"
+                "💡 Preguntas y soporte\n\n"
                 "¿En qué puedo ayudarte hoy? 🎯"
             )
-        else:
+
+    def _generate_general_response_from_db(self) -> str:
+        """
+        Generar respuesta general dinámicamente desde la BD.
+
+        Returns:
+            Mensaje con especialidades basadas en categorías de BD
+        """
+        try:
+            from src.agent.knowledge import KnowledgeRepository
+
+            repository = KnowledgeRepository(self.db_manager)
+
+            # Obtener categorías con conteo
+            categories = repository.get_categories_info()
+
+            # Construir texto de especialidades (solo categorías con contenido)
+            specialties_text = ""
+            for cat in categories:
+                if cat.get('entry_count', 0) > 0:
+                    specialties_text += f"{cat['icon']} {cat['display_name']}\n"
+
             return (
                 "💭 Hmm, esa es una pregunta interesante, pero estoy especializada en información empresarial y consultas de datos.\n\n"
                 "🎯 **Mis especialidades:**\n\n"
-                "📋 Políticas y procesos de la empresa\n"
-                "📊 Consultas y análisis de datos\n"
-                "💡 Información de sistemas y contactos\n\n"
+                f"{specialties_text}\n"
+                "¿Hay algo relacionado con estos temas en lo que pueda ayudarte? ✨\n\n"
+                "_Amber, siempre dispuesta a ayudar_ 💪"
+            )
+
+        except Exception as e:
+            logger.warning(f"Error generando respuesta general desde BD: {e}, usando fallback")
+            # Fallback básico si falla la BD
+            return (
+                "💭 Hmm, esa es una pregunta interesante, pero estoy especializada en información empresarial y consultas de datos.\n\n"
+                "🎯 **Mis especialidades:**\n\n"
+                "📋 Políticas y procesos\n"
+                "📊 Consultas de datos\n"
+                "💡 Información de sistemas\n\n"
                 "¿Hay algo relacionado con estos temas en lo que pueda ayudarte? ✨\n\n"
                 "_Amber, siempre dispuesta a ayudar_ 💪"
             )
