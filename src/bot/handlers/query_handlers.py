@@ -137,7 +137,7 @@ class QueryHandler:
                 return
 
         # Usar StatusMessage para mostrar progreso visual
-        async with StatusMessage(update, initial_message="🔍 Analizando tu consulta...") as status:
+        async with StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...") as status:
             try:
                 # FASE 3 - Hito 1: Auto-selección de tool
                 selection_result = await self.tool_selector.select_tool(user_message)
