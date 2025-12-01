@@ -89,14 +89,14 @@ class UniversalHandler:
         status_msg = StatusMessage(update, context)
 
         try:
-            # Determinar mensaje de estado según el tool
+            # Determinar mensaje de estado según el tool (con personalidad de Amber)
             status_messages = {
-                "/ia": "🔍 Analizando tu consulta...",
-                "/query": "🔍 Analizando tu consulta...",
-                "/help": "📚 Cargando ayuda...",
-                "/stats": "📊 Generando estadísticas..."
+                "/ia": "🔍 Amber analizando tu consulta...",
+                "/query": "🔍 Amber analizando tu consulta...",
+                "/help": "📚 Amber preparando la ayuda...",
+                "/stats": "📊 Amber generando tus estadísticas..."
             }
-            initial_status = status_messages.get(command, f"⚙️ Ejecutando {command}...")
+            initial_status = status_messages.get(command, f"⚙️ Amber ejecutando {command}...")
             await status_msg.send(initial_status)
 
             # Construir contexto de ejecución
@@ -106,7 +106,7 @@ class UniversalHandler:
             params = self._extract_parameters(tool, args_text, update, context)
 
             # Actualizar estado antes de ejecutar
-            await status_msg.update(f"🤖 Procesando {tool.name}...")
+            await status_msg.update(f"✨ Procesando...")
 
             # Ejecutar tool a través del orquestador
             result = await self.tool_orchestrator.execute_command(

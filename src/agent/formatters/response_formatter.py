@@ -119,7 +119,7 @@ class ResponseFormatter:
 
     def format_error(self, error_message: str, user_friendly: bool = True) -> str:
         """
-        Formatear un mensaje de error.
+        Formatear un mensaje de error con la personalidad de Amber.
 
         Args:
             error_message: Mensaje de error técnico
@@ -130,15 +130,16 @@ class ResponseFormatter:
         """
         if user_friendly:
             return (
-                "Lo siento, ocurrió un error al procesar tu consulta. "
-                "Por favor, intenta de nuevo o reformula tu pregunta."
+                "❌ Oh no, tuve un problema procesando eso.\n\n"
+                "¿Podrías intentar reformular tu pregunta de otra manera?\n\n"
+                "_Amber está aquí para ayudarte_ ✨"
             )
         else:
             return f"**Error:** {error_message}"
 
     def _format_empty_results(self, user_query: str) -> str:
         """
-        Formatear respuesta cuando no hay resultados.
+        Formatear respuesta cuando no hay resultados (con personalidad de Amber).
 
         Args:
             user_query: Consulta del usuario
@@ -146,7 +147,14 @@ class ResponseFormatter:
         Returns:
             Mensaje formateado
         """
-        return "No encontré resultados para tu consulta."
+        return (
+            "🔍 No encontré resultados para esa consulta.\n\n"
+            "💡 **Sugerencias:**\n"
+            "• Intenta reformular la pregunta\n"
+            "• Verifica los nombres de tablas o campos\n"
+            "• Prueba con términos diferentes\n\n"
+            "_Amber está aquí si necesitas ayuda_ ✨"
+        )
 
     def _format_single_result(self, result: Dict[str, Any]) -> str:
         """

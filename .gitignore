@@ -56,3 +56,6 @@ Thumbs.db
 .coverage
 htmlcov/
 nul
+
+# Documentation (HTML versions - use Markdown instead)
+docs/guia del desarrollador/

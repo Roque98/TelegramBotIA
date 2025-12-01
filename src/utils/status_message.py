@@ -38,12 +38,12 @@ class StatusMessage:
         >>> await status.complete("¡Listo!")
     """
 
-    # Mensajes de estado genéricos
+    # Mensajes de estado genéricos (con personalidad de Amber)
     PROCESSING_MESSAGES = [
-        "🔄 Procesando tu solicitud...",
-        "💭 Analizando...",
+        "🔄 Amber procesando tu solicitud...",
+        "💭 Analizando los datos...",
         "⚙️ Trabajando en ello...",
-        "✨ Casi listo..."
+        "✨ Ya casi termino..."
     ]
 
     def __init__(
@@ -212,9 +212,9 @@ class StatusMessage:
                 except TelegramError as e2:
                     logger.error(f"Error al enviar mensaje final alternativo: {e2}")
 
-    async def error(self, error_message: str = "Lo siento, ocurrió un error al procesar tu solicitud") -> None:
+    async def error(self, error_message: str = "Oh no, tuve un problema procesando eso") -> None:
         """
-        Marcar operación como fallida y mostrar mensaje de error.
+        Marcar operación como fallida y mostrar mensaje de error (con personalidad de Amber).
 
         Args:
             error_message: Mensaje de error a mostrar
@@ -232,7 +232,7 @@ class StatusMessage:
         formatted_error = (
             f"❌ **Error**\n\n"
             f"{error_message}\n\n"
-            f"_Por favor, intenta de nuevo o usa /help para más información_"
+            f"_Intenta de nuevo o usa /help si necesitas ayuda_ ✨"
         )
 
         try:

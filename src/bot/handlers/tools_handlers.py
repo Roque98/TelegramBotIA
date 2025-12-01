@@ -49,14 +49,15 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not db_manager or not llm_agent:
         await update.message.reply_text(
-            "❌ Error de configuración del sistema.\n"
-            "Por favor, contacta al administrador."
+            "❌ Oh no, hay un problema de configuración.\n\n"
+            "¿Podrías contactar al administrador?\n"
+            "_Amber te pide disculpas_ 😔"
         )
         logger.error("db_manager o agent no encontrados en bot_data")
         return
 
     # Crear mensaje de estado
-    status_msg = StatusMessage(update, initial_message="🔍 Analizando tu consulta...")
+    status_msg = StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...")
     await status_msg.start()
 
     try:

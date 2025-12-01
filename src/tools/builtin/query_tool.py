@@ -89,7 +89,7 @@ class QueryTool(BaseTool):
             logger.error(f"Componente requerido no disponible: {error}")
             return ToolResult.error_result(
                 error=error,
-                user_friendly_error="❌ El sistema de consultas no está disponible"
+                user_friendly_error="❌ El sistema no está disponible en este momento.\n_Amber te pide disculpas_ 😔"
             )
 
         user_query = params['query']
@@ -117,8 +117,9 @@ class QueryTool(BaseTool):
             return ToolResult.error_result(
                 error=str(e),
                 user_friendly_error=(
-                    "❌ No pude procesar tu consulta en este momento.\n"
-                    "Por favor, intenta reformular tu pregunta."
+                    "❌ Ups, tuve un problema con esa consulta.\n\n"
+                    "¿Podrías reformularla de otra manera?\n"
+                    "_Amber está aquí para ayudarte_ ✨"
                 )
             )
 
@@ -165,14 +166,15 @@ class IACommandHandler:
 
         if not query_text:
             await update.message.reply_text(
-                "❓ Por favor, proporciona una consulta después de /ia\n\n"
-                "Ejemplo: /ia ¿Cuántos usuarios hay registrados?"
+                "💡 Necesito una pregunta después de /ia\n\n"
+                "**Ejemplo:** /ia ¿Cuántos usuarios hay registrados?\n\n"
+                "_Amber aquí, lista para ayudarte_ ✨"
             )
             return
 
         # Crear mensaje de estado
         status_msg = StatusMessage(update, context)
-        await status_msg.send("🔍 Analizando tu consulta...")
+        await status_msg.send("🔍 Amber analizando tu consulta...")
 
         try:
             # Construir contexto de ejecución
@@ -185,7 +187,7 @@ class IACommandHandler:
             )
 
             # Actualizar estado
-            await status_msg.update("🤖 Procesando con IA...")
+            await status_msg.update("✨ Procesando tu consulta...")
 
             # Ejecutar tool a través del orquestador
             result = await self.tool_orchestrator.execute_command(
@@ -212,6 +214,7 @@ class IACommandHandler:
             logger.error(f"Error en handle_ia_command: {e}", exc_info=True)
             await status_msg.delete()
             await update.message.reply_text(
-                "❌ Ocurrió un error al procesar tu consulta.\n"
-                "Por favor, intenta nuevamente."
+                "❌ Oh no, tuve un problema procesando eso.\n\n"
+                "¿Podrías intentar reformular tu pregunta?\n"
+                "_Amber intenta ayudarte lo mejor posible_ 💪"
             )

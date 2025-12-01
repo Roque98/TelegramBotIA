@@ -141,38 +141,49 @@ class LLMAgent:
         """
         Procesar una consulta general que no requiere base de datos.
 
-        El bot solo responde información empresarial y de BD, por lo que
-        redirige al usuario a usar las funcionalidades correctas.
+        Responde con la personalidad de Amber, recordando al usuario
+        sobre sus capacidades de información empresarial y consultas de BD.
 
         Args:
             user_query: Consulta del usuario
 
         Returns:
-            Mensaje informativo sobre el propósito del bot
+            Respuesta de Amber sobre sus capacidades
         """
-        logger.info("Consulta general detectada - recordando propósito del bot")
+        logger.info("Consulta general detectada - Amber responde sobre sus capacidades")
 
-        return (
-            "👋 ¡Hola! Soy un asistente especializado en información empresarial y consultas de base de datos.\n\n"
-            "🎯 **Puedo ayudarte con:**\n\n"
-            "📋 **Información Institucional:**\n"
-            "• Políticas de la empresa\n"
-            "• Procesos y procedimientos\n"
-            "• Preguntas frecuentes (FAQs)\n"
-            "• Contactos de departamentos\n"
-            "• Información de sistemas\n\n"
-            "📊 **Consultas de Base de Datos:**\n"
-            "• Análisis de ventas\n"
-            "• Reportes de productos\n"
-            "• Estadísticas y métricas\n"
-            "• Información de clientes\n\n"
-            "💡 **Ejemplos de preguntas:**\n"
-            "• `/ia ¿Cómo solicito vacaciones?`\n"
-            "• `/ia ¿Qué tablas están disponibles?`\n"
-            "• `/ia ¿Cuántas ventas hay del producto X?`\n"
-            "• `/ia ¿Cuál es el horario de trabajo?`\n\n"
-            "✨ **¿En qué puedo ayudarte hoy?**"
-        )
+        # Detectar saludos para personalizar la respuesta
+        saludos = ["hola", "hello", "hi", "buenos días", "buenas tardes", "buenas noches", "hey"]
+        es_saludo = any(saludo in user_query.lower() for saludo in saludos)
+
+        if es_saludo:
+            return (
+                "👋 ¡Hola! Soy **Amber**, analista del Centro de Operaciones ✨\n\n"
+                "Estoy aquí para ayudarte con:\n\n"
+                "📋 **Información Institucional:**\n"
+                "• Políticas y procedimientos\n"
+                "• Preguntas frecuentes (FAQs)\n"
+                "• Contactos y sistemas\n\n"
+                "📊 **Consultas de Datos:**\n"
+                "• Análisis y reportes\n"
+                "• Estadísticas y métricas\n"
+                "• Información de clientes y ventas\n\n"
+                "💡 **Ejemplos de preguntas:**\n"
+                "• `/ia ¿Cómo solicito vacaciones?`\n"
+                "• `/ia ¿Qué tablas están disponibles?`\n"
+                "• `/ia ¿Cuántas ventas hay este mes?`\n\n"
+                "¿En qué puedo ayudarte hoy? 🎯"
+            )
+        else:
+            return (
+                "💭 Hmm, esa es una pregunta interesante, pero estoy especializada en información empresarial y consultas de datos.\n\n"
+                "🎯 **Mis especialidades:**\n\n"
+                "📋 Políticas y procesos de la empresa\n"
+                "📊 Consultas y análisis de datos\n"
+                "💡 Información de sistemas y contactos\n\n"
+                "¿Hay algo relacionado con estos temas en lo que pueda ayudarte? ✨\n\n"
+                "_Amber, siempre dispuesta a ayudar_ 💪"
+            )
 
     async def _process_knowledge_query(self, user_query: str) -> str:
         """
@@ -207,9 +218,10 @@ class LLMAgent:
 
         except Exception as e:
             logger.error(f"Error procesando consulta de conocimiento: {e}")
-            return self.response_formatter.format_error(
-                "No pude procesar tu pregunta en este momento.",
-                user_friendly=True
+            return (
+                "❌ Oh, tuve un problema procesando esa pregunta.\n\n"
+                "¿Podrías intentarlo de nuevo o reformularla?\n\n"
+                "_Amber está aquí para ayudarte_ ✨"
             )
 
     async def _process_database_query(self, user_query: str) -> str:
@@ -231,16 +243,21 @@ class LLMAgent:
         sql_query = await self.sql_generator.generate_sql(user_query, schema)
 
         if not sql_query:
-            return "No pude generar una consulta SQL válida para tu pregunta."
+            return (
+                "🤔 Hmm, tuve dificultades generando la consulta para eso.\n\n"
+                "¿Podrías reformular tu pregunta de otra manera?\n\n"
+                "_Amber intentando ayudarte_ 💪"
+            )
 
         # 3. Validar SQL
         is_valid, error_message = self.sql_validator.validate(sql_query)
 
         if not is_valid:
             logger.warning(f"SQL no válido: {error_message}")
-            return self.response_formatter.format_error(
-                f"La consulta generada no es segura: {error_message}",
-                user_friendly=True
+            return (
+                "🔒 Esa consulta no pasó las validaciones de seguridad.\n\n"
+                "Por tu seguridad, solo puedo ejecutar consultas de lectura.\n\n"
+                "¿Necesitas algo más? _Amber aquí para ayudarte_ ✨"
             )
 
         # 4. Ejecutar la consulta
@@ -248,9 +265,10 @@ class LLMAgent:
             results = await asyncio.to_thread(self.db_manager.execute_query, sql_query)
         except Exception as e:
             logger.error(f"Error ejecutando consulta: {e}")
-            return self.response_formatter.format_error(
-                "Ocurrió un error al ejecutar la consulta en la base de datos.",
-                user_friendly=True
+            return (
+                "❌ Ups, tuve un problema ejecutando la consulta en la base de datos.\n\n"
+                "Esto puede ser temporal. ¿Intentamos de nuevo?\n\n"
+                "_Amber aquí para ayudarte_ 💪"
             )
 
         # 5. Formatear respuesta
