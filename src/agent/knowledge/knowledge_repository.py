@@ -90,7 +90,10 @@ class KnowledgeRepository:
         Returns:
             Lista de entradas de la categoría
         """
-        query = """
+        # Sanitizar el nombre de categoría para evitar SQL injection
+        category_name = str(category.name).replace("'", "''")
+
+        query = f"""
         SELECT
             e.id,
             e.category_id,
@@ -104,12 +107,12 @@ class KnowledgeRepository:
         INNER JOIN abcmasplus.dbo.knowledge_categories c ON e.category_id = c.id
         WHERE e.active = 1
             AND c.active = 1
-            AND c.name = ?
+            AND c.name = '{category_name}'
         ORDER BY e.priority DESC, e.id
         """
 
         try:
-            results = self.db_manager.execute_query(query, (category.name,))
+            results = self.db_manager.execute_query(query)
             entries = []
 
             for row in results:
@@ -284,15 +287,15 @@ class KnowledgeRepository:
         Returns:
             Lista de preguntas de ejemplo
         """
-        query = """
-        SELECT TOP (?) question
+        query = f"""
+        SELECT TOP ({limit}) question
         FROM abcmasplus.dbo.knowledge_entries
         WHERE active = 1 AND priority >= 2
         ORDER BY priority DESC, id
         """
 
         try:
-            results = self.db_manager.execute_query(query, (limit,))
+            results = self.db_manager.execute_query(query)
             return [row['question'] for row in results]
 
         except Exception as e:
