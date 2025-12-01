@@ -22,20 +22,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Usuario {user.id} ({user.username}) ejecutó /start")
 
     welcome_message = (
-        f"¡Hola {user.first_name}! 👋\n\n"
-        "Soy tu **asistente de base de datos inteligente**.\n\n"
-        "Puedo ayudarte a:\n"
-        "• Consultar datos en lenguaje natural\n"
-        "• Traducir tus preguntas a SQL\n"
-        "• Obtener información de la base de datos\n\n"
-        "**Ejemplos de consultas:**\n"
-        "- ¿Cuántos usuarios hay?\n"
-        "- Muéstrame los últimos 5 pedidos\n"
-        "- ¿Cuál es el producto más vendido?\n\n"
+        f"¡Hola {user.first_name}! 👋 Soy **Amber**\n\n"
+        "Analista del Centro de Operaciones aquí ✨\n\n"
+        "Estoy para ayudarte con:\n"
+        "📊 Consultas de datos en lenguaje natural\n"
+        "🔍 Información de la base de datos\n"
+        "💡 Conocimiento sobre políticas y procesos\n\n"
+        "**Ejemplos de lo que puedes preguntarme:**\n"
+        "• ¿Cuántos usuarios hay registrados?\n"
+        "• Muéstrame las ventas del último mes\n"
+        "• ¿Cómo solicito vacaciones?\n"
+        "• ¿Cuál es el horario de atención?\n\n"
         "**Comandos disponibles:**\n"
-        "/help - Ver ayuda detallada\n"
-        "/stats - Ver estadísticas de uso\n\n"
-        "¡Escribe tu pregunta y empecemos! 🚀"
+        "/help - Ver guía completa\n"
+        "/stats - Estadísticas de uso\n\n"
+        "¿En qué puedo ayudarte hoy? 🎯"
     )
 
     await update.message.reply_text(
@@ -56,30 +57,36 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Usuario {user_id} ejecutó /help")
 
     help_message = (
-        "**📖 Guía de Uso**\n\n"
+        "**📖 Guía de Uso - Amber te explica**\n\n"
+        "Hola de nuevo! Aquí está todo lo que puedo hacer por ti ✨\n\n"
         "**Comandos Disponibles:**\n"
-        "/start - Iniciar el bot y ver bienvenida\n"
-        "/help - Mostrar esta ayuda\n"
-        "/stats - Ver estadísticas de uso\n\n"
+        "/start - Volver a la bienvenida\n"
+        "/help - Mostrar esta guía\n"
+        "/stats - Ver estadísticas de uso\n"
+        "/ia [pregunta] - Hacer una consulta directa\n\n"
         "**Cómo hacer consultas:**\n\n"
-        "1️⃣ **Consultas a la base de datos:**\n"
-        "   Escribe preguntas en lenguaje natural sobre tus datos:\n"
-        "   • ¿Cuántos registros hay en la tabla usuarios?\n"
-        "   • Muéstrame las ventas del último mes\n"
+        "1️⃣ **Consultas de datos:**\n"
+        "   Pregúntame en lenguaje natural sobre datos:\n"
+        "   • ¿Cuántos usuarios hay registrados?\n"
+        "   • Muéstrame las ventas de este mes\n"
         "   • Lista los productos más vendidos\n\n"
-        "2️⃣ **Preguntas generales:**\n"
-        "   También puedo responder preguntas generales:\n"
-        "   • ¿Qué es SQL?\n"
-        "   • ¿Cómo funciona una base de datos?\n"
-        "   • Explícame qué es un índice\n\n"
-        "**Consejos:**\n"
-        "✅ Sé específico en tus preguntas\n"
-        "✅ Menciona nombres de tablas si los conoces\n"
-        "✅ Puedes pedir ejemplos de datos\n\n"
+        "2️⃣ **Información empresarial:**\n"
+        "   Pregúntame sobre políticas y procesos:\n"
+        "   • ¿Cómo solicito vacaciones?\n"
+        "   • ¿Cuál es el horario de trabajo?\n"
+        "   • ¿Dónde encuentro el manual de usuario?\n\n"
+        "3️⃣ **Preguntas generales:**\n"
+        "   También puedo ayudarte con conceptos:\n"
+        "   • ¿Qué es una base de datos?\n"
+        "   • Explícame qué significa SQL\n\n"
+        "**Consejos de Amber:**\n"
+        "✅ Sé específico, me ayuda a ayudarte mejor\n"
+        "✅ Puedo trabajar con lenguaje natural, no necesitas saber SQL\n"
+        "✅ Si algo no está claro, pregúntame de nuevo\n\n"
         "**Seguridad:**\n"
-        "🔒 Solo se permiten consultas de lectura (SELECT)\n"
-        "🔒 No se pueden modificar datos\n\n"
-        "¿Necesitas más ayuda? Contáctanos en: soporte@ejemplo.com"
+        "🔒 Solo consulto datos (no los modifico)\n"
+        "🔒 Tus consultas son seguras y validadas\n\n"
+        "¿Algo más en lo que pueda ayudarte? 💡"
     )
 
     await update.message.reply_text(
@@ -104,11 +111,13 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # TODO: Implementar estadísticas reales cuando se tenga el sistema de logging
     stats_message = (
         "**📊 Estadísticas de Uso**\n\n"
+        "Aquí van tus métricas ✨\n\n"
         "🔄 Consultas realizadas: N/A\n"
         "✅ Consultas exitosas: N/A\n"
         "❌ Consultas con error: N/A\n"
         "⏱️ Tiempo promedio: N/A\n\n"
-        "_Sistema de estadísticas en desarrollo_"
+        "🚧 _Estoy trabajando en el sistema de estadísticas completo_\n"
+        "_Pronto tendrás métricas detalladas!_ 💪"
     )
 
     await update.message.reply_text(
@@ -131,7 +140,7 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Usuario {user_id} ejecutó /cancel")
 
     await update.message.reply_text(
-        "Operación cancelada. ¿En qué más puedo ayudarte?",
+        "✅ Operación cancelada.\n\n¿En qué más puedo ayudarte? 💡",
         parse_mode='Markdown'
     )
 
