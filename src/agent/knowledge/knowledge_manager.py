@@ -6,7 +6,7 @@ institucional de la empresa.
 """
 import logging
 from typing import List, Optional, Dict, Tuple
-from .company_knowledge import KnowledgeEntry, get_knowledge_base, get_entries_by_category
+from .company_knowledge import KnowledgeEntry  # get_knowledge_base, get_entries_by_category
 from .knowledge_categories import KnowledgeCategory
 from .knowledge_repository import KnowledgeRepository
 from src.database.connection import DatabaseManager
@@ -59,17 +59,23 @@ class KnowledgeManager:
                 raise ConnectionError("Base de datos no disponible")
 
         except Exception as e:
-            # Fallback a código
-            logger.warning(
-                f"⚠️ No se pudo cargar desde BD ({e}), "
-                f"usando conocimiento desde código"
-            )
-            self.knowledge_base = get_knowledge_base()
-            self.source = "code"
-            logger.info(
-                f"📝 KnowledgeManager inicializado desde código "
-                f"con {len(self.knowledge_base)} entradas"
-            )
+            # Fallback a código - COMENTADO: Solo usar BD
+            # logger.warning(
+            #     f"⚠️ No se pudo cargar desde BD ({e}), "
+            #     f"usando conocimiento desde código"
+            # )
+            # self.knowledge_base = get_knowledge_base()
+            # self.source = "code"
+            # logger.info(
+            #     f"📝 KnowledgeManager inicializado desde código "
+            #     f"con {len(self.knowledge_base)} entradas"
+            # )
+
+            # Solo usar BD - fallar si no está disponible
+            logger.error(f"❌ No se pudo cargar conocimiento desde BD: {e}")
+            self.knowledge_base = []
+            self.source = "none"
+            raise RuntimeError(f"Base de datos no disponible y fallback deshabilitado: {e}")
 
     def search(
         self,
@@ -98,9 +104,9 @@ class KnowledgeManager:
         query_lower = query.lower()
         scored_entries = []
 
-        # Filtrar por categoría si se especifica
+        # Filtrar por categoría si se especifica (desde self.knowledge_base, no desde código)
         entries_to_search = (
-            get_entries_by_category(category_filter)
+            [entry for entry in self.knowledge_base if entry.category == category_filter]
             if category_filter
             else self.knowledge_base
         )
