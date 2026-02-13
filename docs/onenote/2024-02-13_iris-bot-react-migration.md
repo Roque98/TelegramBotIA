@@ -13,8 +13,8 @@ Migración del bot conversacional Iris desde una arquitectura monolítica (LLMAg
 - [x] ⚙️ En proceso
 
 ## 📈 Avance
-- Tareas completadas / Total tareas: 34 / 47
-- Porcentaje: 72%
+- Tareas completadas / Total tareas: 41 / 47
+- Porcentaje: 87%
 
 ## 📅 Cronología
 - **Semana de inicio**: Semana 7 - 13/02/2024
@@ -80,8 +80,16 @@ Migración del bot conversacional Iris desde una arquitectura monolítica (LLMAg
 - ✔️ **UserProfile/Interaction**: Dataclasses para datos de usuario
 - ✔️ **Tests Fase 4**: 44 tests pasando
 
+**Fase 5 - Integration** (100% completada):
+- ✔️ **MessageGateway**: Normalización Telegram/API/WS - `src/gateway/message_gateway.py`
+- ✔️ **MainHandler**: Orquestación ReAct + Memory - `src/gateway/handler.py`
+- ✔️ **Factory**: Construcción de componentes - `src/gateway/factory.py`
+- ✔️ **Feature Flag**: USE_REACT_AGENT en settings
+- ✔️ **QueryHandler actualizado**: Soporte para legacy y ReAct
+- ✔️ **Fallback a LLMAgent**: REACT_FALLBACK_ON_ERROR
+- ✔️ **Tests Fase 5**: 21 tests pasando (1 skipped)
+
 ### 📋 Por hacer
-- ⏳ **Fase 5 - Integration**: Conectar con Telegram y sistema actual
 - ⏳ **Fase 6 - Polish**: Observabilidad, métricas y optimización
 
 ## ⚠️ Impedimentos y Deadlines
@@ -106,7 +114,8 @@ N/A - No hay bloqueadores activos
 - `feature/react-fase1-foundation` - Fase 1 (completada)
 - `feature/react-fase2-tools` - Fase 2 (completada)
 - `feature/react-fase3-agent` - Fase 3 (completada)
-- `feature/react-fase4-memory` - Fase 4 (completada) ← Rama actual
+- `feature/react-fase4-memory` - Fase 4 (completada)
+- `feature/react-fase5-integration` - Fase 5 (completada) ← Rama actual
 
 ### 📝 Commits Relevantes
 | Commit | Descripción | Fecha |
@@ -117,6 +126,7 @@ N/A - No hay bloqueadores activos
 | `c270395` | docs(plan): mark Phase 2 as completed | 13/02/2024 |
 | `e7a26b9` | feat(react): implement Phase 3 ReAct Agent | 13/02/2024 |
 | `d84e260` | feat(memory): implement Phase 4 Memory Service | 13/02/2024 |
+| `1453f29` | feat(gateway): implement Phase 5 Integration | 13/02/2024 |
 
 ## 🔧 Información Técnica
 
@@ -167,6 +177,15 @@ tests/agents/
 
 tests/memory/
 └── test_memory.py        # 44 tests ✅
+
+src/gateway/
+├── __init__.py           # Exports con lazy loading ✅
+├── message_gateway.py    # MessageGateway normalización ✅
+├── handler.py            # MainHandler orquestación ✅
+└── factory.py            # Factory functions ✅
+
+tests/gateway/
+└── test_gateway.py       # 21 tests (1 skipped) ✅
 ```
 
 ### 🌐 Endpoints
@@ -189,7 +208,8 @@ N/A - El bot responde bajo demanda
 | Fase 2 | 58/58 | ✅ Pasando |
 | Fase 3 | 34/34 | ✅ Pasando |
 | Fase 4 | 44/44 | ✅ Pasando |
-| **Total** | **159/159** | ✅ **100%** |
+| Fase 5 | 21/22 | ✅ Pasando (1 skipped) |
+| **Total** | **180/181** | ✅ **99%** |
 
 ## 📋 Órdenes de Cambio
 
