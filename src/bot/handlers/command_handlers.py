@@ -4,7 +4,7 @@ Handlers para comandos del bot de Telegram.
 Maneja comandos básicos como /start, /help, /stats, etc.
 """
 import logging
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, Application
 from src.agent.knowledge import KnowledgeRepository
