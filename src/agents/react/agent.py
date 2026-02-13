@@ -25,6 +25,13 @@ from .prompts import (
 from .schemas import ActionType, ReActResponse
 from .scratchpad import Scratchpad
 
+# Importación opcional de observability (no falla si no está disponible)
+try:
+    from src.observability import get_tracer, get_metrics
+    _OBSERVABILITY_AVAILABLE = True
+except ImportError:
+    _OBSERVABILITY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -109,6 +116,15 @@ class ReActAgent(BaseAgent):
         start_time = time.perf_counter()
         scratchpad = Scratchpad(max_steps=self.max_iterations)
 
+        # Iniciar tracing si está disponible
+        tracer = get_tracer() if _OBSERVABILITY_AVAILABLE else None
+        if tracer:
+            tracer.start_trace(
+                user_id=context.user_id,
+                channel=kwargs.get("channel", "unknown"),
+                metadata={"query_length": len(query)},
+            )
+
         logger.info(f"Ejecutando ReAct para: '{query[:50]}...'")
 
         try:
@@ -128,16 +144,28 @@ class ReActAgent(BaseAgent):
                 # 2. Si es FINISH, retornar respuesta final
                 if react_response.is_final():
                     elapsed_ms = (time.perf_counter() - start_time) * 1000
+                    steps = len(scratchpad) + 1
                     logger.info(
-                        f"ReAct completado en {len(scratchpad) + 1} pasos, "
+                        f"ReAct completado en {steps} pasos, "
                         f"{elapsed_ms:.2f}ms"
                     )
+
+                    # Registrar métricas
+                    if _OBSERVABILITY_AVAILABLE:
+                        get_metrics().record_request(
+                            channel=kwargs.get("channel", "unknown"),
+                            duration_ms=elapsed_ms,
+                            steps=steps,
+                            success=True,
+                        )
+                        if tracer:
+                            tracer.end_trace()
 
                     return AgentResponse.success_response(
                         agent_name=self.name,
                         message=react_response.final_answer or "",
                         execution_time_ms=elapsed_ms,
-                        steps_taken=len(scratchpad) + 1,
+                        steps_taken=steps,
                         data={"scratchpad": scratchpad.to_dict()},
                     )
 
@@ -146,6 +174,10 @@ class ReActAgent(BaseAgent):
                     action=react_response.action,
                     action_input=react_response.action_input,
                 )
+
+                # Registrar uso de tool
+                if _OBSERVABILITY_AVAILABLE:
+                    get_metrics().record_tool_usage(react_response.action.value)
 
                 # 4. Agregar al scratchpad
                 scratchpad.add_step(
@@ -164,6 +196,17 @@ class ReActAgent(BaseAgent):
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             partial_answer = await self._synthesize_partial(query, scratchpad)
 
+            # Registrar métricas (partial se considera success)
+            if _OBSERVABILITY_AVAILABLE:
+                get_metrics().record_request(
+                    channel=kwargs.get("channel", "unknown"),
+                    duration_ms=elapsed_ms,
+                    steps=len(scratchpad),
+                    success=True,
+                )
+                if tracer:
+                    tracer.end_trace()
+
             return AgentResponse.success_response(
                 agent_name=self.name,
                 message=partial_answer,
@@ -179,6 +222,7 @@ class ReActAgent(BaseAgent):
         except MaxIterationsException as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             logger.error(f"Max iterations exception: {e}")
+            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "MaxIterationsException", tracer)
             return AgentResponse.error_response(
                 agent_name=self.name,
                 error=str(e),
@@ -189,6 +233,7 @@ class ReActAgent(BaseAgent):
         except LLMException as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             logger.error(f"LLM error: {e}")
+            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "LLMException", tracer)
             return AgentResponse.error_response(
                 agent_name=self.name,
                 error=f"Error del modelo: {e}",
@@ -199,12 +244,33 @@ class ReActAgent(BaseAgent):
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             logger.exception(f"Unexpected error in ReAct: {e}")
+            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), type(e).__name__, tracer)
             return AgentResponse.error_response(
                 agent_name=self.name,
                 error=str(e),
                 execution_time_ms=elapsed_ms,
                 steps_taken=len(scratchpad),
             )
+
+    def _record_error_metrics(
+        self,
+        kwargs: dict,
+        elapsed_ms: float,
+        steps: int,
+        error_type: str,
+        tracer: Optional[Any],
+    ) -> None:
+        """Registra métricas de error."""
+        if _OBSERVABILITY_AVAILABLE:
+            get_metrics().record_request(
+                channel=kwargs.get("channel", "unknown"),
+                duration_ms=elapsed_ms,
+                steps=steps,
+                success=False,
+                error_type=error_type,
+            )
+            if tracer:
+                tracer.end_trace()
 
     async def _generate_step(
         self,

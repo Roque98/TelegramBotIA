@@ -2,11 +2,64 @@
 
 ## Estado Actual
 
-### LLMAgent (Orquestador Principal)
+### ReActAgent (Nuevo Orquestador Principal)
+
+**Archivo**: `src/agents/react/agent.py`
+**Estado**: ACTIVO - Arquitectura principal
+
+```python
+class ReActAgent(BaseAgent):
+    def __init__(
+        self,
+        llm: LLMProvider,
+        tool_registry: ToolRegistry,
+        max_iterations: int = 10,
+        temperature: float = 0.1,
+    )
+
+    async def execute(
+        self,
+        query: str,
+        context: UserContext,
+        **kwargs: Any,
+    ) -> AgentResponse
+```
+
+**Componentes**:
+- `llm`: Proveedor LLM (OpenAI, Anthropic)
+- `tools`: ToolRegistry con herramientas disponibles
+- `scratchpad`: Historial de pasos (thought/action/observation)
+
+**Flujo de execute()**:
+```
+1. Iniciar tracing (si observability disponible)
+2. Construir system_prompt con tools disponibles
+3. Loop ReAct (max_iterations):
+   │
+   ├─ THOUGHT: ¿Qué necesito hacer?
+   │  └── LLM genera ReActResponse (JSON)
+   │
+   ├─ Si action == FINISH:
+   │  └── return AgentResponse.success(final_answer)
+   │
+   ├─ ACTION: Ejecutar tool
+   │  └── observation = tool.execute(**action_input)
+   │
+   └─ OBSERVE: Agregar al scratchpad
+      └── scratchpad.add_step(thought, action, observation)
+   │
+4. Si max_iterations: synthesize_partial()
+5. Registrar métricas y finalizar trace
+6. return AgentResponse
+```
+
+---
+
+### LLMAgent (Legacy - Fallback)
 
 **Archivo**: `src/agent/llm_agent.py`
 **Líneas**: ~544
-**Estado**: LEGACY - En proceso de migración a ReAct
+**Estado**: LEGACY - Usado como fallback cuando ReAct falla
 
 ```python
 class LLMAgent:
@@ -164,39 +217,58 @@ class AnthropicProvider(LLMProvider):
 
 ---
 
-## Arquitectura Futura: ReAct
+## Arquitectura ReAct (Implementada)
 
-### Estructura Planificada
+### Estructura Actual
 
 ```
 src/agents/
 ├── base/
 │   ├── agent.py           # BaseAgent, AgentResponse
 │   ├── events.py          # ConversationEvent, UserContext
-│   └── exceptions.py
-│
-├── orchestrator/
-│   ├── orchestrator.py    # AgentOrchestrator
-│   ├── complexity_classifier.py  # simple vs complex
-│   └── router.py          # Ruteo a agentes
+│   └── exceptions.py      # LLMException, ToolException, etc.
 │
 ├── react/
 │   ├── agent.py           # ReActAgent
-│   ├── loop.py            # Think-Act-Observe loop
 │   ├── scratchpad.py      # Historial de pasos
-│   └── schemas.py         # ReActStep, ReActResponse
-│
-├── single_step/
-│   ├── database_agent.py  # Solo queries BD
-│   ├── knowledge_agent.py # Solo knowledge base
-│   └── chitchat_agent.py  # Solo conversación
+│   ├── schemas.py         # ReActStep, ReActResponse, ActionType
+│   └── prompts.py         # Prompts del sistema
 │
 └── tools/
-    ├── base.py            # BaseTool nuevo
-    ├── registry.py        # ToolRegistry nuevo
-    ├── database_tool.py
-    ├── knowledge_tool.py
-    └── calculate_tool.py
+    ├── base.py            # BaseTool, ToolResult
+    ├── registry.py        # ToolRegistry (singleton)
+    ├── database_tool.py   # Consultas SQL
+    ├── knowledge_tool.py  # Base de conocimiento
+    └── calculate_tool.py  # Cálculos
+```
+
+### Gateway (Integración)
+
+```
+src/gateway/
+├── __init__.py            # Lazy imports
+├── message_gateway.py     # Normaliza Telegram/API/WebSocket → ConversationEvent
+├── handler.py             # MainHandler (orquesta ReAct + Memory + Fallback)
+└── factory.py             # Factories para crear componentes
+```
+
+### Memory Service
+
+```
+src/memory/
+├── __init__.py
+├── service.py             # MemoryService (cache + repository + context)
+├── repository.py          # MemoryRepository (DB)
+└── context_builder.py     # UserContextBuilder
+```
+
+### Observability
+
+```
+src/observability/
+├── __init__.py
+├── tracing.py             # TraceSpan, TraceContext, Tracer
+└── metrics.py             # MetricsCollector, LatencyStats, Counter
 ```
 
 ### Contratos Base
@@ -221,7 +293,7 @@ class UserContext(BaseModel):
     display_name: str
     roles: list[str]
     preferences: dict
-    working_memory: list[dict]
+    working_memory: list[MemoryEntry]
     long_term_summary: Optional[str]
 
 class BaseAgent(ABC):
@@ -236,41 +308,88 @@ class BaseAgent(ABC):
     ) -> AgentResponse
 ```
 
-### ReAct Loop
+### Feature Flags
 
 ```python
-# Pseudocódigo
-async def react_loop(query, context):
-    scratchpad = []
-
-    while len(scratchpad) < MAX_ITERATIONS:
-        # THOUGHT: ¿Qué necesito hacer?
-        # ACTION: Seleccionar tool
-        response = await llm.generate_structured(prompt, ReActResponse)
-
-        if response.action == "finish":
-            return response.final_answer
-
-        # OBSERVE: Ejecutar y ver resultado
-        observation = await execute_tool(response.action)
-        scratchpad.append(step)
-
-    return synthesize_partial(scratchpad)
+# src/config/settings.py
+use_react_agent: bool = False          # Habilitar ReAct
+react_fallback_on_error: bool = True   # Usar LLMAgent como fallback
 ```
 
 ---
 
-## Ramas de Migración
+## Observabilidad
+
+### Tracing
+
+```python
+from src.observability import get_tracer
+
+tracer = get_tracer()
+tracer.start_trace(user_id="123", channel="telegram")
+
+with tracer.span("database_query", {"table": "users"}):
+    # operación...
+    pass
+
+result = tracer.end_trace()  # dict con trace_id, spans, duration
+```
+
+### Métricas
+
+```python
+from src.observability import get_metrics
+
+metrics = get_metrics()
+metrics.record_request(
+    channel="telegram",
+    duration_ms=150.0,
+    steps=2,
+    success=True,
+)
+metrics.record_tool_usage("database_query")
+
+stats = metrics.get_stats()  # dict con counters, latencias, etc.
+```
+
+---
+
+## Flujo de Integración
 
 ```
-feature/react-agent-migration
-├── feature/react-fase1-foundation     # BaseAgent, EventBus
-├── feature/react-fase2-tools          # Tool System nuevo
-├── feature/react-fase3-core           # ReActAgent, Scratchpad
-├── feature/react-fase4-single-step-agents
-├── feature/react-fase5-orchestrator
-├── feature/react-fase6-integration
-└── feature/react-fase7-polish
+Telegram/API/WebSocket
+        │
+        ▼
+  MessageGateway.from_*()
+        │
+        ▼
+  ConversationEvent
+        │
+        ▼
+  MainHandler._process_event()
+        │
+        ├─ MemoryService.get_context()
+        │
+        ▼
+  ReActAgent.execute()
+        │
+        ├─ Tracer.start_trace()
+        │
+        ▼
+  [ReAct Loop]
+        │
+        ├─ Tool.execute()
+        │
+        ▼
+  AgentResponse
+        │
+        ├─ MemoryService.record_interaction()
+        ├─ MetricsCollector.record_request()
+        │
+        ▼
+  Respuesta al usuario
 ```
 
-Ver `plan/IMPLEMENTACION_REACT_AGENT.md` para detalles completos.
+---
+
+Ver `plan/IMPLEMENTACION_REACT_AGENT.md` para historial de migración.
