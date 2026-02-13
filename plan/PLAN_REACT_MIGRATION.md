@@ -12,13 +12,13 @@
 | Fase | Progreso | Tareas | Estado |
 |------|----------|--------|--------|
 | Fase 1: Foundation | ██████████ 100% | 10/10 | ✅ Completado |
-| Fase 2: Tools | ░░░░░░░░░░ 0% | 0/8 | Pendiente |
+| Fase 2: Tools | ██████████ 100% | 8/8 | ✅ Completado |
 | Fase 3: ReAct Agent | ░░░░░░░░░░ 0% | 0/10 | Pendiente |
 | Fase 4: Memory Service | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
 | Fase 5: Integration | ░░░░░░░░░░ 0% | 0/7 | Pendiente |
 | Fase 6: Polish | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
 
-**Progreso Total**: 21% (10/47 tareas)
+**Progreso Total**: 38% (18/47 tareas)
 
 ---
 
@@ -346,37 +346,59 @@ class UserContext(BaseModel):
 
 ### Tareas
 
-- [ ] **Implementar ToolDefinition** - Metadata del tool para prompts
+- [x] **Implementar ToolDefinition** - Metadata del tool para prompts
   - Archivo: `src/agents/tools/base.py`
   - Campos: `name`, `description`, `category`, `parameters`, `examples`
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar ToolParameter** - Definición de parámetros
+- [x] **Implementar ToolParameter** - Definición de parámetros
   - Archivo: `src/agents/tools/base.py`
   - Validación: tipo, required, default
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar ToolResult** - Resultado de ejecución
+- [x] **Implementar ToolResult** - Resultado de ejecución
   - Archivo: `src/agents/tools/base.py`
   - Método: `to_observation()` para el scratchpad
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar BaseTool** - Clase abstracta para tools
+- [x] **Implementar BaseTool** - Clase abstracta para tools
   - Archivo: `src/agents/tools/base.py`
   - Métodos: `definition`, `execute()`, `validate_params()`
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar ToolRegistry** - Registro singleton
+- [x] **Implementar ToolRegistry** - Registro singleton
   - Archivo: `src/agents/tools/registry.py`
   - Método: `get_tools_prompt()` para generar descripción
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar DatabaseTool** - Ejecución de queries SQL
+- [x] **Implementar DatabaseTool** - Ejecución de queries SQL
   - Archivo: `src/agents/tools/database_tool.py`
   - Usa: SQLValidator existente
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar KnowledgeTool** - Búsqueda en knowledge base
+- [x] **Implementar KnowledgeTool** - Búsqueda en knowledge base
   - Archivo: `src/agents/tools/knowledge_tool.py`
   - Usa: KnowledgeManager existente
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
-- [ ] **Implementar CalculateTool** - Cálculos matemáticos seguros
+- [x] **Implementar CalculateTool** - Cálculos matemáticos seguros
   - Archivo: `src/agents/tools/calculate_tool.py`
   - Evaluador seguro con AST (sin eval)
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
+
+- [x] **Bonus: Implementar DateTimeTool** - Operaciones con fechas
+  - Archivo: `src/agents/tools/datetime_tool.py`
+  - Operaciones: now, today, add_days, diff_days, format
+  - Commit: `d8d6b9f`
+  - Completado: 2024-02-13
 
 ### Código de Referencia
 
@@ -436,8 +458,8 @@ class BaseTool(ABC):
 ```
 
 ### Entregables
-- [ ] `src/agents/tools/` con todos los tools
-- [ ] Tests para cada tool
+- [x] `src/agents/tools/` con todos los tools (4 tools implementados)
+- [x] Tests para cada tool (58/58 tests pasando) ✅
 
 ---
 
