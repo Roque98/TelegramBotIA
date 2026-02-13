@@ -31,6 +31,11 @@
   - Consolidación o refactorización de archivos
   - Finalización de una tarea del plan
 
+### Archivos Sin Trackear
+- **Revisar y agregar** archivos untracked que no estén en `.gitignore`
+- No dejar archivos legítimos sin subir al repositorio
+- Si hay archivos que no deberían subirse, agregarlos a `.gitignore`
+
 ### Convención de Commits
 Usar formato: `tipo(scope): descripción`
 
