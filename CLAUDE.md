@@ -60,11 +60,25 @@ Scopes del proyecto:
 - Hacer push automáticamente después de cada commit
 - Rama actual: seguir GitFlow (feature/*, develop, etc.)
 
+## Documentación OneNote
+
+### Actualización Automática
+- **Actualizar el documento OneNote** después de completar cada fase o milestone significativo
+- Archivo actual: `docs/onenote/2024-02-13_iris-bot-react-migration.md`
+- Actualizar: avance, actividades realizadas, commits, tests
+
+### Cuándo actualizar
+- Al completar una fase del plan
+- Al agregar nuevos componentes significativos
+- Al cambiar el estado del proyecto
+
+---
+
 ## Plan Activo
 
 El plan principal está en: `plan/PLAN_REACT_MIGRATION.md`
 - Archivo de referencia: `src/agent/llm_agent.py`
-- Progreso actual: Fase 1 - Foundation
+- Progreso actual: Fase 2 - Tools (completada)
 
 ## Archivos de Contexto
 
