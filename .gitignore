@@ -59,3 +59,11 @@ nul
 
 # Documentation (HTML versions - use Markdown instead)
 docs/guia del desarrollador/
+
+# Claude Code
+.claude/worktrees/
+
+# Backups
+*copia*
+*backup*
+*.bak
