@@ -13,13 +13,12 @@
 |------|----------|--------|--------|
 | Fase 1: Foundation | ██░░░░░░░░ 20% | 2/10 | En progreso |
 | Fase 2: Tools | ░░░░░░░░░░ 0% | 0/8 | Pendiente |
-| Fase 3: ReAct Core | ░░░░░░░░░░ 0% | 0/10 | Pendiente |
-| Fase 4: Single-Step Agents | ░░░░░░░░░░ 0% | 0/8 | Pendiente |
-| Fase 5: Orchestrator | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
-| Fase 6: Integration | ░░░░░░░░░░ 0% | 0/8 | Pendiente |
-| Fase 7: Polish | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
+| Fase 3: ReAct Agent | ░░░░░░░░░░ 0% | 0/10 | Pendiente |
+| Fase 4: Memory Service | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
+| Fase 5: Integration | ░░░░░░░░░░ 0% | 0/7 | Pendiente |
+| Fase 6: Polish | ░░░░░░░░░░ 0% | 0/6 | Pendiente |
 
-**Progreso Total**: 4% (2/56 tareas)
+**Progreso Total**: 4% (2/47 tareas)
 
 ---
 
@@ -35,11 +34,21 @@ El `LLMAgent` actual (544 líneas) es un "God Object" con demasiadas responsabil
 
 ### Solución Propuesta
 
-Migrar a una arquitectura **multi-agent basada en ReAct (Reasoning + Acting)**:
-- Separar responsabilidades en agentes especializados
-- Implementar razonamiento paso a paso para consultas complejas
-- Mejorar testabilidad y extensibilidad
-- Mantener compatibilidad con funcionalidad actual
+Migrar a una arquitectura basada en **un único ReAct Agent (Reasoning + Acting)**:
+- Un solo agente inteligente que razona y actúa
+- El agente decide cuántos pasos necesita (1 para consultas simples, N para complejas)
+- Tools especializados para cada tipo de operación
+- Sin clasificadores de complejidad - el propio agente decide
+
+### Ventajas de Solo ReAct
+
+| Aspecto | Beneficio |
+|---------|-----------|
+| **Simplicidad** | Un solo agente, menos código |
+| **Consistencia** | Mismo comportamiento siempre |
+| **Auto-adaptativo** | El agente decide si necesita tools o FINISH directo |
+| **Sin errores de routing** | No hay clasificador que pueda equivocarse |
+| **Flexibilidad** | Maneja cualquier tipo de consulta |
 
 ### Estrategia: Strangler Fig Pattern
 
@@ -57,28 +66,41 @@ No reescribimos todo de una vez. Envolvemos el sistema actual con la nueva arqui
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           ORCHESTRATOR                                      │
-│  1. Recibe ConversationEvent                                                │
-│  2. Obtiene contexto (MemoryService)                                        │
-│  3. Clasifica complejidad (simple vs complex)                               │
-│  4. Rutea a SingleStepAgent o ReActAgent                                    │
+│                           MEMORY SERVICE                                    │
+│  Obtiene contexto del usuario (working memory + long-term summary)          │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                    ┌───────────────┴───────────────┐
-                    │                               │
-                    ▼                               ▼
-┌───────────────────────────────┐   ┌───────────────────────────────────────┐
-│      SINGLE-STEP AGENTS       │   │            ReAct AGENT                │
-│                               │   │                                       │
-│  DatabaseAgent (SQL directo)  │   │  Loop: THOUGHT → ACTION → OBSERVE     │
-│  KnowledgeAgent (búsqueda KB) │   │                                       │
-│  ChitchatAgent (conversación) │   │  Para consultas multi-paso            │
-└───────────────────────────────┘   └───────────────────────────────────────┘
-                                                   │
-                                                   ▼
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ReAct AGENT                                       │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     Loop: THOUGHT → ACTION → OBSERVE                 │   │
+│  │                                                                      │   │
+│  │  Consulta simple ("Hola"):                                          │   │
+│  │    Thought: Es un saludo, respondo directamente                     │   │
+│  │    Action: FINISH                                                    │   │
+│  │    → 1 iteración                                                     │   │
+│  │                                                                      │   │
+│  │  Consulta compleja ("Top vendedores y sus productos"):              │   │
+│  │    Thought 1: Necesito los top vendedores → database_query          │   │
+│  │    Thought 2: Ahora sus productos → database_query                  │   │
+│  │    Thought 3: Tengo todo → FINISH                                   │   │
+│  │    → 3 iteraciones                                                   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              TOOL REGISTRY                                  │
-│  DatabaseTool │ KnowledgeTool │ CalculateTool │ DateTimeTool                │
+│                                                                             │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
+│  │ DatabaseTool │ │KnowledgeTool │ │ CalculateTool│ │ DateTimeTool │       │
+│  │              │ │              │ │              │ │              │       │
+│  │ Ejecuta SQL  │ │ Busca en KB  │ │ Matemáticas  │ │ Fechas       │       │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘       │
+│                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -87,34 +109,51 @@ No reescribimos todo de una vez. Envolvemos el sistema actual con la nueva arqui
 ReAct (Reasoning and Acting) es un paradigma donde el LLM:
 
 1. **Thought**: Razona sobre qué hacer
-2. **Action**: Ejecuta una herramienta
+2. **Action**: Ejecuta una herramienta (o FINISH)
 3. **Observation**: Observa el resultado
-4. **Repeat**: Repite hasta tener la respuesta final
+4. **Repeat**: Repite hasta decidir FINISH
 
-**Ejemplo:**
+### Ejemplos de Comportamiento
+
+**Consulta simple (1 iteración):**
+```
+User: "Hola, ¿cómo estás?"
+
+Thought: Es un saludo casual, no necesito herramientas.
+Action: FINISH
+Answer: "¡Hola! Estoy muy bien, gracias por preguntar. ¿En qué puedo ayudarte hoy?"
+```
+
+**Consulta directa (2 iteraciones):**
+```
+User: "¿Cuántas ventas hubo ayer?"
+
+Thought: Necesito consultar la base de datos para obtener las ventas de ayer.
+Action: database_query
+Input: {"query": "SELECT COUNT(*) as total FROM ventas WHERE fecha = DATEADD(day, -1, GETDATE())"}
+Observation: [{"total": 150}]
+
+Thought: Tengo la información, puedo responder.
+Action: FINISH
+Answer: "Ayer hubo 150 ventas registradas."
+```
+
+**Consulta compleja (múltiples iteraciones):**
 ```
 User: "¿Quién vendió más el mes pasado y cuáles fueron sus productos top?"
 
-Thought 1: Necesito encontrar el mejor vendedor del mes pasado.
-Action 1: database_query("SELECT vendedor_id, SUM(total) as ventas FROM ventas WHERE fecha >= '2024-01-01' GROUP BY vendedor_id ORDER BY ventas DESC LIMIT 1")
-Observation 1: [{"vendedor_id": 42, "ventas": 150000}]
+Thought 1: Primero necesito encontrar al mejor vendedor del mes pasado.
+Action: database_query
+Observation: [{"vendedor_id": 42, "nombre": "Juan", "total": 150000}]
 
-Thought 2: Ahora necesito los productos más vendidos por el vendedor 42.
-Action 2: database_query("SELECT producto, COUNT(*) as cantidad FROM ventas WHERE vendedor_id = 42 GROUP BY producto ORDER BY cantidad DESC LIMIT 5")
-Observation 2: [{"producto": "Laptop Pro", "cantidad": 45}, ...]
+Thought 2: Ahora necesito los productos más vendidos por Juan (ID 42).
+Action: database_query
+Observation: [{"producto": "Laptop Pro", "cantidad": 45}, {"producto": "Monitor 4K", "cantidad": 32}]
 
 Thought 3: Tengo toda la información necesaria.
-Action 3: finish({"answer": "El mejor vendedor generó $150,000. Sus productos top fueron Laptop Pro (45 unidades)..."})
+Action: FINISH
+Answer: "El mejor vendedor del mes pasado fue Juan con $150,000 en ventas. Sus productos más vendidos fueron Laptop Pro (45 unidades) y Monitor 4K (32 unidades)."
 ```
-
-### Cuándo usar cada enfoque
-
-| Escenario | Agente | Por qué |
-|-----------|--------|---------|
-| "¿Cuántas ventas hubo ayer?" | DatabaseAgent | Una sola consulta |
-| "¿Qué es la política de devoluciones?" | KnowledgeAgent | Búsqueda simple |
-| "Hola, ¿cómo estás?" | ChitchatAgent | Conversación casual |
-| "Compara ventas de enero vs febrero" | **ReActAgent** | Requiere múltiples pasos |
 
 ---
 
@@ -130,39 +169,35 @@ src/
 │   │   ├── events.py             # ConversationEvent, UserContext
 │   │   └── exceptions.py         # AgentException, ToolException
 │   │
-│   ├── orchestrator/
-│   │   ├── __init__.py
-│   │   ├── orchestrator.py       # AgentOrchestrator
-│   │   ├── complexity_classifier.py
-│   │   └── router.py
-│   │
 │   ├── react/
 │   │   ├── __init__.py
-│   │   ├── agent.py              # ReActAgent
-│   │   ├── scratchpad.py
-│   │   ├── prompts.py
-│   │   └── schemas.py            # ReActStep, ReActResponse
-│   │
-│   ├── single_step/
-│   │   ├── __init__.py
-│   │   ├── database_agent.py
-│   │   ├── knowledge_agent.py
-│   │   └── chitchat_agent.py
+│   │   ├── agent.py              # ReActAgent (el único agente)
+│   │   ├── scratchpad.py         # Historial de pasos
+│   │   ├── prompts.py            # Templates de prompts
+│   │   └── schemas.py            # ReActStep, ReActResponse, ActionType
 │   │
 │   └── tools/
 │       ├── __init__.py
-│       ├── base.py               # BaseTool, ToolResult
-│       ├── registry.py           # ToolRegistry
-│       ├── database_tool.py
-│       ├── knowledge_tool.py
-│       └── calculate_tool.py
+│       ├── base.py               # BaseTool, ToolResult, ToolDefinition
+│       ├── registry.py           # ToolRegistry singleton
+│       ├── database_tool.py      # Consultas SQL
+│       ├── knowledge_tool.py     # Búsqueda en KB
+│       ├── calculate_tool.py     # Cálculos matemáticos
+│       └── datetime_tool.py      # Operaciones con fechas
 │
-├── events/
+├── memory/
 │   ├── __init__.py
-│   └── bus.py                    # EventBus pub/sub
+│   ├── service.py                # MemoryService
+│   ├── repository.py             # Persistencia
+│   └── context_builder.py        # Construye UserContext
 │
-└── gateway/
-    └── message_gateway.py        # Normaliza input
+├── gateway/
+│   ├── __init__.py
+│   └── message_gateway.py        # Normaliza input de Telegram/API
+│
+└── events/
+    ├── __init__.py
+    └── bus.py                    # EventBus pub/sub
 ```
 
 ---
@@ -186,17 +221,17 @@ src/
   - Completado: 2024-02-13
 
 - [ ] **Crear carpeta src/agents/** - Estructura base de agentes
-  - Carpetas: `base/`, `orchestrator/`, `react/`, `single_step/`, `tools/`
+  - Carpetas: `base/`, `react/`, `tools/`
 
-- [ ] **Implementar BaseAgent** - Clase abstracta base para todos los agentes
+- [ ] **Implementar BaseAgent** - Clase abstracta base
   - Archivo: `src/agents/base/agent.py`
-  - Incluye: `name`, `agent_type`, `execute()` abstracto
+  - Incluye: `name`, `execute()` abstracto
 
 - [ ] **Implementar AgentResponse** - Modelo Pydantic de respuesta estándar
   - Archivo: `src/agents/base/agent.py`
-  - Campos: `success`, `message`, `data`, `error`, `agent_name`, `execution_time_ms`
+  - Campos: `success`, `message`, `data`, `error`, `agent_name`, `execution_time_ms`, `steps_taken`
 
-- [ ] **Implementar UserContext** - Contexto de usuario para agentes
+- [ ] **Implementar UserContext** - Contexto de usuario para el agente
   - Archivo: `src/agents/base/events.py`
   - Campos: `user_id`, `display_name`, `roles`, `working_memory`, `long_term_summary`
 
@@ -224,11 +259,6 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 from typing import Any, Optional
 from datetime import datetime
-from enum import Enum
-
-class AgentType(str, Enum):
-    SINGLE_STEP = "single_step"
-    REACT = "react"
 
 class AgentResponse(BaseModel):
     success: bool
@@ -236,7 +266,6 @@ class AgentResponse(BaseModel):
     data: Optional[dict[str, Any]] = None
     error: Optional[str] = None
     agent_name: str
-    agent_type: AgentType
     execution_time_ms: float = 0
     steps_taken: int = 1
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -251,7 +280,6 @@ class AgentResponse(BaseModel):
 
 class BaseAgent(ABC):
     name: str
-    agent_type: AgentType
 
     @abstractmethod
     async def execute(self, query: str, context: "UserContext", **kwargs) -> AgentResponse:
@@ -287,40 +315,6 @@ class UserContext(BaseModel):
     current_date: datetime = Field(default_factory=datetime.utcnow)
 ```
 
-```python
-# src/events/bus.py
-from typing import Callable, Awaitable
-from collections import defaultdict
-import asyncio
-
-EventHandler = Callable[..., Awaitable[None]]
-
-class EventBus:
-    _instance: Optional["EventBus"] = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._handlers = defaultdict(list)
-        return cls._instance
-
-    def subscribe(self, event_type: str, handler: EventHandler):
-        self._handlers[event_type].append(handler)
-
-    def unsubscribe(self, event_type: str, handler: EventHandler):
-        self._handlers[event_type].remove(handler)
-
-    async def publish(self, event_type: str, event: dict):
-        handlers = self._handlers.get(event_type, [])
-        if handlers:
-            await asyncio.gather(
-                *[handler(event) for handler in handlers],
-                return_exceptions=True
-            )
-
-event_bus = EventBus()
-```
-
 ### Entregables
 - [ ] `src/agents/base/` con todos los contratos
 - [ ] `src/events/bus.py` funcionando
@@ -330,7 +324,7 @@ event_bus = EventBus()
 
 ## Fase 2: Tools
 
-**Objetivo**: Implementar sistema de Tools compatible con ReAct
+**Objetivo**: Implementar sistema de Tools para ReAct
 **Rama**: `feature/react-fase2-tools`
 **Dependencias**: Fase 1
 
@@ -342,19 +336,19 @@ event_bus = EventBus()
 
 - [ ] **Implementar ToolParameter** - Definición de parámetros
   - Archivo: `src/agents/tools/base.py`
-  - Validación: tipo, required, min/max
+  - Validación: tipo, required, default
 
 - [ ] **Implementar ToolResult** - Resultado de ejecución
   - Archivo: `src/agents/tools/base.py`
-  - Método: `to_observation()` para ReAct
+  - Método: `to_observation()` para el scratchpad
 
-- [ ] **Implementar BaseTool** - Clase abstracta para ReAct tools
+- [ ] **Implementar BaseTool** - Clase abstracta para tools
   - Archivo: `src/agents/tools/base.py`
   - Métodos: `definition`, `execute()`, `validate_params()`
 
 - [ ] **Implementar ToolRegistry** - Registro singleton
   - Archivo: `src/agents/tools/registry.py`
-  - Método: `get_tools_prompt()` para generar descripción de tools
+  - Método: `get_tools_prompt()` para generar descripción
 
 - [ ] **Implementar DatabaseTool** - Ejecución de queries SQL
   - Archivo: `src/agents/tools/database_tool.py`
@@ -366,7 +360,7 @@ event_bus = EventBus()
 
 - [ ] **Implementar CalculateTool** - Cálculos matemáticos seguros
   - Archivo: `src/agents/tools/calculate_tool.py`
-  - Evaluador seguro sin `eval()`
+  - Evaluador seguro con AST (sin eval)
 
 ### Código de Referencia
 
@@ -423,12 +417,6 @@ class BaseTool(ABC):
     @abstractmethod
     async def execute(self, **kwargs) -> ToolResult:
         pass
-
-    def validate_params(self, params: dict) -> tuple[bool, Optional[str]]:
-        for param in self.definition.parameters:
-            if param.required and param.name not in params:
-                return False, f"Missing required parameter: {param.name}"
-        return True, None
 ```
 
 ### Entregables
@@ -437,13 +425,17 @@ class BaseTool(ABC):
 
 ---
 
-## Fase 3: ReAct Core
+## Fase 3: ReAct Agent
 
-**Objetivo**: Implementar el agente ReAct con loop de razonamiento
-**Rama**: `feature/react-fase3-core`
+**Objetivo**: Implementar el único agente ReAct con loop de razonamiento
+**Rama**: `feature/react-fase3-agent`
 **Dependencias**: Fase 1, Fase 2
 
 ### Tareas
+
+- [ ] **Implementar ActionType** - Enum de acciones disponibles
+  - Archivo: `src/agents/react/schemas.py`
+  - Valores: `DATABASE_QUERY`, `KNOWLEDGE_SEARCH`, `CALCULATE`, `DATETIME`, `FINISH`
 
 - [ ] **Implementar ReActStep** - Modelo de un paso del loop
   - Archivo: `src/agents/react/schemas.py`
@@ -453,20 +445,17 @@ class BaseTool(ABC):
   - Archivo: `src/agents/react/schemas.py`
   - Campos: `thought`, `action`, `action_input`, `final_answer`
 
-- [ ] **Implementar ActionType** - Enum de acciones disponibles
-  - Archivo: `src/agents/react/schemas.py`
-  - Valores: `DATABASE_QUERY`, `KNOWLEDGE_SEARCH`, `CALCULATE`, `FINISH`
-
 - [ ] **Implementar Scratchpad** - Historial de pasos
   - Archivo: `src/agents/react/scratchpad.py`
   - Métodos: `add_step()`, `to_prompt_format()`, `is_full()`
 
-- [ ] **Implementar ReActAgent** - Agente principal
-  - Archivo: `src/agents/react/agent.py`
-  - Método: `execute()` con loop Think-Act-Observe
-
 - [ ] **Implementar prompts ReAct** - Templates para el loop
   - Archivo: `src/agents/react/prompts.py`
+  - System prompt con instrucciones y tools disponibles
+
+- [ ] **Implementar ReActAgent** - El agente principal
+  - Archivo: `src/agents/react/agent.py`
+  - Método: `execute()` con loop Think-Act-Observe
 
 - [ ] **Implementar _generate_step()** - Generar siguiente paso
   - Usa: LLM con structured output (Pydantic)
@@ -477,159 +466,211 @@ class BaseTool(ABC):
 - [ ] **Implementar _synthesize_partial()** - Respuesta si se exceden iteraciones
 
 - [ ] **Tests de integración ReAct** - Tests del loop completo
-  - Archivo: `tests/agents/test_react.py`
+  - Archivo: `tests/agents/test_react_agent.py`
+  - Mock del LLM para diferentes escenarios
 
 ### Código de Referencia
 
 ```python
 # src/agents/react/agent.py
+from ..base import BaseAgent, AgentResponse, UserContext
+from ..tools import ToolRegistry
+from .schemas import ReActResponse, ActionType
+from .scratchpad import Scratchpad
+import time
+
 class ReActAgent(BaseAgent):
+    """
+    Único agente del sistema. Usa razonamiento ReAct para
+    decidir cuántos pasos necesita según la complejidad de la consulta.
+    """
+
     name = "react"
-    agent_type = AgentType.REACT
     MAX_ITERATIONS = 10
 
-    def __init__(self, llm: LLMGateway, tool_registry: ToolRegistry):
+    def __init__(self, llm, tool_registry: ToolRegistry):
         self.llm = llm
         self.tools = tool_registry
 
     async def execute(self, query: str, context: UserContext, **kwargs) -> AgentResponse:
+        start = time.perf_counter()
         scratchpad = Scratchpad(max_steps=self.MAX_ITERATIONS)
 
-        while not scratchpad.is_full():
-            response = await self._generate_step(query, context, scratchpad)
+        try:
+            while not scratchpad.is_full():
+                # 1. Generar siguiente paso (thought + action)
+                response = await self._generate_step(query, context, scratchpad)
 
-            if response.action == ActionType.FINISH:
-                return AgentResponse.success_response(
-                    agent_name=self.name,
-                    message=response.final_answer,
-                    agent_type=self.agent_type,
-                    steps_taken=len(scratchpad.steps) + 1
+                # 2. Si es FINISH, retornar respuesta final
+                if response.action == ActionType.FINISH:
+                    elapsed = (time.perf_counter() - start) * 1000
+                    return AgentResponse.success_response(
+                        agent_name=self.name,
+                        message=response.final_answer,
+                        execution_time_ms=elapsed,
+                        steps_taken=len(scratchpad.steps) + 1,
+                        data={"scratchpad": scratchpad.to_dict()}
+                    )
+
+                # 3. Ejecutar tool
+                observation = await self._execute_tool(response.action, response.action_input)
+
+                # 4. Agregar al scratchpad
+                scratchpad.add_step(
+                    thought=response.thought,
+                    action=response.action,
+                    action_input=response.action_input,
+                    observation=observation
                 )
 
-            observation = await self._execute_tool(response.action, response.action_input)
-            scratchpad.add_step(
-                thought=response.thought,
-                action=response.action,
-                action_input=response.action_input,
-                observation=observation
+            # Excedimos iteraciones - sintetizar respuesta parcial
+            elapsed = (time.perf_counter() - start) * 1000
+            partial = await self._synthesize_partial(query, scratchpad)
+
+            return AgentResponse.success_response(
+                agent_name=self.name,
+                message=partial,
+                execution_time_ms=elapsed,
+                steps_taken=len(scratchpad.steps),
+                metadata={"partial": True, "reason": "max_iterations_reached"}
             )
 
-        return AgentResponse.success_response(
-            agent_name=self.name,
-            message=await self._synthesize_partial(query, scratchpad),
-            metadata={"partial": True}
-        )
+        except Exception as e:
+            elapsed = (time.perf_counter() - start) * 1000
+            return AgentResponse.error_response(
+                agent_name=self.name,
+                error=str(e),
+                execution_time_ms=elapsed,
+                steps_taken=len(scratchpad.steps)
+            )
+
+    async def _execute_tool(self, action: ActionType, action_input: dict) -> str:
+        tool = self.tools.get(action.value)
+        if not tool:
+            return f"Error: Tool '{action.value}' not found"
+
+        result = await tool.execute(**action_input)
+        return result.to_observation()
+```
+
+```python
+# src/agents/react/prompts.py
+REACT_SYSTEM_PROMPT = """
+Eres un asistente inteligente que resuelve consultas paso a paso.
+
+## Herramientas Disponibles
+{tools_description}
+
+- finish: Usa cuando tengas suficiente información para responder.
+  Parameters: {{"answer": "Tu respuesta final al usuario"}}
+
+## Instrucciones
+1. Piensa (thought) qué necesitas hacer
+2. Ejecuta una acción (action) con sus parámetros (action_input)
+3. Observa el resultado
+4. Repite hasta tener la respuesta, luego usa action="finish"
+
+## Importante
+- Para saludos o conversación casual, usa finish directamente sin herramientas
+- Para consultas de datos, usa database_query
+- Para políticas o procedimientos, usa knowledge_search
+- Sé conciso en tus respuestas finales
+"""
 ```
 
 ### Entregables
 - [ ] `src/agents/react/` completo
-- [ ] ReActAgent funcionando con tools
+- [ ] ReActAgent funcionando con todos los tools
 - [ ] Tests de integración pasando
 
 ---
 
-## Fase 4: Single-Step Agents
+## Fase 4: Memory Service
 
-**Objetivo**: Extraer lógica a agentes especializados de un solo paso
-**Rama**: `feature/react-fase4-single-step-agents`
+**Objetivo**: Implementar servicio de memoria para contexto del usuario
+**Rama**: `feature/react-fase4-memory`
 **Dependencias**: Fase 1
 
 ### Tareas
 
-- [ ] **Implementar DatabaseAgent** - Consultas SQL directas
-  - Archivo: `src/agents/single_step/database_agent.py`
-  - Pipeline: generate → validate → execute → format
+- [ ] **Implementar MemoryRepository** - Persistencia de memoria
+  - Archivo: `src/memory/repository.py`
+  - Métodos: `get_profile()`, `save_profile()`, `get_interactions()`
 
-- [ ] **Implementar KnowledgeAgent** - Búsqueda en KB
-  - Archivo: `src/agents/single_step/knowledge_agent.py`
-  - Usa: KnowledgeManager existente
+- [ ] **Implementar ContextBuilder** - Construye UserContext
+  - Archivo: `src/memory/context_builder.py`
+  - Combina: working memory + long-term summary
 
-- [ ] **Implementar ChitchatAgent** - Conversación casual
-  - Archivo: `src/agents/single_step/chitchat_agent.py`
-  - Maneja: saludos, despedidas, preguntas sobre el bot
+- [ ] **Implementar MemoryService** - Servicio principal
+  - Archivo: `src/memory/service.py`
+  - Métodos: `get_context()`, `record_interaction()`, `update_summary()`
 
-- [ ] **Implementar MemoryAgent** - Gestión de memoria
-  - Archivo: `src/agents/single_step/memory_agent.py`
-  - Métodos: `get_context()`, `record()`, `update_summary()`
+- [ ] **Integrar con MemoryManager existente** - Reutilizar lógica
+  - Adaptar: `src/agent/memory/` al nuevo formato
 
-- [ ] **Extraer lógica de LLMAgent** - Mover a agentes especializados
-  - Refactor: Mantener LLMAgent como adapter temporal
+- [ ] **Implementar cache de contexto** - TTL de 5 minutos
 
-- [ ] **Tests unitarios por agente**
-  - Archivos: `tests/agents/test_database_agent.py`, etc.
-
-- [ ] **Tests de integración**
-  - Archivo: `tests/agents/test_single_step_integration.py`
-
-- [ ] **Documentar patrones** - Cómo crear nuevos agentes
-
-### Entregables
-- [ ] `src/agents/single_step/` con 4 agentes
-- [ ] LLMAgent delegando a nuevos agentes
-- [ ] Tests completos
-
----
-
-## Fase 5: Orchestrator
-
-**Objetivo**: Implementar orquestador que decide qué agente usar
-**Rama**: `feature/react-fase5-orchestrator`
-**Dependencias**: Fase 3, Fase 4
-
-### Tareas
-
-- [ ] **Implementar ComplexityClassifier** - Determina simple vs complex
-  - Archivo: `src/agents/orchestrator/complexity_classifier.py`
-  - Heurísticas + LLM opcional
-
-- [ ] **Implementar AgentOrchestrator** - Orquestador principal
-  - Archivo: `src/agents/orchestrator/orchestrator.py`
-  - Flujo: classify → route → execute → record
-
-- [ ] **Implementar router** - Mapeo de intención a agente
-  - Archivo: `src/agents/orchestrator/router.py`
-
-- [ ] **Integrar con MemoryAgent** - Contexto automático
-
-- [ ] **Tests de orquestación** - Routing correcto
-  - Archivo: `tests/agents/test_orchestrator.py`
-
-- [ ] **Métricas de routing** - Logging de decisiones
+- [ ] **Tests para Memory Service**
+  - Archivo: `tests/memory/test_service.py`
 
 ### Código de Referencia
 
 ```python
-# src/agents/orchestrator/orchestrator.py
-class AgentOrchestrator:
-    def __init__(self, llm, memory_service, agents: dict[str, BaseAgent]):
+# src/memory/service.py
+from ..agents.base import UserContext, ConversationEvent, AgentResponse
+
+class MemoryService:
+    def __init__(self, repository, llm, cache_ttl: int = 300):
+        self.repo = repository
         self.llm = llm
-        self.memory = memory_service
-        self.classifier = ComplexityClassifier(llm)
-        self.agents = agents
+        self.cache = {}
+        self.cache_ttl = cache_ttl
 
-    async def handle(self, event: ConversationEvent) -> AgentResponse:
-        context = await self.memory.get_context(event.user_id)
-        complexity = await self.classifier.classify(event.text)
+    async def get_context(self, user_id: str) -> UserContext:
+        # Check cache first
+        if user_id in self.cache:
+            return self.cache[user_id]
 
-        agent = self.agents.get(complexity.suggested_agent)
-        response = await agent.execute(query=event.text, context=context)
+        # Build context from DB
+        profile = await self.repo.get_profile(user_id)
+        working_memory = await self.repo.get_recent_messages(user_id, limit=10)
 
-        asyncio.create_task(self.memory.record_interaction(event, response))
-        return response
+        context = UserContext(
+            user_id=user_id,
+            display_name=profile.display_name if profile else "Usuario",
+            roles=profile.roles if profile else [],
+            working_memory=working_memory,
+            long_term_summary=profile.summary if profile else None
+        )
+
+        self.cache[user_id] = context
+        return context
+
+    async def record_interaction(self, event: ConversationEvent, response: AgentResponse):
+        await self.repo.save_interaction(event, response)
+
+        # Invalidate cache
+        if event.user_id in self.cache:
+            del self.cache[event.user_id]
+
+        # Update summary if threshold reached
+        count = await self.repo.get_interaction_count(event.user_id)
+        if count % 10 == 0:
+            await self._update_summary(event.user_id)
 ```
 
 ### Entregables
-- [ ] `src/agents/orchestrator/` completo
-- [ ] Routing funcionando correctamente
-- [ ] Métricas de decisiones
+- [ ] `src/memory/` completo
+- [ ] MemoryService funcionando
+- [ ] Tests pasando
 
 ---
 
-## Fase 6: Integration
+## Fase 5: Integration
 
-**Objetivo**: Conectar nueva arquitectura con Telegram y sistema actual
-**Rama**: `feature/react-fase6-integration`
-**Dependencias**: Fase 5
+**Objetivo**: Conectar ReAct Agent con Telegram y sistema actual
+**Rama**: `feature/react-fase5-integration`
+**Dependencias**: Fase 3, Fase 4
 
 ### Tareas
 
@@ -637,55 +678,89 @@ class AgentOrchestrator:
   - Archivo: `src/gateway/message_gateway.py`
   - Método: `handle_telegram()` → `ConversationEvent`
 
-- [ ] **Actualizar QueryHandler** - Usar AgentOrchestrator
+- [ ] **Implementar handler principal** - Conecta todo
+  - Archivo: `src/gateway/handler.py`
+  - Flujo: Gateway → Memory → ReActAgent → Response
+
+- [ ] **Actualizar QueryHandler** - Usar nuevo sistema
   - Modificar: `src/bot/handlers/query_handlers.py`
-  - Feature flag para rollback
-
-- [ ] **Actualizar ToolsHandler** - Delegar a orquestador
-  - Modificar: `src/bot/handlers/tools_handlers.py`
-
-- [ ] **Implementar feature flag** - Toggle entre arquitecturas
-  - Config: `USE_REACT_ARCHITECTURE=true/false`
+  - Feature flag: `USE_REACT_AGENT=true/false`
 
 - [ ] **LLMAgent como fallback** - Si nuevo sistema falla
+  - Mantener código existente como backup
 
 - [ ] **Tests E2E** - Flujo completo Telegram → Respuesta
   - Archivo: `tests/e2e/test_telegram_flow.py`
 
-- [ ] **Comparar métricas** - Latencia, precisión
+- [ ] **Comparar métricas** - Latencia, calidad de respuestas
 
 - [ ] **Documentar rollback** - Procedimiento de emergencia
 
+### Código de Referencia
+
+```python
+# src/gateway/handler.py
+from ..agents.react import ReActAgent
+from ..memory import MemoryService
+from .message_gateway import MessageGateway
+
+class MainHandler:
+    def __init__(self, react_agent: ReActAgent, memory: MemoryService):
+        self.agent = react_agent
+        self.memory = memory
+        self.gateway = MessageGateway()
+
+    async def handle_telegram(self, update, bot_context) -> str:
+        # 1. Normalizar input
+        event = self.gateway.from_telegram(update)
+
+        # 2. Obtener contexto del usuario
+        context = await self.memory.get_context(event.user_id)
+
+        # 3. Ejecutar ReAct Agent
+        response = await self.agent.execute(event.text, context)
+
+        # 4. Registrar interacción (async)
+        import asyncio
+        asyncio.create_task(self.memory.record_interaction(event, response))
+
+        # 5. Retornar respuesta
+        return response.message if response.success else f"Error: {response.error}"
+```
+
 ### Entregables
-- [ ] Handlers actualizados
-- [ ] Feature flag funcionando
+- [ ] Gateway funcionando
+- [ ] Feature flag implementado
 - [ ] Tests E2E pasando
 - [ ] Plan de rollback documentado
 
 ---
 
-## Fase 7: Polish
+## Fase 6: Polish
 
 **Objetivo**: Observabilidad, documentación y optimización
-**Rama**: `feature/react-fase7-polish`
-**Dependencias**: Fase 6
+**Rama**: `feature/react-fase6-polish`
+**Dependencias**: Fase 5
 
 ### Tareas
 
-- [ ] **Implementar tracing** - OpenTelemetry básico
+- [ ] **Implementar tracing** - Logs estructurados por request
   - Archivo: `src/observability/tracing.py`
+  - Correlation ID en todos los logs
 
-- [ ] **Implementar métricas** - Prometheus/básicas
+- [ ] **Implementar métricas** - Contadores básicos
   - Archivo: `src/observability/metrics.py`
+  - Métricas: latencia, steps por request, errores
 
-- [ ] **Structured logging** - Logs JSON
-  - Archivo: `src/observability/logging.py`
+- [ ] **Logging del scratchpad** - Para debugging
+  - Guardar pasos de razonamiento
 
 - [ ] **Actualizar documentación** - Contexto y skills
+  - Archivos: `.claude/context/AGENTS.md`
 
 - [ ] **Optimización de prompts** - Reducir tokens
 
-- [ ] **Performance tuning** - Cachés, connection pools
+- [ ] **Performance tuning** - Cachés, timeouts
 
 ### Entregables
 - [ ] Observabilidad completa
@@ -699,19 +774,20 @@ class AgentOrchestrator:
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
 | ReAct loops infinitos | Media | Alto | MAX_ITERATIONS=10, timeout global |
-| Regresión en clasificación | Media | Alto | Tests A/B, feature flag |
-| Aumento de latencia | Media | Medio | Profiling, caché agresivo |
-| Costos LLM elevados | Baja | Medio | ComplexityClassifier reduce uso de ReAct |
+| Aumento de latencia | Media | Medio | El agente aprende a usar FINISH rápido para consultas simples |
+| Costos LLM elevados | Baja | Medio | Aceptado como trade-off por mejor calidad |
+| Respuestas inconsistentes | Baja | Medio | Prompts bien definidos, ejemplos few-shot |
 
 ---
 
 ## Criterios de Éxito
 
-- [ ] Latencia p95 <= latencia actual + 10%
-- [ ] Precisión de clasificación >= 95%
+- [ ] ReAct Agent maneja todos los tipos de consultas
+- [ ] Consultas simples resueltas en 1-2 iteraciones
+- [ ] Consultas complejas resueltas en <= 5 iteraciones
 - [ ] Cobertura de tests >= 80%
 - [ ] Zero regresiones en funcionalidad actual
-- [ ] Código en LLMAgent reducido a < 100 líneas (solo adapter)
+- [ ] Código más mantenible que LLMAgent actual
 
 ---
 
@@ -721,3 +797,4 @@ class AgentOrchestrator:
 |-------|--------|-------|
 | 2024-02-13 | Creación del plan | Claude |
 | 2024-02-13 | Consolidación de documentos | Claude |
+| 2024-02-13 | Simplificación: solo ReAct Agent | Claude |
