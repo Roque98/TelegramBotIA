@@ -26,6 +26,7 @@ class ActionType(str, Enum):
     KNOWLEDGE_SEARCH = "knowledge_search"
     CALCULATE = "calculate"
     DATETIME = "datetime"
+    SAVE_PREFERENCE = "save_preference"
     FINISH = "finish"
 
     @classmethod
@@ -57,6 +58,9 @@ class ActionType(str, Enum):
             "math": cls.CALCULATE,
             "date": cls.DATETIME,
             "time": cls.DATETIME,
+            "preference": cls.SAVE_PREFERENCE,
+            "save_pref": cls.SAVE_PREFERENCE,
+            "set_preference": cls.SAVE_PREFERENCE,
             "done": cls.FINISH,
             "end": cls.FINISH,
             "answer": cls.FINISH,

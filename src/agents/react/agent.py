@@ -173,6 +173,7 @@ class ReActAgent(BaseAgent):
                 observation = await self._execute_tool(
                     action=react_response.action,
                     action_input=react_response.action_input,
+                    context=context,
                 )
 
                 # Registrar uso de tool
@@ -408,6 +409,7 @@ class ReActAgent(BaseAgent):
         self,
         action: ActionType,
         action_input: dict[str, Any],
+        context: Optional[UserContext] = None,
     ) -> str:
         """
         Ejecuta un tool y retorna la observación.
@@ -415,6 +417,7 @@ class ReActAgent(BaseAgent):
         Args:
             action: Tipo de acción/tool
             action_input: Parámetros del tool
+            context: Contexto del usuario (para tools que lo necesiten)
 
         Returns:
             Observación como string
@@ -431,6 +434,10 @@ class ReActAgent(BaseAgent):
             return f"Error: {error_msg}"
 
         try:
+            # Agregar user_id del contexto a action_input si está disponible
+            if context and "user_id" not in action_input:
+                action_input["user_id"] = context.user_id
+
             logger.debug(f"Executing tool: {tool_name} with {action_input}")
             result: ToolResult = await tool.execute(**action_input)
 

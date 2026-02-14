@@ -123,7 +123,8 @@ class MemoryRepository:
                     ump.resumenTemasRecientes AS resumen_temas_recientes,
                     ump.resumenHistorialBreve AS resumen_historial_breve,
                     ump.numInteracciones AS num_interacciones,
-                    ump.ultimaActualizacion AS ultima_actualizacion
+                    ump.ultimaActualizacion AS ultima_actualizacion,
+                    ump.preferencias AS preferencias
                 FROM abcmasplus..UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
                 LEFT JOIN abcmasplus..UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
@@ -147,12 +148,24 @@ class MemoryRepository:
             if row.get("resumen_historial_breve"):
                 summaries.append(row["resumen_historial_breve"])
 
+            # Parsear preferencias
+            preferences = {}
+            if row.get("preferencias"):
+                try:
+                    preferences = json.loads(row["preferencias"])
+                except json.JSONDecodeError:
+                    preferences = {}
+
+            # Usar alias de preferencias como display_name si existe
+            display_name = preferences.get("alias") or row.get("Nombre", "Usuario")
+
             profile = UserProfile(
                 user_id=user_id,
-                display_name=row.get("Nombre", "Usuario"),
+                display_name=display_name,
                 long_term_summary="\n\n".join(summaries) if summaries else None,
                 interaction_count=row.get("num_interacciones", 0),
                 last_updated=row.get("ultima_actualizacion"),
+                preferences=preferences,
             )
 
             self._profiles_cache[user_id] = profile

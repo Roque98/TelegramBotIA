@@ -16,6 +16,7 @@ from src.agents.tools.database_tool import DatabaseTool
 from src.agents.tools.knowledge_tool import KnowledgeTool
 from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
+from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agent.knowledge import KnowledgeManager
 from src.config.settings import settings
 from src.memory.service import MemoryService
@@ -57,6 +58,7 @@ def create_tool_registry(
     registry.register(KnowledgeTool(knowledge_manager=km))
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
+    registry.register(SavePreferenceTool(db_manager=db_manager))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")
 
