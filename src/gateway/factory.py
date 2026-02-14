@@ -58,7 +58,7 @@ def create_tool_registry(
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
 
-    logger.info(f"ToolRegistry created with {len(registry.list_tools())} tools")
+    logger.info(f"ToolRegistry created with {len(registry)} tools")
 
     return registry
 
