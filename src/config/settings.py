@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     # Feature Flags
-    use_react_agent: bool = False  # Habilitar nuevo agente ReAct
+    use_react_agent: bool = True  # Habilitar nuevo agente ReAct
     react_fallback_on_error: bool = True  # Usar LLMAgent como fallback si ReAct falla
 
     @property
