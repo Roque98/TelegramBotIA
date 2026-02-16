@@ -79,6 +79,13 @@ class KnowledgeManager:
             self.source = "none"
             raise RuntimeError(f"Base de datos no disponible y fallback deshabilitado: {e}")
 
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Remove punctuation and normalize text for scoring."""
+        import re
+        # Remove punctuation marks (¿?¡!.,;:) but keep letters and spaces
+        return re.sub(r'[¿?¡!.,;:\-\'"(){}[\]]', '', text).strip()
+
     def search(
         self,
         query: str,
@@ -89,24 +96,19 @@ class KnowledgeManager:
         """
         Buscar entradas relevantes por keywords.
 
-        Busca primero con filtro de categoría si se proporciona.
-        Si no hay buenos resultados, busca en todas las categorías.
+        Busca en TODAS las categorías y usa category_filter como boost
+        (+0.5 si la categoría coincide), no como filtro excluyente.
 
         Args:
             query: Consulta del usuario
             top_k: Número máximo de resultados
             min_score: Score mínimo para considerar relevante
-            category_filter: Filtrar solo por esta categoría
+            category_filter: Categoría preferida (boost, no filtro)
 
         Returns:
             Lista de entradas más relevantes ordenadas por score
-
-        Example:
-            >>> results = manager.search("vacaciones", top_k=2)
-            >>> len(results) <= 2
-            True
         """
-        query_lower = query.lower()
+        query_lower = self._clean_text(query.lower())
 
         # Detectar si se está preguntando por una categoría específica
         category_from_query = self._detect_category_in_query(query_lower)
@@ -114,36 +116,15 @@ class KnowledgeManager:
             logger.info(f"Detectada pregunta sobre categoría: {category_from_query.value}")
             return self.get_entries_by_category(category_from_query, top_k=top_k)
 
-        # Buscar con filtro de categoría si se proporciona
-        if category_filter:
-            results = self._score_entries(query_lower, category_filter, top_k, min_score)
-            if results:
-                return results
-            # Fallback: buscar en TODAS las categorías si la filtrada no dio resultados
-            logger.info(
-                f"Sin resultados en categoría '{category_filter.value}', "
-                f"buscando en todas las categorías"
-            )
-
-        return self._score_entries(query_lower, None, top_k, min_score)
-
-    def _score_entries(
-        self,
-        query_lower: str,
-        category_filter: Optional[KnowledgeCategory],
-        top_k: int,
-        min_score: float,
-    ) -> List[KnowledgeEntry]:
-        """Score and rank entries against a query."""
-        entries_to_search = (
-            [entry for entry in self.knowledge_base if entry.category == category_filter]
-            if category_filter
-            else self.knowledge_base
-        )
-
+        # Buscar en TODAS las entradas, con boost de categoría
         scored_entries = []
-        for entry in entries_to_search:
+        for entry in self.knowledge_base:
             score = self._calculate_score(query_lower, entry)
+
+            # Boost si la categoría coincide con el filtro sugerido
+            if category_filter and entry.category == category_filter:
+                score += 0.3
+
             if score >= min_score:
                 scored_entries.append((score, entry))
 
@@ -202,11 +183,11 @@ class KnowledgeManager:
         Estrategia de scoring:
         - Keywords match (exacto): +1.0 por keyword encontrado
         - Keywords match (stem): +0.7 por keyword con raíz común
-        - Question similarity: +0.5 si hay palabras comunes significativas
+        - Question similarity: +0.3 si hay palabras comunes significativas
         - Prioridad: multiplicador (1.0, 1.2, 1.5)
 
         Args:
-            query: Query normalizada (lowercase)
+            query: Query normalizada y limpia (lowercase, sin puntuación)
             entry: Entrada de conocimiento
 
         Returns:
@@ -216,7 +197,7 @@ class KnowledgeManager:
         query_words = set(query.split())
         query_stems = {self._stem_es(w) for w in query_words}
 
-        # 1. Keyword matching (exacto + stem)
+        # 1. Keyword matching (exacto + stem) — peso principal
         for keyword in entry.keywords:
             kw = keyword.lower()
             if kw in query:
@@ -226,8 +207,9 @@ class KnowledgeManager:
                 # Match por raíz (solicitar ~ solicito)
                 score += 0.7
 
-        # 2. Question similarity (palabras en común)
-        question_words = set(entry.question.lower().split())
+        # 2. Question similarity (palabras en común) — peso menor
+        clean_question = self._clean_text(entry.question.lower())
+        question_words = set(clean_question.split())
 
         stopwords = {
             'qué', 'cómo', 'cuál', 'dónde', 'cuándo', 'cuántos',
@@ -235,7 +217,7 @@ class KnowledgeManager:
             'en', 'a', 'un', 'una', 'es', 'son', 'se', 'si', 'no',
             'que', 'como', 'cual', 'donde', 'cuando', 'hay', 'mi',
             'su', 'al', 'con', 'sin', 'sobre', 'entre', 'más', 'o',
-            'y', 'e', 'ni', 'pero', '¿', '?',
+            'y', 'e', 'ni', 'pero',
         }
 
         meaningful_query = query_words - stopwords
@@ -243,7 +225,7 @@ class KnowledgeManager:
 
         # Match exacto de palabras
         common_words = meaningful_query & meaningful_question
-        score += len(common_words) * 0.5
+        score += len(common_words) * 0.3
 
         # Match por stems de palabras restantes
         remaining_query_stems = {self._stem_es(w) for w in meaningful_query - common_words}
