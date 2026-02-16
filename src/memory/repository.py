@@ -321,22 +321,36 @@ class MemoryRepository:
             return True
 
         try:
-            query_sql = """
-                INSERT INTO LogOperaciones (
-                    Id_Usuario, Comando, Parametros, Resultado, Fecha_Hora
-                ) VALUES (
-                    :user_id, '/ia', :params, :result, GETDATE()
-                )
-            """
-
             params_json = json.dumps({"query": query, **(metadata or {})})
+            duration_ms = (metadata or {}).get("execution_time_ms", 0)
+
+            query_sql = """
+                INSERT INTO abcmasplus..LogOperaciones (
+                    idUsuario, idOperacion, telegramChatId,
+                    parametros, resultado, duracionMs, fechaEjecucion
+                )
+                SELECT
+                    ut.idUsuario,
+                    :operation,
+                    :chat_id,
+                    :params,
+                    :result,
+                    :duration_ms,
+                    GETDATE()
+                FROM abcmasplus..UsuariosTelegram ut
+                WHERE ut.telegramChatId = :chat_id_lookup
+                  AND ut.activo = 1
+            """
 
             self.db_manager.execute_non_query(
                 query_sql,
                 {
-                    "user_id": int(user_id),
+                    "operation": "chat_ia",
+                    "chat_id": str(user_id),
                     "params": params_json,
-                    "result": response[:4000],  # Truncar si es muy largo
+                    "result": response[:4000],
+                    "duration_ms": int(duration_ms),
+                    "chat_id_lookup": str(user_id),
                 },
             )
 
