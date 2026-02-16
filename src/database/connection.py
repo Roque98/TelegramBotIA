@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError as SQLTimeoutError
 from src.config.settings import settings
+from src.utils.retry import db_retry
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,11 @@ class DatabaseManager:
         finally:
             session.close()  # Siempre cerrar sesión
 
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
     def get_schema(self) -> str:
         """
         Obtener el esquema de la base de datos en formato texto.
@@ -118,11 +124,14 @@ class DatabaseManager:
             logger.error(f"Error inesperado obteniendo esquema: {e}", exc_info=True)
             raise
 
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
     def execute_query(self, sql_query: str, params: tuple = None) -> List[Dict[str, Any]]:
         """
         Ejecutar una consulta SQL de solo lectura.
-
-        ✅ CORREGIDO: Manejo específico de excepciones y soporte para parámetros.
 
         Args:
             sql_query: Consulta SQL a ejecutar
@@ -133,8 +142,8 @@ class DatabaseManager:
 
         Raises:
             ValueError: Si la consulta no es de solo lectura
-            ConnectionError: Si hay error de conexión a BD
-            TimeoutError: Si la consulta tarda demasiado
+            OperationalError: Si hay error de conexión (tras agotar retries)
+            SQLTimeoutError: Si la consulta tarda demasiado (tras agotar retries)
             SQLAlchemyError: Si hay error de BD
         """
         # Validar que sea solo SELECT o EXEC (stored procedures)
@@ -156,24 +165,24 @@ class DatabaseManager:
                     return [dict(zip(columns, row)) for row in rows]
                 return []
 
-        except OperationalError as e:
-            logger.error(f"Error de conexión ejecutando consulta: {e}")
-            raise ConnectionError("Error de conexión a la base de datos") from e
-
-        except SQLTimeoutError as e:
-            logger.error(f"Timeout ejecutando consulta: {e}")
-            raise TimeoutError("La consulta tardó demasiado tiempo") from e
+        except (OperationalError, SQLTimeoutError):
+            # Errores transitorios: tenacity los reintenta automaticamente.
+            # Si llegan aqui, se agotaron los reintentos.
+            raise
 
         except SQLAlchemyError as e:
             logger.error(f"Error SQL ejecutando consulta: {e}")
-            # Re-raise con contexto
             raise RuntimeError(f"Error ejecutando consulta SQL: {str(e)}") from e
 
         except Exception as e:
-            # Errores inesperados
             logger.error(f"Error inesperado ejecutando consulta: {e}", exc_info=True)
             raise
 
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
     def execute_non_query(self, sql_query: str, params: dict = None) -> int:
         """
         Ejecutar una consulta SQL de escritura (INSERT, UPDATE, DELETE, MERGE).
@@ -187,8 +196,8 @@ class DatabaseManager:
 
         Raises:
             ValueError: Si la consulta es de solo lectura (SELECT)
-            ConnectionError: Si hay error de conexión a BD
-            TimeoutError: Si la consulta tarda demasiado
+            OperationalError: Si hay error de conexión (tras agotar retries)
+            SQLTimeoutError: Si la consulta tarda demasiado (tras agotar retries)
             SQLAlchemyError: Si hay error de BD
         """
         query_upper = sql_query.strip().upper()
@@ -204,13 +213,9 @@ class DatabaseManager:
                     result = session.execute(text(sql_query))
                 return result.rowcount
 
-        except OperationalError as e:
-            logger.error(f"Error de conexión ejecutando escritura: {e}")
-            raise ConnectionError("Error de conexión a la base de datos") from e
-
-        except SQLTimeoutError as e:
-            logger.error(f"Timeout ejecutando escritura: {e}")
-            raise TimeoutError("La consulta tardó demasiado tiempo") from e
+        except (OperationalError, SQLTimeoutError):
+            # Errores transitorios: tenacity los reintenta automaticamente.
+            raise
 
         except SQLAlchemyError as e:
             logger.error(f"Error SQL ejecutando escritura: {e}")

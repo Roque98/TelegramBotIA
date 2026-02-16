@@ -1,6 +1,6 @@
 # Plan: Retry con Backoff Exponencial
 
-> **Estado**: ⚪ No iniciado
+> **Estado**: 🟡 En progreso
 > **Ultima actualizacion**: 2026-02-16
 > **Rama Git**: feature/retry-resilience
 > **Dependencia**: tenacity==9.0.0 (ya instalada)
@@ -11,11 +11,11 @@
 
 | Fase | Progreso | Tareas | Estado |
 |------|----------|--------|--------|
-| Fase 1: Retry en LLM providers | ░░░░░░░░░░ 0% | 0/5 | ⏳ Pendiente |
-| Fase 2: Retry en base de datos | ░░░░░░░░░░ 0% | 0/5 | ⏳ Pendiente |
-| Fase 3: Tests y validacion | ░░░░░░░░░░ 0% | 0/4 | ⏳ Pendiente |
+| Fase 1: Retry en LLM providers | ██████████ 100% | 5/5 | ✅ Completada |
+| Fase 2: Retry en base de datos | ██████████ 100% | 5/5 | ✅ Completada |
+| Fase 3: Tests y validacion | █████░░░░░ 50% | 2/4 | 🔄 En progreso |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/14 tareas)
+**Progreso Total**: ████████░░ 86% (12/14 tareas)
 
 ---
 
@@ -55,7 +55,7 @@ Intento 3: espera 4s
 
 ### Tareas
 
-- [ ] **Crear helper de retry reutilizable** - Configuracion centralizada
+- [x] **Crear helper de retry reutilizable** - Configuracion centralizada
   - Archivo: `src/utils/retry.py`
   - Contenido:
     ```python
@@ -94,7 +94,7 @@ Intento 3: espera 4s
         )
     ```
 
-- [ ] **Agregar retry al ReActAgent** - Llamada principal al LLM
+- [x] **Agregar retry al ReActAgent** - Llamada principal al LLM
   - Archivo: `src/agents/react/agent.py`
   - Metodo: `_generate_step()` o donde se llama a OpenAI
   - Decorar con `@llm_retry()`
@@ -104,17 +104,17 @@ Intento 3: espera 4s
     - `openai.APIConnectionError`
     - `openai.APITimeoutError`
 
-- [ ] **Agregar retry al OpenAI provider legacy** (si aun se usa)
+- [x] **Agregar retry al OpenAI provider legacy** (si aun se usa)
   - Archivo: `src/agent/providers/openai_provider.py`
   - Metodos: `generate()`, `generate_structured()`
   - Decorar con `@llm_retry()`
 
-- [ ] **Agregar retry al Anthropic provider** (si aun se usa)
+- [x] **Agregar retry al Anthropic provider** (si aun se usa)
   - Archivo: `src/agent/providers/anthropic_provider.py`
   - Metodos: `generate()`, `generate_structured()`
   - Decorar con `@llm_retry()`
 
-- [ ] **Agregar logging de metricas de retry**
+- [x] **Agregar logging de metricas de retry**
   - Loggear: numero de intentos, tiempo total, tipo de error
   - Nivel: WARNING para retries, ERROR para fallo final
 
@@ -133,29 +133,29 @@ Intento 3: espera 4s
 
 ### Tareas
 
-- [ ] **Agregar retry a `execute_query()`**
+- [x] **Agregar retry a `execute_query()`**
   - Archivo: `src/database/connection.py`
   - Decorar con `@db_retry()`
   - Errores a reintentar: `OperationalError`, `SQLTimeoutError`
   - NO reintentar: `ValueError` (query invalida)
 
-- [ ] **Agregar retry a `execute_non_query()`**
+- [x] **Agregar retry a `execute_non_query()`**
   - Archivo: `src/database/connection.py`
   - Decorar con `@db_retry()`
   - Mismo patron que execute_query
 
-- [ ] **Agregar retry a `get_schema()`**
+- [x] **Agregar retry a `get_schema()`**
   - Archivo: `src/database/connection.py`
   - Decorar con `@db_retry()`
   - Errores a reintentar: `OperationalError`, `SQLTimeoutError`
 
-- [ ] **Agregar retry al MemoryRepository**
+- [x] **Agregar retry al MemoryRepository**
   - Archivo: `src/memory/repository.py`
   - Metodos: `get_user_profile()`, `save_interaction()`
   - Estos llaman a execute_query/execute_non_query, que ya tendran retry
   - Verificar que no haya doble retry
 
-- [ ] **Configurar retry por entorno**
+- [x] **Configurar retry por entorno**
   - Archivo: `src/config/settings.py`
   - Variables:
     ```python
@@ -182,7 +182,7 @@ Intento 3: espera 4s
 
 ### Tareas
 
-- [ ] **Tests unitarios para retry helper**
+- [x] **Tests unitarios para retry helper**
   - Archivo: `tests/utils/test_retry.py`
   - Tests:
     - Retry se activa en error transitorio
@@ -191,7 +191,7 @@ Intento 3: espera 4s
     - Backoff exponencial funciona
     - Logging de retry correcto
 
-- [ ] **Tests de integracion para LLM retry**
+- [x] **Tests de integracion para LLM retry**
   - Mock OpenAI para simular RateLimitError
   - Verificar que reintenta y luego tiene exito
   - Verificar que falla despues de max attempts

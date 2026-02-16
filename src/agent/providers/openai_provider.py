@@ -8,6 +8,8 @@ from typing import Optional
 from pydantic import BaseModel
 from openai import AsyncOpenAI
 from .base_provider import LLMProvider
+from src.config.settings import settings
+from src.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,11 @@ class OpenAIProvider(LLMProvider):
         self.model = model
         logger.info(f"Inicializado proveedor OpenAI con modelo: {model}")
 
+    @llm_retry(
+        max_attempts=settings.retry_llm_max_attempts,
+        min_wait=settings.retry_llm_min_wait,
+        max_wait=settings.retry_llm_max_wait,
+    )
     async def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
         """
         Generar texto usando OpenAI Responses API.
@@ -48,6 +55,11 @@ class OpenAIProvider(LLMProvider):
             logger.error(f"Error generando con OpenAI: {e}")
             raise
 
+    @llm_retry(
+        max_attempts=settings.retry_llm_max_attempts,
+        min_wait=settings.retry_llm_min_wait,
+        max_wait=settings.retry_llm_max_wait,
+    )
     async def generate_structured(
         self,
         prompt: str,
