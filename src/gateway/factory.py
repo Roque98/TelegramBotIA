@@ -50,12 +50,15 @@ def create_tool_registry(
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    # Crear KnowledgeManager si no se proporciona
-    km = knowledge_manager or KnowledgeManager()
+    # Usar KnowledgeManager proporcionado (ya debe venir con db_manager)
+    km = knowledge_manager
 
     # Registrar herramientas
     registry.register(DatabaseTool(db_manager=db_manager))
-    registry.register(KnowledgeTool(knowledge_manager=km))
+    if km is not None:
+        registry.register(KnowledgeTool(knowledge_manager=km))
+    else:
+        logger.warning("KnowledgeTool not registered: no KnowledgeManager available")
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
     registry.register(SavePreferenceTool(db_manager=db_manager))
@@ -142,10 +145,17 @@ def create_main_handler(
     # Usar el DB manager del llm_agent si no se proporciona uno
     db = db_manager or llm_agent.db_manager
 
-    # Obtener knowledge_manager del llm_agent
-    knowledge_manager = getattr(
-        llm_agent.query_classifier, 'knowledge_manager', None
-    )
+    # Crear KnowledgeManager con el db_manager real
+    # NOTA: No reusar el de query_classifier porque se inicializó sin db_manager
+    # y su knowledge_base quedó vacía silenciosamente.
+    try:
+        knowledge_manager = KnowledgeManager(db_manager=db)
+        logger.info(
+            f"KnowledgeManager created: {len(knowledge_manager.knowledge_base)} entries loaded"
+        )
+    except Exception as e:
+        logger.warning(f"KnowledgeManager creation failed, knowledge search disabled: {e}")
+        knowledge_manager = None
 
     # Crear componentes
     react_agent = create_react_agent(
