@@ -125,9 +125,9 @@ class MemoryRepository:
                     ump.numInteracciones AS num_interacciones,
                     ump.ultimaActualizacion AS ultima_actualizacion,
                     ump.preferencias AS preferencias
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                LEFT JOIN abcmasplus..UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
+                LEFT JOIN consolamonitoreo..IABOT_UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -193,7 +193,7 @@ class MemoryRepository:
         try:
             # Upsert en UserMemoryProfiles
             query = """
-                MERGE INTO UserMemoryProfiles AS target
+                MERGE INTO consolamonitoreo..IABOT_UserMemoryProfiles AS target
                 USING (SELECT :user_id AS id_usuario) AS source
                 ON target.id_usuario = source.id_usuario
                 WHEN MATCHED THEN
@@ -249,18 +249,18 @@ class MemoryRepository:
                     lo.parametros AS Parametros,
                     lo.resultado AS Resultado,
                     lo.fechaEjecucion AS Fecha_Hora
-                FROM abcmasplus..LogOperaciones lo
-                INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                FROM consolamonitoreo..IABOT_LogOperaciones lo
+                INNER JOIN consolamonitoreo..IABOT_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
                 ORDER BY lo.fechaEjecucion DESC
             """
 
-            logger.debug(f"Fetching messages for telegram_chat_id={user_id}, limit={limit}")
+            logger.debug(f"[DEBUG] Fetching messages for telegram_chat_id={user_id}, limit={limit}")
             results = self.db_manager.execute_query(
                 query, {"user_id": str(user_id), "limit": limit}
             )
-            logger.debug(f"Query returned {len(results)} rows for user {user_id}")
+            logger.info(f"[DEBUG] Query returned {len(results)} rows for user {user_id}")
 
             messages = []
             for row in reversed(results):  # Orden cronológico
@@ -289,9 +289,9 @@ class MemoryRepository:
                         "timestamp": row.get("Fecha_Hora", datetime.now(UTC)).isoformat(),
                     })
 
-            logger.debug(f"Built {len(messages)} messages for working_memory")
+            logger.info(f"[DEBUG] Built {len(messages)} messages for working_memory")
             if messages:
-                logger.debug(f"First message: {messages[0]}")
+                logger.debug(f"[DEBUG] First message: {messages[0]}")
             return messages
 
         except Exception as e:
@@ -325,7 +325,7 @@ class MemoryRepository:
             duration_ms = (metadata or {}).get("execution_time_ms", 0)
 
             query_sql = """
-                INSERT INTO abcmasplus..LogOperaciones (
+                INSERT INTO consolamonitoreo..IABOT_LogOperaciones (
                     idUsuario, idOperacion, telegramChatId,
                     parametros, resultado, duracionMs, fechaEjecucion
                 )
@@ -337,7 +337,7 @@ class MemoryRepository:
                     :result,
                     :duration_ms,
                     GETDATE()
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup
                   AND ut.activo = 1
             """

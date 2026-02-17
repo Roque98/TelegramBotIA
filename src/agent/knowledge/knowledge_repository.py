@@ -56,8 +56,8 @@ class KnowledgeRepository:
             e.related_commands,
             e.priority,
             c.name as category_name
-        FROM abcmasplus.dbo.knowledge_entries e
-        INNER JOIN abcmasplus.dbo.knowledge_categories c ON e.category_id = c.id
+        FROM consolamonitoreo.dbo.IABOT_knowledge_entries e
+        INNER JOIN consolamonitoreo.dbo.IABOT_knowledge_categories c ON e.category_id = c.id
         WHERE e.active = 1 AND c.active = 1
         ORDER BY e.priority DESC, e.id
         """
@@ -102,8 +102,8 @@ class KnowledgeRepository:
             e.related_commands,
             e.priority,
             c.name as category_name
-        FROM abcmasplus.dbo.knowledge_entries e
-        INNER JOIN abcmasplus.dbo.knowledge_categories c ON e.category_id = c.id
+        FROM consolamonitoreo.dbo.IABOT_knowledge_entries e
+        INNER JOIN consolamonitoreo.dbo.IABOT_knowledge_categories c ON e.category_id = c.id
         WHERE e.active = 1
             AND c.active = 1
             AND c.name = ?
@@ -146,7 +146,7 @@ class KnowledgeRepository:
         """
         # Si no hay rol, usar búsqueda normal
         if id_rol is None:
-            sql = "EXEC abcmasplus.dbo.sp_search_knowledge @query=?, @category=?, @top_k=?"
+            sql = "EXEC consolamonitoreo.dbo.IABOT_sp_search_knowledge @query=?, @category=?, @top_k=?"
             try:
                 results = self.db_manager.execute_query(
                     sql,
@@ -165,7 +165,7 @@ class KnowledgeRepository:
             return []
 
         # Primero hacer la búsqueda completa
-        sql = "EXEC abcmasplus.dbo.sp_search_knowledge @query=?, @category=?, @top_k=?"
+        sql = "EXEC consolamonitoreo.dbo.IABOT_sp_search_knowledge @query=?, @category=?, @top_k=?"
 
         try:
             # Pedir más resultados para compensar el filtrado
@@ -259,7 +259,7 @@ class KnowledgeRepository:
 
         query = """
         SELECT id, name, display_name, icon
-        FROM abcmasplus.dbo.knowledge_categories
+        FROM consolamonitoreo.dbo.IABOT_knowledge_categories
         WHERE active = 1
         """
 
@@ -306,8 +306,8 @@ class KnowledgeRepository:
                 c.display_name,
                 c.icon,
                 COUNT(e.id) as entry_count
-            FROM abcmasplus.dbo.knowledge_categories c
-            LEFT JOIN abcmasplus.dbo.knowledge_entries e ON c.id = e.category_id AND e.active = 1
+            FROM consolamonitoreo.dbo.IABOT_knowledge_categories c
+            LEFT JOIN consolamonitoreo.dbo.IABOT_knowledge_entries e ON c.id = e.category_id AND e.active = 1
             WHERE c.active = 1
             GROUP BY c.id, c.name, c.display_name, c.icon
             ORDER BY c.display_name
@@ -329,13 +329,13 @@ class KnowledgeRepository:
             c.display_name,
             c.icon,
             COUNT(e.id) as entry_count
-        FROM abcmasplus.dbo.knowledge_categories c
-        INNER JOIN abcmasplus.dbo.RolesCategoriesKnowledge rc
+        FROM consolamonitoreo.dbo.IABOT_knowledge_categories c
+        INNER JOIN consolamonitoreo.dbo.IABOT_RolesCategoriesKnowledge rc
             ON c.id = rc.idCategoria
             AND rc.idRol = ?
             AND rc.permitido = 1
             AND rc.activo = 1
-        LEFT JOIN abcmasplus.dbo.knowledge_entries e ON c.id = e.category_id AND e.active = 1
+        LEFT JOIN consolamonitoreo.dbo.IABOT_knowledge_entries e ON c.id = e.category_id AND e.active = 1
         WHERE c.active = 1
         GROUP BY c.id, c.name, c.display_name, c.icon
         ORDER BY c.display_name
@@ -364,7 +364,7 @@ class KnowledgeRepository:
         """
         query = f"""
         SELECT TOP ({limit}) question
-        FROM abcmasplus.dbo.knowledge_entries
+        FROM consolamonitoreo.dbo.IABOT_knowledge_entries
         WHERE active = 1 AND priority >= 2
         ORDER BY priority DESC, id
         """
@@ -385,7 +385,7 @@ class KnowledgeRepository:
             True si la BD responde correctamente
         """
         try:
-            query = "SELECT COUNT(*) as total FROM abcmasplus.dbo.knowledge_entries WHERE active = 1"
+            query = "SELECT COUNT(*) as total FROM consolamonitoreo.dbo.IABOT_knowledge_entries WHERE active = 1"
             result = self.db_manager.execute_query(query)
 
             if result and len(result) > 0:
@@ -419,7 +419,7 @@ class KnowledgeRepository:
 
         query = """
         SELECT DISTINCT rc.idCategoria
-        FROM abcmasplus.dbo.RolesCategoriesKnowledge rc
+        FROM consolamonitoreo.dbo.IABOT_RolesCategoriesKnowledge rc
         WHERE rc.idRol = ?
             AND rc.permitido = 1
             AND rc.activo = 1
@@ -472,9 +472,9 @@ class KnowledgeRepository:
             e.related_commands,
             e.priority,
             c.name as category_name
-        FROM abcmasplus.dbo.knowledge_entries e
-        INNER JOIN abcmasplus.dbo.knowledge_categories c ON e.category_id = c.id
-        INNER JOIN abcmasplus.dbo.RolesCategoriesKnowledge rc
+        FROM consolamonitoreo.dbo.IABOT_knowledge_entries e
+        INNER JOIN consolamonitoreo.dbo.IABOT_knowledge_categories c ON e.category_id = c.id
+        INNER JOIN consolamonitoreo.dbo.IABOT_RolesCategoriesKnowledge rc
             ON c.id = rc.idCategoria
             AND rc.idRol = ?
             AND rc.permitido = 1

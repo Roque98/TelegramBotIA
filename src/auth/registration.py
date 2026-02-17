@@ -153,7 +153,7 @@ class RegistrationManager:
             # Verificar si el chat_id ya está registrado
             check_query = text("""
                 SELECT COUNT(*) as count
-                FROM abcmasplus..UsuariosTelegram
+                FROM consolamonitoreo..IABOT_UsuariosTelegram
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
             """)
@@ -170,7 +170,7 @@ class RegistrationManager:
             # Verificar si el usuario ya tiene una cuenta principal
             check_principal_query = text("""
                 SELECT COUNT(*) as count
-                FROM abcmasplus..UsuariosTelegram
+                FROM consolamonitoreo..IABOT_UsuariosTelegram
                 WHERE idUsuario = :user_id
                     AND esPrincipal = 1
                     AND activo = 1
@@ -183,7 +183,7 @@ class RegistrationManager:
 
             # Insertar registro de cuenta de Telegram
             insert_query = text("""
-                INSERT INTO abcmasplus..UsuariosTelegram (
+                INSERT INTO consolamonitoreo..IABOT_UsuariosTelegram (
                     idUsuario,
                     telegramChatId,
                     telegramUsername,
@@ -271,7 +271,7 @@ class RegistrationManager:
                     intentosVerificacion,
                     fechaRegistro,
                     verificado
-                FROM abcmasplus..UsuariosTelegram
+                FROM consolamonitoreo..IABOT_UsuariosTelegram
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
             """)
@@ -318,7 +318,7 @@ class RegistrationManager:
             if data['codigoVerificacion'] == verification_code:
                 # Marcar como verificada
                 update_query = text("""
-                    UPDATE abcmasplus..UsuariosTelegram
+                    UPDATE consolamonitoreo..IABOT_UsuariosTelegram
                     SET verificado = 1,
                         fechaVerificacion = GETDATE(),
                         codigoVerificacion = NULL
@@ -332,7 +332,7 @@ class RegistrationManager:
             else:
                 # Incrementar intentos fallidos
                 update_query = text("""
-                    UPDATE abcmasplus..UsuariosTelegram
+                    UPDATE consolamonitoreo..IABOT_UsuariosTelegram
                     SET intentosVerificacion = intentosVerificacion + 1
                     WHERE telegramChatId = :chat_id
                 """)
@@ -368,7 +368,7 @@ class RegistrationManager:
             # Verificar que la cuenta existe y no está verificada
             query = text("""
                 SELECT verificado, estado
-                FROM abcmasplus..UsuariosTelegram
+                FROM consolamonitoreo..IABOT_UsuariosTelegram
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
             """)
@@ -396,7 +396,7 @@ class RegistrationManager:
 
             # Actualizar código
             update_query = text("""
-                UPDATE abcmasplus..UsuariosTelegram
+                UPDATE consolamonitoreo..IABOT_UsuariosTelegram
                 SET codigoVerificacion = :new_code,
                     intentosVerificacion = 0,
                     fechaRegistro = GETDATE()
@@ -430,7 +430,7 @@ class RegistrationManager:
         """
         try:
             query = text("""
-                UPDATE abcmasplus..UsuariosTelegram
+                UPDATE consolamonitoreo..IABOT_UsuariosTelegram
                 SET estado = 'BLOQUEADO'
                 WHERE telegramChatId = :chat_id
             """)
@@ -461,7 +461,7 @@ class RegistrationManager:
                     u.nombre,
                     u.apellido,
                     u.email
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
                 WHERE ut.telegramChatId = :chat_id
                     AND ut.activo = 1
