@@ -5,26 +5,20 @@ Implementa la interfaz LLMProvider para OpenAI usando la API Responses.
 """
 import logging
 from typing import Optional
-from pydantic import BaseModel
+
 from openai import AsyncOpenAI
-from .base_provider import LLMProvider
+from pydantic import BaseModel
+
 from src.config.settings import settings
 from src.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAIProvider(LLMProvider):
+class OpenAIProvider:
     """Proveedor de OpenAI."""
 
     def __init__(self, api_key: str, model: str = "gpt-5-nano-2025-08-07"):
-        """
-        Inicializar el proveedor de OpenAI.
-
-        Args:
-            api_key: API key de OpenAI
-            model: Nombre del modelo a usar
-        """
         self.client = AsyncOpenAI(api_key=api_key)
         self.model = model
         logger.info(f"Inicializado proveedor OpenAI con modelo: {model}")
@@ -35,16 +29,7 @@ class OpenAIProvider(LLMProvider):
         max_wait=settings.retry_llm_max_wait,
     )
     async def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
-        """
-        Generar texto usando OpenAI Responses API.
-
-        Args:
-            prompt: Prompt para el modelo
-            max_tokens: Número máximo de tokens (no usado en Responses API)
-
-        Returns:
-            Texto generado
-        """
+        """Generar texto usando OpenAI Responses API."""
         try:
             response = await self.client.responses.create(
                 model=self.model,
@@ -64,24 +49,14 @@ class OpenAIProvider(LLMProvider):
         self,
         prompt: str,
         schema: type[BaseModel],
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
     ) -> BaseModel:
-        """
-        Generar salida estructurada usando OpenAI Responses API.
-
-        Args:
-            prompt: Prompt para el modelo
-            schema: Schema de Pydantic para la salida
-            max_tokens: Número máximo de tokens (no usado en Responses API)
-
-        Returns:
-            Instancia del schema con datos generados
-        """
+        """Generar salida estructurada usando OpenAI Responses API."""
         try:
             response = await self.client.responses.parse(
                 model=self.model,
                 input=prompt,
-                text_format=schema
+                text_format=schema,
             )
             return response.output_parsed
         except Exception as e:
@@ -89,9 +64,7 @@ class OpenAIProvider(LLMProvider):
             raise
 
     def get_provider_name(self) -> str:
-        """Obtener nombre del proveedor."""
         return "OpenAI"
 
     def get_model_name(self) -> str:
-        """Obtener nombre del modelo."""
         return self.model
