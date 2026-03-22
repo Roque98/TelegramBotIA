@@ -17,6 +17,7 @@ from src.agents.tools.knowledge_tool import KnowledgeTool
 from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
+from src.agents.providers.openai_provider import OpenAIProvider
 from src.knowledge import KnowledgeManager
 from src.config.settings import settings
 from src.memory.service import MemoryService
@@ -127,26 +128,38 @@ def create_memory_service(
     return service
 
 
+def create_llm_provider() -> OpenAIProvider:
+    """
+    Crea el proveedor de LLM según la configuración.
+
+    Returns:
+        OpenAIProvider configurado
+
+    Raises:
+        ValueError: Si no hay API key configurada
+    """
+    if not settings.openai_api_key:
+        raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
+    return OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_model)
+
+
 def create_main_handler(
-    llm_agent: Any,
     db_manager: Optional[Any] = None,
 ) -> MainHandler:
     """
     Crea el handler principal con todas sus dependencias.
 
     Args:
-        llm_agent: Agente LLM existente (para LLM provider y fallback)
         db_manager: Gestor de base de datos
 
     Returns:
         MainHandler configurado
     """
-    # Usar el DB manager del llm_agent si no se proporciona uno
-    db = db_manager or llm_agent.db_manager
+    from src.database.connection import DatabaseManager
+    db = db_manager or DatabaseManager()
 
-    # Crear KnowledgeManager con el db_manager real
-    # NOTA: No reusar el de query_classifier porque se inicializó sin db_manager
-    # y su knowledge_base quedó vacía silenciosamente.
+    llm_provider = create_llm_provider()
+
     try:
         knowledge_manager = KnowledgeManager(db_manager=db)
         logger.info(
@@ -156,16 +169,14 @@ def create_main_handler(
         logger.warning(f"KnowledgeManager creation failed, knowledge search disabled: {e}")
         knowledge_manager = None
 
-    # Crear componentes
     react_agent = create_react_agent(
-        llm_provider=llm_agent.llm_provider,
+        llm_provider=llm_provider,
         db_manager=db,
         knowledge_manager=knowledge_manager,
     )
 
     memory_service = create_memory_service(db_manager=db)
 
-    # Crear handler principal
     handler = MainHandler(
         react_agent=react_agent,
         memory_service=memory_service,
@@ -193,21 +204,19 @@ class HandlerManager:
 
     def initialize(
         self,
-        llm_agent: Any,
         db_manager: Optional[Any] = None,
     ) -> MainHandler:
         """
         Inicializa el handler.
 
         Args:
-            llm_agent: Agente LLM existente
             db_manager: Gestor de base de datos
 
         Returns:
             MainHandler inicializado
         """
         if self._handler is None:
-            self._handler = create_main_handler(llm_agent, db_manager)
+            self._handler = create_main_handler(db_manager)
             logger.info("HandlerManager initialized")
         return self._handler
 

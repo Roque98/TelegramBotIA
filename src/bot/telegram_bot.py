@@ -37,11 +37,8 @@ class TelegramBot:
         self.db_manager = DatabaseManager()
 
         # Inicializar MainHandler (ReActAgent + MemoryService)
-        # LLMAgent se crea internamente solo para extraer el llm_provider
         logger.info("Inicializando MainHandler (ReAct)...")
-        from src.agent.llm_agent import LLMAgent
-        _llm_agent = LLMAgent()
-        self.main_handler = create_main_handler(_llm_agent, self.db_manager)
+        self.main_handler = create_main_handler(self.db_manager)
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram

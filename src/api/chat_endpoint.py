@@ -28,11 +28,9 @@ def get_main_handler():
     """Obtener instancia del MainHandler (singleton)."""
     global _main_handler
     if _main_handler is None:
-        from src.agent.llm_agent import LLMAgent
         from src.database.connection import DatabaseManager
         from src.gateway import create_main_handler
-        db_manager = DatabaseManager()
-        _main_handler = create_main_handler(LLMAgent(), db_manager)
+        _main_handler = create_main_handler(DatabaseManager())
     return _main_handler
 
 
