@@ -27,15 +27,15 @@ class TelegramUser:
         Args:
             data: Diccionario con los datos del usuario
         """
-        # Datos del usuario
+        # Datos del usuario (abcmasplus..Usuarios)
         self.id_usuario = data.get('idUsuario')
-        self.id_empleado = data.get('idEmpleado')
-        self.nombre = data.get('nombre')
-        self.apellido = data.get('apellido')
+        self.nombre = data.get('Nombre')
         self.email = data.get('email')
-        self.rol_id = data.get('rol')
+        self.rol_id = data.get('idRol')
         self.rol_nombre = data.get('rolNombre')
-        self.activo = data.get('activo', True)
+        self.activo = data.get('Activa', 1)
+        self.puesto = data.get('puesto')
+        self.empresa = data.get('Empresa')
 
         # Datos de la cuenta de Telegram
         self.id_usuario_telegram = data.get('idUsuarioTelegram')
@@ -52,12 +52,12 @@ class TelegramUser:
     @property
     def nombre_completo(self) -> str:
         """Obtener nombre completo del usuario."""
-        return f"{self.nombre} {self.apellido}"
+        return self.nombre or ''
 
     @property
     def is_active(self) -> bool:
         """Verificar si el usuario y la cuenta están activos."""
-        return self.activo and self.estado == 'ACTIVO'
+        return bool(self.activo) and self.estado == 'ACTIVO'
 
     @property
     def is_verified(self) -> bool:
@@ -99,13 +99,13 @@ class UserManager:
             query = text("""
                 SELECT
                     u.idUsuario,
-                    u.idEmpleado,
-                    u.nombre,
-                    u.apellido,
+                    u.Nombre,
                     u.email,
-                    u.rol,
+                    u.idRol,
+                    u.puesto,
+                    u.Empresa,
+                    u.Activa,
                     r.nombre AS rolNombre,
-                    u.activo,
                     ut.idUsuarioTelegram,
                     ut.telegramChatId,
                     ut.telegramUsername,
@@ -117,8 +117,8 @@ class UserManager:
                     ut.verificado,
                     ut.fechaUltimaActividad
                 FROM consolamonitoreo..IABOT_UsuariosTelegram ut
-                INNER JOIN  abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                INNER JOIN  consolamonitoreo..IABOT_Roles r ON u.rol = r.idRol
+                INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
+                INNER JOIN consolamonitoreo..IABOT_Roles r ON u.idRol = r.idRol
                 WHERE ut.telegramChatId = :chat_id
                     AND ut.activo = 1
             """)
@@ -127,7 +127,6 @@ class UserManager:
             row = result.fetchone()
 
             if row:
-                # Convertir row a diccionario
                 data = dict(zip(result.keys(), row))
                 return TelegramUser(data)
 
@@ -151,13 +150,13 @@ class UserManager:
             query = text("""
                 SELECT
                     u.idUsuario,
-                    u.idEmpleado,
-                    u.nombre,
-                    u.apellido,
+                    u.Nombre,
                     u.email,
-                    u.rol,
+                    u.idRol,
+                    u.puesto,
+                    u.Empresa,
+                    u.Activa,
                     r.nombre AS rolNombre,
-                    u.activo,
                     ut.idUsuarioTelegram,
                     ut.telegramChatId,
                     ut.telegramUsername,
@@ -168,9 +167,10 @@ class UserManager:
                     ut.estado,
                     ut.verificado,
                     ut.fechaUltimaActividad
-                FROM  abcmasplus..Usuarios u
-                INNER JOIN  consolamonitoreo..IABOT_Roles r ON u.rol = r.idRol
-                LEFT JOIN  consolamonitoreo..IABOT_UsuariosTelegram ut ON u.idUsuario = ut.idUsuario
+                FROM abcmasplus..Usuarios u
+                INNER JOIN consolamonitoreo..IABOT_Roles r ON u.idRol = r.idRol
+                LEFT JOIN consolamonitoreo..IABOT_UsuariosTelegram ut
+                    ON u.idUsuario = ut.idUsuario
                     AND ut.esPrincipal = 1
                     AND ut.activo = 1
                 WHERE u.idUsuario = :user_id
@@ -188,6 +188,10 @@ class UserManager:
         except Exception as e:
             logger.error(f"Error obteniendo usuario por ID {user_id}: {e}")
             raise
+
+    def get_user_by_telegram_chat_id(self, chat_id: int) -> Optional[TelegramUser]:
+        """Alias de get_user_by_chat_id para compatibilidad."""
+        return self.get_user_by_chat_id(chat_id)
 
     def is_user_registered(self, chat_id: int) -> bool:
         """
@@ -214,7 +218,7 @@ class UserManager:
         """
         try:
             query = text("""
-                UPDATE  consolamonitoreo..IABOT_UsuariosTelegram
+                UPDATE consolamonitoreo..IABOT_UsuariosTelegram
                 SET fechaUltimaActividad = GETDATE()
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
@@ -249,7 +253,7 @@ class UserManager:
                     SUM(CASE WHEN resultado = 'DENEGADO' THEN 1 ELSE 0 END) AS denegadas,
                     AVG(CAST(duracionMs AS FLOAT)) AS duracionPromedio,
                     MAX(fechaEjecucion) AS ultimaOperacion
-                FROM  consolamonitoreo..IABOT_LogOperaciones
+                FROM consolamonitoreo..IABOT_LogOperaciones
                 WHERE idUsuario = :user_id
             """)
 
@@ -287,7 +291,7 @@ class UserManager:
                     verificado,
                     fechaRegistro,
                     fechaUltimaActividad
-                FROM  consolamonitoreo..IABOT_UsuariosTelegram
+                FROM consolamonitoreo..IABOT_UsuariosTelegram
                 WHERE idUsuario = :user_id
                     AND activo = 1
                 ORDER BY esPrincipal DESC, fechaRegistro DESC

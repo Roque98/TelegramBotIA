@@ -66,15 +66,14 @@ class RegistrationManager:
             query = text("""
                 SELECT
                     idUsuario,
-                    idEmpleado,
-                    nombre,
-                    apellido,
+                    Nombre,
                     email,
-                    rol,
-                    activo
-                FROM  abcmasplus..Usuarios
+                    idRol,
+                    puesto,
+                    Activa
+                FROM abcmasplus..Usuarios
                 WHERE email = :email
-                    AND activo = 1
+                    AND Activa = 1
             """)
 
             result = self.session.execute(query, {"email": email})
@@ -91,10 +90,10 @@ class RegistrationManager:
 
     def find_user_by_employee_id(self, employee_id: int) -> Optional[Dict[str, Any]]:
         """
-        Buscar usuario por ID de empleado.
+        Buscar usuario por ID de usuario (idUsuario).
 
         Args:
-            employee_id: ID del empleado
+            employee_id: ID del usuario
 
         Returns:
             Datos del usuario si existe, None en caso contrario
@@ -103,15 +102,14 @@ class RegistrationManager:
             query = text("""
                 SELECT
                     idUsuario,
-                    idEmpleado,
-                    nombre,
-                    apellido,
+                    Nombre,
                     email,
-                    rol,
-                    activo
+                    idRol,
+                    puesto,
+                    Activa
                 FROM abcmasplus..Usuarios
-                WHERE idEmpleado = :employee_id
-                    AND activo = 1
+                WHERE idUsuario = :employee_id
+                    AND Activa = 1
             """)
 
             result = self.session.execute(query, {"employee_id": employee_id})
@@ -458,8 +456,7 @@ class RegistrationManager:
                     ut.estado,
                     ut.intentosVerificacion,
                     ut.fechaRegistro,
-                    u.nombre,
-                    u.apellido,
+                    u.Nombre,
                     u.email
                 FROM consolamonitoreo..IABOT_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
