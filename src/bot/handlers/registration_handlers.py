@@ -56,12 +56,14 @@ class RegistrationHandlers:
 
             if user_manager.is_user_registered(user.id):
                 telegram_user = user_manager.get_user_by_chat_id(user.id)
+                reg_info = user_manager.get_registration_info(user.id)
+                is_verified = (telegram_user and telegram_user.is_verified) or (reg_info and reg_info.get('verificado'))
 
-                if telegram_user.is_verified:
+                if is_verified:
+                    nombre = telegram_user.nombre_completo if telegram_user else "usuario"
                     await update.message.reply_text(
-                        f"✅ Hola {telegram_user.nombre_completo},\n\n"
+                        f"✅ Hola {nombre},\n\n"
                         f"Ya estás registrado y verificado en el sistema.\n\n"
-                        f"👤 *Rol:* {telegram_user.rol_nombre}\n\n"
                         f"Puedes usar /help para ver los comandos disponibles.",
                         parse_mode='Markdown'
                     )

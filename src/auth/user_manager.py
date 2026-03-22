@@ -195,7 +195,11 @@ class UserManager:
 
     def is_user_registered(self, chat_id: int) -> bool:
         """
-        Verificar si un chat_id está registrado.
+        Verificar si un chat_id está registrado en UsuariosTelegram.
+
+        Consulta directo sin JOINs para evitar falsos negativos cuando
+        el usuario existe en UsuariosTelegram pero hay inconsistencias
+        en tablas relacionadas.
 
         Args:
             chat_id: Chat ID de Telegram
@@ -203,8 +207,43 @@ class UserManager:
         Returns:
             True si está registrado, False en caso contrario
         """
-        user = self.get_user_by_chat_id(chat_id)
-        return user is not None
+        try:
+            query = text("""
+                SELECT COUNT(*) FROM abcmasplus..UsuariosTelegram
+                WHERE telegramChatId = :chat_id
+                    AND activo = 1
+            """)
+            count = self.session.execute(query, {"chat_id": chat_id}).scalar()
+            return count > 0
+        except Exception as e:
+            logger.error(f"Error verificando registro de chat_id {chat_id}: {e}")
+            return False
+
+    def get_registration_info(self, chat_id: int) -> Optional[dict]:
+        """
+        Obtener estado de registro de un chat_id sin JOINs.
+
+        Útil cuando get_user_by_chat_id falla por inconsistencias de datos.
+
+        Args:
+            chat_id: Chat ID de Telegram
+
+        Returns:
+            Dict con verificado/estado o None
+        """
+        try:
+            query = text("""
+                SELECT idUsuario, verificado, estado
+                FROM abcmasplus..UsuariosTelegram
+                WHERE telegramChatId = :chat_id
+                    AND activo = 1
+            """)
+            result = self.session.execute(query, {"chat_id": chat_id})
+            row = result.fetchone()
+            return dict(zip(result.keys(), row)) if row else None
+        except Exception as e:
+            logger.error(f"Error obteniendo info de registro para chat_id {chat_id}: {e}")
+            return None
 
     def update_last_activity(self, chat_id: int) -> bool:
         """
