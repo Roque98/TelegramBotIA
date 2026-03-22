@@ -118,7 +118,7 @@ class MemoryRepository:
             query = """
                 SELECT
                     u.idUsuario AS Id_Usuario,
-                    CONCAT(u.nombre, ' ', u.apellido) AS Nombre,
+                    u.Nombre AS Nombre,
                     ump.resumenContextoLaboral AS resumen_contexto_laboral,
                     ump.resumenTemasRecientes AS resumen_temas_recientes,
                     ump.resumenHistorialBreve AS resumen_historial_breve,
@@ -331,7 +331,8 @@ class MemoryRepository:
                 )
                 SELECT
                     ut.idUsuario,
-                    :operation,
+                    (SELECT idOperacion FROM abcmasplus..Operaciones
+                     WHERE comando = :operation AND activo = 1),
                     :chat_id,
                     :params,
                     :result,
@@ -345,7 +346,7 @@ class MemoryRepository:
             self.db_manager.execute_non_query(
                 query_sql,
                 {
-                    "operation": "chat_ia",
+                    "operation": "/ia",
                     "chat_id": str(user_id),
                     "params": params_json,
                     "result": response[:4000],
