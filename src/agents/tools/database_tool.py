@@ -48,7 +48,7 @@ class DatabaseTool(BaseTool):
         if sql_validator:
             self.sql_validator = sql_validator
         else:
-            from src.agent.sql.sql_validator import SQLValidator
+            from src.database.sql_validator import SQLValidator
             self.sql_validator = SQLValidator()
 
         logger.info(f"DatabaseTool inicializado (max_results={max_results})")

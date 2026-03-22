@@ -17,7 +17,7 @@ from src.agents.tools.knowledge_tool import KnowledgeTool
 from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
-from src.agent.knowledge import KnowledgeManager
+from src.knowledge import KnowledgeManager
 from src.config.settings import settings
 from src.memory.service import MemoryService
 from src.memory.repository import MemoryRepository

@@ -44,10 +44,6 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
-    # Feature Flags
-    use_react_agent: bool = True  # Habilitar nuevo agente ReAct
-    react_fallback_on_error: bool = True  # Usar LLMAgent como fallback si ReAct falla
-
     # Retry Configuration
     retry_llm_max_attempts: int = 3
     retry_llm_min_wait: int = 2       # segundos
