@@ -116,9 +116,9 @@ class UserManager:
                     ut.estado,
                     ut.verificado,
                     ut.fechaUltimaActividad
-                FROM abcmasplus..IABOT_UsuariosTelegram ut
+                FROM abcmasplus..UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                INNER JOIN abcmasplus..IABOT_Roles r ON u.idRol = r.idRol
+                INNER JOIN abcmasplus..Roles r ON u.idRol = r.idRol
                 WHERE ut.telegramChatId = :chat_id
                     AND ut.activo = 1
             """)
@@ -168,8 +168,8 @@ class UserManager:
                     ut.verificado,
                     ut.fechaUltimaActividad
                 FROM abcmasplus..Usuarios u
-                INNER JOIN abcmasplus..IABOT_Roles r ON u.idRol = r.idRol
-                LEFT JOIN abcmasplus..IABOT_UsuariosTelegram ut
+                INNER JOIN abcmasplus..Roles r ON u.idRol = r.idRol
+                LEFT JOIN abcmasplus..UsuariosTelegram ut
                     ON u.idUsuario = ut.idUsuario
                     AND ut.esPrincipal = 1
                     AND ut.activo = 1
@@ -218,7 +218,7 @@ class UserManager:
         """
         try:
             query = text("""
-                UPDATE abcmasplus..IABOT_UsuariosTelegram
+                UPDATE abcmasplus..UsuariosTelegram
                 SET fechaUltimaActividad = GETDATE()
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
@@ -253,7 +253,7 @@ class UserManager:
                     SUM(CASE WHEN resultado = 'DENEGADO' THEN 1 ELSE 0 END) AS denegadas,
                     AVG(CAST(duracionMs AS FLOAT)) AS duracionPromedio,
                     MAX(fechaEjecucion) AS ultimaOperacion
-                FROM abcmasplus..IABOT_LogOperaciones
+                FROM abcmasplus..LogOperaciones
                 WHERE idUsuario = :user_id
             """)
 
@@ -291,7 +291,7 @@ class UserManager:
                     verificado,
                     fechaRegistro,
                     fechaUltimaActividad
-                FROM abcmasplus..IABOT_UsuariosTelegram
+                FROM abcmasplus..UsuariosTelegram
                 WHERE idUsuario = :user_id
                     AND activo = 1
                 ORDER BY esPrincipal DESC, fechaRegistro DESC
