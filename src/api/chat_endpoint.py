@@ -3,16 +3,16 @@ Endpoint REST para chat con autenticación por token encriptado.
 
 Este endpoint actúa como middleware para implementar el chat en otras plataformas.
 """
+import asyncio
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 from src.auth.token_middleware import TokenMiddleware
-from src.agent.llm_agent import LLMAgent
-from src.config.settings import Settings
+from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +20,20 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)  # Habilitar CORS para permitir requests desde otras plataformas
 
-# Inicializar agente (singleton)
-_agent: Optional[LLMAgent] = None
+# Inicializar MainHandler (singleton)
+_main_handler = None
 
 
-def get_agent() -> LLMAgent:
-    """Obtener instancia del agente (singleton)."""
-    global _agent
-    if _agent is None:
-        settings = Settings()
-        _agent = LLMAgent(settings)
-    return _agent
+def get_main_handler():
+    """Obtener instancia del MainHandler (singleton)."""
+    global _main_handler
+    if _main_handler is None:
+        from src.agent.llm_agent import LLMAgent
+        from src.database.connection import DatabaseManager
+        from src.gateway import create_main_handler
+        db_manager = DatabaseManager()
+        _main_handler = create_main_handler(LLMAgent(), db_manager)
+    return _main_handler
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -130,15 +133,18 @@ def chat():
 
         logger.info(f"Chat request de empleado {numero_empleado}: {message[:50]}...")
 
-        # 5. Procesar mensaje con el agente
-        agent = get_agent()
+        # 5. Procesar mensaje con MainHandler
+        handler = get_main_handler()
 
         try:
-            respuesta = agent.procesar_consulta(
-                consulta=message,
-                usuario_id=numero_empleado,
-                contexto={"source": "api", "empleado": numero_empleado}
+            agent_response = asyncio.run(
+                handler.handle_api(
+                    user_id=str(numero_empleado),
+                    text=message,
+                    metadata={"source": "api", "empleado": numero_empleado},
+                )
             )
+            respuesta = agent_response.message if agent_response.success else agent_response.error
         except Exception as e:
             logger.error(f"Error procesando consulta: {e}", exc_info=True)
             return jsonify({

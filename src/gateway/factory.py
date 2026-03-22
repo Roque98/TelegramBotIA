@@ -26,7 +26,6 @@ from src.memory.context_builder import ContextBuilder
 from .handler import MainHandler
 
 if TYPE_CHECKING:
-    from src.agent.llm_agent import LLMAgent
     from src.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -170,11 +169,9 @@ def create_main_handler(
     handler = MainHandler(
         react_agent=react_agent,
         memory_service=memory_service,
-        fallback_agent=llm_agent,  # LLMAgent como fallback
-        use_fallback_on_error=settings.react_fallback_on_error,
     )
 
-    logger.info("MainHandler created with ReActAgent and fallback")
+    logger.info("MainHandler created with ReActAgent")
 
     return handler
 
