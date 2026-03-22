@@ -6,7 +6,6 @@ import logging
 import nest_asyncio
 from src.config.settings import settings
 from src.bot.telegram_bot import TelegramBot
-from src.observability import TracingFilter
 
 # Permitir event loops anidados
 nest_asyncio.apply()
@@ -15,16 +14,11 @@ nest_asyncio.apply()
 def setup_logging():
     """Configurar el sistema de logging."""
     logging.basicConfig(
-        format='%(asctime)s [%(trace_id)s] user=%(user_id)s %(name)s %(levelname)s - %(message)s',
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=getattr(logging, settings.log_level.upper())
     )
 
-    # Conectar TracingFilter para inyectar trace_id/user_id en todos los logs
-    logging.getLogger().addFilter(TracingFilter())
-
-    # Silenciar loggers ruidosos
-    for noisy in ("httpcore", "httpx", "openai", "telegram", "urllib3"):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
+    
 
 
 async def main():
