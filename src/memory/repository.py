@@ -125,9 +125,9 @@ class MemoryRepository:
                     ump.numInteracciones AS num_interacciones,
                     ump.ultimaActualizacion AS ultima_actualizacion,
                     ump.preferencias AS preferencias
-                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
+                FROM abcmasplus..IABOT_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                LEFT JOIN consolamonitoreo..IABOT_UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
+                LEFT JOIN abcmasplus..IABOT_UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -193,7 +193,7 @@ class MemoryRepository:
         try:
             # Upsert en UserMemoryProfiles
             query = """
-                MERGE INTO consolamonitoreo..IABOT_UserMemoryProfiles AS target
+                MERGE INTO abcmasplus..IABOT_UserMemoryProfiles AS target
                 USING (SELECT :user_id AS id_usuario) AS source
                 ON target.id_usuario = source.id_usuario
                 WHEN MATCHED THEN
@@ -249,8 +249,8 @@ class MemoryRepository:
                     lo.parametros AS Parametros,
                     lo.resultado AS Resultado,
                     lo.fechaEjecucion AS Fecha_Hora
-                FROM consolamonitoreo..IABOT_LogOperaciones lo
-                INNER JOIN consolamonitoreo..IABOT_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                FROM abcmasplus..IABOT_LogOperaciones lo
+                INNER JOIN abcmasplus..IABOT_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
                 ORDER BY lo.fechaEjecucion DESC
@@ -325,7 +325,7 @@ class MemoryRepository:
             duration_ms = (metadata or {}).get("execution_time_ms", 0)
 
             query_sql = """
-                INSERT INTO consolamonitoreo..IABOT_LogOperaciones (
+                INSERT INTO abcmasplus..IABOT_LogOperaciones (
                     idUsuario, idOperacion, telegramChatId,
                     parametros, resultado, duracionMs, fechaEjecucion
                 )
@@ -337,7 +337,7 @@ class MemoryRepository:
                     :result,
                     :duration_ms,
                     GETDATE()
-                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
+                FROM abcmasplus..IABOT_UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup
                   AND ut.activo = 1
             """

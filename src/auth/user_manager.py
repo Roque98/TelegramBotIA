@@ -116,9 +116,9 @@ class UserManager:
                     ut.estado,
                     ut.verificado,
                     ut.fechaUltimaActividad
-                FROM consolamonitoreo..IABOT_UsuariosTelegram ut
+                FROM abcmasplus..IABOT_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                INNER JOIN consolamonitoreo..IABOT_Roles r ON u.idRol = r.idRol
+                INNER JOIN abcmasplus..IABOT_Roles r ON u.idRol = r.idRol
                 WHERE ut.telegramChatId = :chat_id
                     AND ut.activo = 1
             """)
@@ -168,8 +168,8 @@ class UserManager:
                     ut.verificado,
                     ut.fechaUltimaActividad
                 FROM abcmasplus..Usuarios u
-                INNER JOIN consolamonitoreo..IABOT_Roles r ON u.idRol = r.idRol
-                LEFT JOIN consolamonitoreo..IABOT_UsuariosTelegram ut
+                INNER JOIN abcmasplus..IABOT_Roles r ON u.idRol = r.idRol
+                LEFT JOIN abcmasplus..IABOT_UsuariosTelegram ut
                     ON u.idUsuario = ut.idUsuario
                     AND ut.esPrincipal = 1
                     AND ut.activo = 1
@@ -218,7 +218,7 @@ class UserManager:
         """
         try:
             query = text("""
-                UPDATE consolamonitoreo..IABOT_UsuariosTelegram
+                UPDATE abcmasplus..IABOT_UsuariosTelegram
                 SET fechaUltimaActividad = GETDATE()
                 WHERE telegramChatId = :chat_id
                     AND activo = 1
@@ -253,7 +253,7 @@ class UserManager:
                     SUM(CASE WHEN resultado = 'DENEGADO' THEN 1 ELSE 0 END) AS denegadas,
                     AVG(CAST(duracionMs AS FLOAT)) AS duracionPromedio,
                     MAX(fechaEjecucion) AS ultimaOperacion
-                FROM consolamonitoreo..IABOT_LogOperaciones
+                FROM abcmasplus..IABOT_LogOperaciones
                 WHERE idUsuario = :user_id
             """)
 
@@ -291,7 +291,7 @@ class UserManager:
                     verificado,
                     fechaRegistro,
                     fechaUltimaActividad
-                FROM consolamonitoreo..IABOT_UsuariosTelegram
+                FROM abcmasplus..IABOT_UsuariosTelegram
                 WHERE idUsuario = :user_id
                     AND activo = 1
                 ORDER BY esPrincipal DESC, fechaRegistro DESC

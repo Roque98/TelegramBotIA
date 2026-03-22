@@ -123,8 +123,8 @@ class SavePreferenceTool(BaseTool):
             # Primero obtener preferencias actuales
             query_get = """
                 SELECT ump.preferencias
-                FROM consolamonitoreo..IABOT_UserMemoryProfiles ump
-                INNER JOIN consolamonitoreo..IABOT_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
+                FROM abcmasplus..IABOT_UserMemoryProfiles ump
+                INNER JOIN abcmasplus..IABOT_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -150,8 +150,8 @@ class SavePreferenceTool(BaseTool):
                 UPDATE ump
                 SET ump.preferencias = :preferences,
                     ump.ultimaActualizacion = GETDATE()
-                FROM consolamonitoreo..IABOT_UserMemoryProfiles ump
-                INNER JOIN consolamonitoreo..IABOT_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
+                FROM abcmasplus..IABOT_UserMemoryProfiles ump
+                INNER JOIN abcmasplus..IABOT_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -159,9 +159,9 @@ class SavePreferenceTool(BaseTool):
             # Si no existe registro, crear uno
             if not results:
                 query_insert = """
-                    INSERT INTO consolamonitoreo..IABOT_UserMemoryProfiles (idUsuario, preferencias, numInteracciones)
+                    INSERT INTO abcmasplus..IABOT_UserMemoryProfiles (idUsuario, preferencias, numInteracciones)
                     SELECT ut.idUsuario, :preferences, 0
-                    FROM consolamonitoreo..IABOT_UsuariosTelegram ut
+                    FROM abcmasplus..IABOT_UsuariosTelegram ut
                     WHERE ut.telegramChatId = :user_id
                       AND ut.activo = 1
                 """
