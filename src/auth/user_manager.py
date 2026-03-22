@@ -118,7 +118,7 @@ class UserManager:
                     ut.fechaUltimaActividad
                 FROM abcmasplus..UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                INNER JOIN abcmasplus..Roles r ON u.idRol = r.idRol
+                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
                 WHERE ut.telegramChatId = :chat_id
                     AND ut.activo = 1
             """)
@@ -168,7 +168,7 @@ class UserManager:
                     ut.verificado,
                     ut.fechaUltimaActividad
                 FROM abcmasplus..Usuarios u
-                INNER JOIN abcmasplus..Roles r ON u.idRol = r.idRol
+                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
                 LEFT JOIN abcmasplus..UsuariosTelegram ut
                     ON u.idUsuario = ut.idUsuario
                     AND ut.esPrincipal = 1

@@ -61,8 +61,7 @@ class RegistrationHandlers:
                     await update.message.reply_text(
                         f"✅ Hola {telegram_user.nombre_completo},\n\n"
                         f"Ya estás registrado y verificado en el sistema.\n\n"
-                        f"👤 *Rol:* {telegram_user.rol_nombre}\n"
-                        f"🆔 *ID Empleado:* {telegram_user.id_empleado}\n\n"
+                        f"👤 *Rol:* {telegram_user.rol_nombre}\n\n"
                         f"Puedes usar /help para ver los comandos disponibles.",
                         parse_mode='Markdown'
                     )
@@ -144,7 +143,7 @@ class RegistrationHandlers:
                 # Informar al usuario que debe consultar el portal
                 await update.message.reply_text(
                     f"✅ *Registro iniciado exitosamente*\n\n"
-                    f"Hola *{user_data['nombre']} {user_data['apellido']}*,\n\n"
+                    f"Hola *{user_data['Nombre']}*,\n\n"
                     f"📋 Tu cuenta de Telegram ha sido registrada en el sistema.\n\n"
                     f"🔐 *Para completar el registro:*\n"
                     f"1️⃣ Ingresa al *Portal de Consola de Monitoreo*\n"
@@ -152,7 +151,7 @@ class RegistrationHandlers:
                     f"3️⃣ Consulta tu *código de verificación*\n"
                     f"4️⃣ Regresa a Telegram y usa: `/verify <codigo>`\n\n"
                     f"⏰ El código es válido por 24 horas.\n\n"
-                    f"_ID Empleado: {employee_id}_\n"
+                    f"_ID Usuario: {employee_id}_\n"
                     f"_Email: {user_data['email']}_",
                     parse_mode='Markdown'
                 )
@@ -214,7 +213,6 @@ class RegistrationHandlers:
                         f"🎉 *¡Verificación exitosa!*\n\n"
                         f"Bienvenido, *{telegram_user.nombre_completo}*\n\n"
                         f"👤 *Rol:* {telegram_user.rol_nombre}\n"
-                        f"🆔 *ID Empleado:* {telegram_user.id_empleado}\n"
                         f"📧 *Email:* {telegram_user.email}\n\n"
                         f"✅ Tu cuenta está activa.\n"
                         f"Usa /help para ver los comandos disponibles.",
