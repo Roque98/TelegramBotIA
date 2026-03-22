@@ -79,6 +79,13 @@ class KnowledgeManager:
             self.source = "none"
             raise RuntimeError(f"Base de datos no disponible y fallback deshabilitado: {e}")
 
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Remove punctuation and normalize text for scoring."""
+        import re
+        # Remove punctuation marks (¿?¡!.,;:) but keep letters and spaces
+        return re.sub(r'[¿?¡!.,;:\-\'"(){}[\]]', '', text).strip()
+
     def search(
         self,
         query: str,
@@ -89,90 +96,142 @@ class KnowledgeManager:
         """
         Buscar entradas relevantes por keywords.
 
+        Busca en TODAS las categorías y usa category_filter como boost
+        (+0.5 si la categoría coincide), no como filtro excluyente.
+
         Args:
             query: Consulta del usuario
             top_k: Número máximo de resultados
             min_score: Score mínimo para considerar relevante
-            category_filter: Filtrar solo por esta categoría
+            category_filter: Categoría preferida (boost, no filtro)
 
         Returns:
             Lista de entradas más relevantes ordenadas por score
-
-        Example:
-            >>> results = manager.search("vacaciones", top_k=2)
-            >>> len(results) <= 2
-            True
         """
-        query_lower = query.lower()
+        query_lower = self._clean_text(query.lower())
 
-        # NUEVO: Detectar si se está preguntando por una categoría específica
+        # Detectar si se está preguntando por una categoría específica
         category_from_query = self._detect_category_in_query(query_lower)
         if category_from_query and not category_filter:
             logger.info(f"Detectada pregunta sobre categoría: {category_from_query.value}")
-            # Si detectamos una categoría, buscar todas las entradas de esa categoría
             return self.get_entries_by_category(category_from_query, top_k=top_k)
 
+        # Buscar en TODAS las entradas, con boost de categoría
         scored_entries = []
-
-        # Filtrar por categoría si se especifica (desde self.knowledge_base, no desde código)
-        entries_to_search = (
-            [entry for entry in self.knowledge_base if entry.category == category_filter]
-            if category_filter
-            else self.knowledge_base
-        )
-
-        for entry in entries_to_search:
+        for entry in self.knowledge_base:
             score = self._calculate_score(query_lower, entry)
+
+            # Boost si la categoría coincide con el filtro sugerido
+            if category_filter and entry.category == category_filter:
+                score += 0.3
 
             if score >= min_score:
                 scored_entries.append((score, entry))
 
-        # Ordenar por score descendente
         scored_entries.sort(reverse=True, key=lambda x: x[0])
-
-        # Retornar top_k resultados
         results = [entry for _, entry in scored_entries[:top_k]]
 
         logger.debug(
-            f"Búsqueda: '{query[:50]}...' → {len(results)} resultados "
+            f"Búsqueda: '{query_lower[:50]}' → {len(results)} resultados "
             f"(scores: {[round(s, 2) for s, _ in scored_entries[:top_k]]})"
         )
 
         return results
+
+    @staticmethod
+    def _stem_es(word: str) -> str:
+        """
+        Stemming ultra-simple para español.
+
+        Reduce palabras a una raíz aproximada removiendo sufijos comunes.
+        No es un stemmer completo, pero cubre los casos más frecuentes
+        (solicitar/solicito/solicitud, vacaciones/vacación, etc.).
+        """
+        if len(word) <= 4:
+            return word
+        # Orden importa: probar sufijos más largos primero
+        for suffix in (
+            "aciones", "iciones", "amiento", "imiento",
+            "acion", "icion", "ando", "endo", "iendo",
+            "ador", "edor", "idor",
+            "ante", "ente", "iente",
+            "able", "ible",
+            "ción", "sión",
+            "idad", "edad",
+            "mente",
+            "amos", "emos", "imos",
+            "aron", "eron", "ieron",
+            "ando", "endo",
+            "ado", "ido", "ido",
+            "aba", "ían",
+            "ar", "er", "ir",
+            "as", "es", "os",
+            "an", "en",
+            "ón",
+            "or",
+            "al",
+            "o", "a",
+        ):
+            if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+                return word[: -len(suffix)]
+        return word
 
     def _calculate_score(self, query: str, entry: KnowledgeEntry) -> float:
         """
         Calcular score de relevancia entre query y entrada.
 
         Estrategia de scoring:
-        - Keywords match: +1.0 por keyword encontrado
+        - Keywords match (exacto): +1.0 por keyword encontrado
+        - Keywords match (stem): +0.7 por keyword con raíz común
+        - Question similarity: +0.3 si hay palabras comunes significativas
         - Prioridad: multiplicador (1.0, 1.2, 1.5)
-        - Question similarity: +0.5 si hay palabras comunes
 
         Args:
-            query: Query normalizada (lowercase)
+            query: Query normalizada y limpia (lowercase, sin puntuación)
             entry: Entrada de conocimiento
 
         Returns:
             Score de relevancia (mayor = más relevante)
         """
         score = 0.0
-
-        # 1. Keyword matching
-        for keyword in entry.keywords:
-            if keyword.lower() in query:
-                score += 1.0
-
-        # 2. Question similarity (palabras en común)
         query_words = set(query.split())
-        question_words = set(entry.question.lower().split())
-        common_words = query_words & question_words
+        query_stems = {self._stem_es(w) for w in query_words}
 
-        # Filtrar palabras comunes irrelevantes
-        stopwords = {'qué', 'cómo', 'cuál', 'dónde', 'cuándo', 'por', 'para', 'el', 'la', 'los', 'las', 'de', 'en', 'a'}
-        meaningful_common = common_words - stopwords
+        # 1. Keyword matching (exacto + stem) — peso principal
+        for keyword in entry.keywords:
+            kw = keyword.lower()
+            if kw in query:
+                # Match exacto de keyword como substring
+                score += 1.0
+            elif self._stem_es(kw) in query_stems:
+                # Match por raíz (solicitar ~ solicito)
+                score += 0.7
 
-        score += len(meaningful_common) * 0.5
+        # 2. Question similarity (palabras en común) — peso menor
+        clean_question = self._clean_text(entry.question.lower())
+        question_words = set(clean_question.split())
+
+        stopwords = {
+            'qué', 'cómo', 'cuál', 'dónde', 'cuándo', 'cuántos',
+            'por', 'para', 'el', 'la', 'los', 'las', 'de', 'del',
+            'en', 'a', 'un', 'una', 'es', 'son', 'se', 'si', 'no',
+            'que', 'como', 'cual', 'donde', 'cuando', 'hay', 'mi',
+            'su', 'al', 'con', 'sin', 'sobre', 'entre', 'más', 'o',
+            'y', 'e', 'ni', 'pero',
+        }
+
+        meaningful_query = query_words - stopwords
+        meaningful_question = question_words - stopwords
+
+        # Match exacto de palabras
+        common_words = meaningful_query & meaningful_question
+        score += len(common_words) * 0.3
+
+        # Match por stems de palabras restantes
+        remaining_query_stems = {self._stem_es(w) for w in meaningful_query - common_words}
+        remaining_question_stems = {self._stem_es(w) for w in meaningful_question - common_words}
+        stem_matches = remaining_query_stems & remaining_question_stems
+        score += len(stem_matches) * 0.3
 
         # 3. Priority multiplier
         priority_multipliers = {

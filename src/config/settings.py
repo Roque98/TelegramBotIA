@@ -44,6 +44,18 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
+    # Feature Flags
+    use_react_agent: bool = True  # Habilitar nuevo agente ReAct
+    react_fallback_on_error: bool = True  # Usar LLMAgent como fallback si ReAct falla
+
+    # Retry Configuration
+    retry_llm_max_attempts: int = 3
+    retry_llm_min_wait: int = 2       # segundos
+    retry_llm_max_wait: int = 30      # segundos
+    retry_db_max_attempts: int = 3
+    retry_db_min_wait: int = 1        # segundos
+    retry_db_max_wait: int = 15       # segundos
+
     @property
     def database_url(self) -> str:
         """Construir URL de conexión a la base de datos."""

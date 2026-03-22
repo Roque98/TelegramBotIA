@@ -124,7 +124,7 @@ class MemoryRepository:
                         ultimaActualizacion,
                         fechaCreacion,
                         version
-                    FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+                    FROM [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                     WHERE idUsuario = :user_id
                 """)
 
@@ -165,7 +165,7 @@ class MemoryRepository:
                 # Verificar si existe
                 check_query = text("""
                     SELECT COUNT(*) as count
-                    FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+                    FROM [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                     WHERE idUsuario = :user_id
                 """)
                 exists = session.execute(
@@ -176,7 +176,7 @@ class MemoryRepository:
                 if exists:
                     # UPDATE
                     update_query = text("""
-                        UPDATE [abcmasplus].[dbo].[UserMemoryProfiles]
+                        UPDATE [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                         SET
                             resumenContextoLaboral = :contexto_laboral,
                             resumenTemasRecientes = :temas_recientes,
@@ -201,7 +201,7 @@ class MemoryRepository:
                 else:
                     # INSERT
                     insert_query = text("""
-                        INSERT INTO [abcmasplus].[dbo].[UserMemoryProfiles]
+                        INSERT INTO [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                             (idUsuario, resumenContextoLaboral, resumenTemasRecientes,
                              resumenHistorialBreve, numInteracciones, version)
                         VALUES
@@ -254,8 +254,8 @@ class MemoryRepository:
                         l.resultado,
                         l.fechaEjecucion as fechaHora,
                         l.duracionMs
-                    FROM [abcmasplus].[dbo].[LogOperaciones] l
-                    INNER JOIN [abcmasplus].[dbo].[Operaciones] o ON l.idOperacion = o.idOperacion
+                    FROM [consolamonitoreo].[dbo].[IABOT_LogOperaciones] l
+                    INNER JOIN [consolamonitoreo].[dbo].[IABOT_Operaciones] o ON l.idOperacion = o.idOperacion
                     WHERE l.idUsuario = :user_id
                       AND o.comando = '/ia'
                       AND l.resultado = 'EXITOSO'
@@ -315,7 +315,7 @@ class MemoryRepository:
             with self.db_manager.get_session() as session:
                 # Intentar actualizar
                 update_query = text("""
-                    UPDATE [abcmasplus].[dbo].[UserMemoryProfiles]
+                    UPDATE [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                     SET numInteracciones = numInteracciones + 1,
                         ultimaActualizacion = GETDATE()
                     WHERE idUsuario = :user_id
@@ -328,7 +328,7 @@ class MemoryRepository:
                     # No existe, crear perfil con contador en 1
                     logger.info(f"   → Perfil no existe, creando nuevo...")
                     insert_query = text("""
-                        INSERT INTO [abcmasplus].[dbo].[UserMemoryProfiles]
+                        INSERT INTO [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                             (idUsuario, numInteracciones)
                         VALUES (:user_id, 1)
                     """)
@@ -340,7 +340,7 @@ class MemoryRepository:
                 # Obtener nuevo valor
                 select_query = text("""
                     SELECT numInteracciones
-                    FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+                    FROM [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                     WHERE idUsuario = :user_id
                 """)
                 new_count = session.execute(
@@ -371,7 +371,7 @@ class MemoryRepository:
         try:
             with self.db_manager.get_session() as session:
                 query = text("""
-                    UPDATE [abcmasplus].[dbo].[UserMemoryProfiles]
+                    UPDATE [consolamonitoreo].[dbo].[IABOT_UserMemoryProfiles]
                     SET numInteracciones = 0
                     WHERE idUsuario = :user_id
                 """)
