@@ -6,32 +6,19 @@ Este endpoint actúa como middleware para implementar el chat en otras plataform
 import asyncio
 import logging
 from datetime import datetime
-from typing import Any, Optional
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 from src.bot.middleware.token_middleware import TokenMiddleware
 from src.config.settings import settings
+from src.gateway.factory import get_handler_manager
 
 logger = logging.getLogger(__name__)
 
 # Crear app Flask
 app = Flask(__name__)
 CORS(app)  # Habilitar CORS para permitir requests desde otras plataformas
-
-# Inicializar MainHandler (singleton)
-_main_handler = None
-
-
-def get_main_handler():
-    """Obtener instancia del MainHandler (singleton)."""
-    global _main_handler
-    if _main_handler is None:
-        from src.database.connection import DatabaseManager
-        from src.gateway import create_main_handler
-        _main_handler = create_main_handler(DatabaseManager())
-    return _main_handler
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -132,7 +119,7 @@ def chat():
         logger.info(f"Chat request de empleado {numero_empleado}: {message[:50]}...")
 
         # 5. Procesar mensaje con MainHandler
-        handler = get_main_handler()
+        handler = get_handler_manager().handler
 
         try:
             agent_response = asyncio.run(
@@ -281,16 +268,17 @@ def health():
     }), 200
 
 
-# Importar timedelta
-from datetime import timedelta
-
-
 if __name__ == "__main__":
     # Configurar logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
+
+    # Inicializar handler antes de arrancar el servidor (evita race condition)
+    from src.database.connection import DatabaseManager
+    get_handler_manager().initialize(DatabaseManager())
+    logger.info("HandlerManager inicializado correctamente")
 
     # Ejecutar servidor
     app.run(
