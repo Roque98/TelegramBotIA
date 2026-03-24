@@ -1,6 +1,7 @@
 """
 Gestión de conexiones a la base de datos.
 """
+import asyncio
 import logging
 from typing import List, Dict, Any, Generator
 from contextlib import contextmanager
@@ -224,6 +225,36 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error inesperado ejecutando escritura: {e}", exc_info=True)
             raise
+
+    async def execute_query_async(self, sql_query: str, params=None) -> List[Dict[str, Any]]:
+        """
+        Versión async de execute_query.
+
+        Ejecuta la consulta en un thread separado para no bloquear el event loop.
+
+        Args:
+            sql_query: Consulta SQL SELECT o EXEC
+            params: Parámetros opcionales
+
+        Returns:
+            Lista de diccionarios con los resultados
+        """
+        return await asyncio.to_thread(self.execute_query, sql_query, params)
+
+    async def execute_non_query_async(self, sql_query: str, params=None) -> int:
+        """
+        Versión async de execute_non_query.
+
+        Ejecuta la operación de escritura en un thread separado para no bloquear el event loop.
+
+        Args:
+            sql_query: Consulta SQL INSERT/UPDATE/DELETE/MERGE
+            params: Parámetros opcionales
+
+        Returns:
+            Número de filas afectadas
+        """
+        return await asyncio.to_thread(self.execute_non_query, sql_query, params)
 
     def close(self):
         """Cerrar las conexiones de base de datos."""

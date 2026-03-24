@@ -14,13 +14,9 @@ import pytest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.memory.repository import (
-    MemoryRepository,
-    UserProfile,
-    Interaction,
-)
-from src.memory.context_builder import ContextBuilder
-from src.memory.service import MemoryService, CacheEntry
+from src.memory.memory_repository import MemoryRepository
+from src.memory.memory_entity import UserProfile, Interaction, CacheEntry
+from src.memory.memory_service import MemoryService
 from src.agents.base.events import UserContext
 
 
@@ -177,10 +173,10 @@ class TestMemoryRepositoryWithDB:
 
     @pytest.fixture
     def mock_db(self):
-        """Mock del DatabaseManager."""
+        """Mock del DatabaseManager con métodos async."""
         db = MagicMock()
-        db.execute_query = MagicMock()
-        db.execute_non_query = MagicMock()
+        db.execute_query_async = AsyncMock()
+        db.execute_non_query_async = AsyncMock()
         return db
 
     @pytest.fixture
@@ -190,8 +186,8 @@ class TestMemoryRepositoryWithDB:
 
     @pytest.mark.asyncio
     async def test_get_profile_from_db(self, repository, mock_db):
-        """get_profile debe consultar la BD."""
-        mock_db.execute_query.return_value = [
+        """get_profile debe consultar la BD usando execute_query_async."""
+        mock_db.execute_query_async.return_value = [
             {
                 "Id_Usuario": 123,
                 "Nombre": "Juan",
@@ -213,7 +209,7 @@ class TestMemoryRepositoryWithDB:
     @pytest.mark.asyncio
     async def test_get_profile_not_found(self, repository, mock_db):
         """get_profile debe retornar None si no existe."""
-        mock_db.execute_query.return_value = []
+        mock_db.execute_query_async.return_value = []
 
         profile = await repository.get_profile("999")
 
@@ -222,7 +218,7 @@ class TestMemoryRepositoryWithDB:
     @pytest.mark.asyncio
     async def test_get_profile_db_error(self, repository, mock_db):
         """get_profile debe manejar errores de BD."""
-        mock_db.execute_query.side_effect = Exception("DB Error")
+        mock_db.execute_query_async.side_effect = Exception("DB Error")
 
         profile = await repository.get_profile("123")
 
@@ -230,7 +226,7 @@ class TestMemoryRepositoryWithDB:
 
 
 class TestContextBuilder:
-    """Tests para ContextBuilder."""
+    """Tests para lógica de build_context en MemoryService (antes ContextBuilder)."""
 
     @pytest.fixture
     def mock_repository(self):
@@ -240,8 +236,8 @@ class TestContextBuilder:
 
     @pytest.fixture
     def builder(self, mock_repository):
-        """ContextBuilder con mock repository."""
-        return ContextBuilder(repository=mock_repository, max_working_memory=5)
+        """MemoryService usado como builder de contexto."""
+        return MemoryService(repository=mock_repository, max_working_memory=5)
 
     @pytest.mark.asyncio
     async def test_build_context_with_profile(self, builder, mock_repository):
@@ -334,7 +330,7 @@ class TestContextBuilder:
 
     def test_format_working_memory_empty(self):
         """format_working_memory debe manejar lista vacía."""
-        result = ContextBuilder.format_working_memory([])
+        result = MemoryService.format_working_memory([])
         assert "Sin conversaciones recientes" in result
 
     def test_format_working_memory_with_messages(self):
@@ -344,7 +340,7 @@ class TestContextBuilder:
             {"role": "assistant", "content": "¡Hola! ¿En qué puedo ayudarte?"},
         ]
 
-        result = ContextBuilder.format_working_memory(messages)
+        result = MemoryService.format_working_memory(messages)
 
         assert "Usuario: Hola" in result
         assert "Asistente: ¡Hola!" in result
@@ -403,73 +399,62 @@ class TestMemoryService:
         return repo
 
     @pytest.fixture
-    def mock_builder(self):
-        """Mock del ContextBuilder."""
-        builder = AsyncMock(spec=ContextBuilder)
-        return builder
-
-    @pytest.fixture
-    def service(self, mock_repository, mock_builder):
+    def service(self, mock_repository):
         """MemoryService con mocks."""
         return MemoryService(
             repository=mock_repository,
-            context_builder=mock_builder,
             cache_ttl_seconds=60,
             max_cache_size=100,
         )
 
     @pytest.mark.asyncio
-    async def test_get_context_cache_miss(self, service, mock_builder):
+    async def test_get_context_cache_miss(self, service, mock_repository):
         """get_context debe construir contexto si no está en cache."""
-        expected = UserContext.empty("123")
-        mock_builder.build_context.return_value = expected
+        mock_repository.get_profile.return_value = UserProfile(user_id="123", display_name="Juan")
+        mock_repository.get_recent_messages.return_value = []
 
         result = await service.get_context("123")
 
-        assert result == expected
-        mock_builder.build_context.assert_called_once()
+        assert result.user_id == "123"
+        assert result.display_name == "Juan"
+        mock_repository.get_profile.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_context_cache_hit(self, service, mock_builder):
-        """get_context debe usar cache si está disponible."""
-        expected = UserContext.empty("123")
-        mock_builder.build_context.return_value = expected
+    async def test_get_context_cache_hit(self, service, mock_repository):
+        """get_context debe usar cache en la segunda llamada."""
+        mock_repository.get_profile.return_value = None
+        mock_repository.get_recent_messages.return_value = []
 
         # Primera llamada - cache miss
         await service.get_context("123")
-
         # Segunda llamada - cache hit
-        result = await service.get_context("123")
-
-        assert result == expected
-        # Solo una llamada al builder
-        assert mock_builder.build_context.call_count == 1
-
-    @pytest.mark.asyncio
-    async def test_get_context_force_refresh(self, service, mock_builder):
-        """get_context con force_refresh debe ignorar cache."""
-        expected = UserContext.empty("123")
-        mock_builder.build_context.return_value = expected
-
-        # Primera llamada
         await service.get_context("123")
 
-        # Segunda con refresh
-        await service.get_context("123", force_refresh=True)
-
-        # Dos llamadas al builder
-        assert mock_builder.build_context.call_count == 2
+        # El repositorio solo se consultó una vez
+        assert mock_repository.get_profile.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_get_minimal_context(self, service, mock_builder):
-        """get_minimal_context debe delegar al builder."""
-        expected = UserContext.empty("123")
-        mock_builder.build_minimal_context.return_value = expected
+    async def test_get_context_force_refresh(self, service, mock_repository):
+        """get_context con force_refresh debe ignorar cache."""
+        mock_repository.get_profile.return_value = None
+        mock_repository.get_recent_messages.return_value = []
+
+        await service.get_context("123")
+        await service.get_context("123", force_refresh=True)
+
+        # Se consultó el repositorio dos veces
+        assert mock_repository.get_profile.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_get_minimal_context(self, service, mock_repository):
+        """get_minimal_context debe retornar contexto sin working memory."""
+        mock_repository.get_profile.return_value = UserProfile(user_id="123", display_name="Juan")
 
         result = await service.get_minimal_context("123")
 
-        assert result == expected
-        mock_builder.build_minimal_context.assert_called_once_with("123")
+        assert result.user_id == "123"
+        assert result.display_name == "Juan"
+        mock_repository.get_recent_messages.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_record_interaction(self, service, mock_repository):
@@ -489,20 +474,16 @@ class TestMemoryService:
         mock_repository.increment_interaction_count.assert_called_once_with("123")
 
     @pytest.mark.asyncio
-    async def test_record_interaction_invalidates_cache(
-        self, service, mock_repository, mock_builder
-    ):
+    async def test_record_interaction_invalidates_cache(self, service, mock_repository):
         """record_interaction debe invalidar cache del usuario."""
-        # Primero poblar el cache
-        mock_builder.build_context.return_value = UserContext.empty("123")
+        mock_repository.get_profile.return_value = None
+        mock_repository.get_recent_messages.return_value = []
         await service.get_context("123")
 
-        # Grabar interacción
         mock_repository.save_interaction.return_value = True
         mock_repository.increment_interaction_count.return_value = 1
         await service.record_interaction("123", "query", "response")
 
-        # El cache debe estar invalidado
         mock_repository.invalidate_cache.assert_called_with("123")
 
     @pytest.mark.asyncio
@@ -531,15 +512,14 @@ class TestMemoryService:
         assert existing.long_term_summary == "New summary"
 
     @pytest.mark.asyncio
-    async def test_enrich_context(self, service, mock_builder):
-        """enrich_context debe delegar al builder."""
-        original = UserContext.empty("123")
-        enriched = UserContext(user_id="123", preferences={"new": "data"})
-        mock_builder.enrich_context.return_value = enriched
+    async def test_enrich_context(self, service):
+        """enrich_context debe combinar preferencias."""
+        original = UserContext(user_id="123", preferences={"theme": "dark"})
+        result = await service.enrich_context(original, {"locale": "es-MX"})
 
-        result = await service.enrich_context(original, {"new": "data"})
-
-        assert result == enriched
+        assert result.preferences["theme"] == "dark"
+        assert result.preferences["locale"] == "es-MX"
+        assert result.user_id == "123"
 
     def test_clear_cache(self, service, mock_repository):
         """clear_cache debe limpiar ambos caches."""
@@ -558,18 +538,18 @@ class TestMemoryService:
         assert stats["max_size"] == 100
 
     @pytest.mark.asyncio
-    async def test_health_check_success(self, service, mock_builder):
+    async def test_health_check_success(self, service, mock_repository):
         """health_check debe retornar True si funciona."""
-        mock_builder.build_minimal_context.return_value = UserContext.empty("test")
+        mock_repository.get_profile.return_value = None
 
         result = await service.health_check()
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_health_check_failure(self, service, mock_builder):
+    async def test_health_check_failure(self, service, mock_repository):
         """health_check debe retornar False si falla."""
-        mock_builder.build_minimal_context.side_effect = Exception("Error")
+        mock_repository.get_profile.side_effect = Exception("Error")
 
         result = await service.health_check()
 
@@ -584,18 +564,17 @@ class TestMemoryServiceCacheCleanup:
         """El cache debe limpiarse cuando está lleno."""
         mock_repository = AsyncMock(spec=MemoryRepository)
         mock_repository.invalidate_cache = MagicMock()
-        mock_builder = AsyncMock(spec=ContextBuilder)
+        mock_repository.get_profile.return_value = None
+        mock_repository.get_recent_messages.return_value = []
 
         service = MemoryService(
             repository=mock_repository,
-            context_builder=mock_builder,
             cache_ttl_seconds=300,
             max_cache_size=3,  # Cache muy pequeño
         )
 
-        # Llenar el cache
+        # Llenar el cache con 5 usuarios distintos
         for i in range(5):
-            mock_builder.build_context.return_value = UserContext.empty(str(i))
             await service.get_context(str(i))
 
         # Debe haber limpiado algunas entradas
@@ -606,17 +585,16 @@ class TestMemoryServiceCacheCleanup:
         """Las entradas expiradas deben eliminarse."""
         mock_repository = AsyncMock(spec=MemoryRepository)
         mock_repository.invalidate_cache = MagicMock()
-        mock_builder = AsyncMock(spec=ContextBuilder)
+        mock_repository.get_profile.return_value = None
+        mock_repository.get_recent_messages.return_value = []
 
         service = MemoryService(
             repository=mock_repository,
-            context_builder=mock_builder,
             cache_ttl_seconds=1,  # TTL muy corto
             max_cache_size=10,
         )
 
         # Agregar entrada
-        mock_builder.build_context.return_value = UserContext.empty("123")
         await service.get_context("123")
 
         # Esperar que expire
