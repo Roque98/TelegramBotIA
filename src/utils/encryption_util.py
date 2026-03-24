@@ -299,7 +299,7 @@ def encriptar(texto: str) -> Optional[str]:
         Texto encriptado en Base64
 
     Example:
-        >>> from src.auth.encryption import encriptar
+        >>> from src.utils.encryption_util import encriptar
         >>> encrypted = encriptar("mi_password")
     """
     return get_encryptor().encriptar(texto)
@@ -316,7 +316,7 @@ def desencriptar(texto_encriptado: str) -> Optional[str]:
         Texto desencriptado
 
     Example:
-        >>> from src.auth.encryption import desencriptar
+        >>> from src.utils.encryption_util import desencriptar
         >>> decrypted = desencriptar(encrypted_text)
     """
     return get_encryptor().desencriptar(texto_encriptado)
