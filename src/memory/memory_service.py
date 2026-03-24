@@ -7,6 +7,7 @@ Absorbe la lógica de ContextBuilder.
 
 import asyncio
 import logging
+from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import Any, Optional
 
@@ -39,8 +40,10 @@ class MemoryService:
         self.cache_ttl_seconds = cache_ttl_seconds
         self.max_cache_size = max_cache_size
         self.max_working_memory = max_working_memory
-        self._cache: dict[str, CacheEntry] = {}
+        self._cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self._lock = asyncio.Lock()
+        self._cache_hits = 0
+        self._cache_misses = 0
         logger.info(f"MemoryService inicializado (cache_ttl={cache_ttl_seconds}s, max_cache={max_cache_size})")
 
     # -------------------------------------------------------------------------
@@ -187,16 +190,19 @@ class MemoryService:
     def _get_from_cache(self, key: str) -> Optional[UserContext]:
         entry = self._cache.get(key)
         if entry and not entry.is_expired():
+            self._cache.move_to_end(key)  # Marcar como recientemente usado (LRU)
+            self._cache_hits += 1
             return entry.context
         elif entry:
             del self._cache[key]
+        self._cache_misses += 1
         return None
 
     async def _add_to_cache(self, key: str, context: UserContext) -> None:
         async with self._lock:
-            if len(self._cache) >= self.max_cache_size:
-                self._cleanup_cache()
+            self._evict_if_needed()
             self._cache[key] = CacheEntry(context=context, ttl_seconds=self.cache_ttl_seconds)
+            self._cache.move_to_end(key)  # Asegurar que la nueva entrada quede al final
 
     def _invalidate_user_cache(self, user_id: str) -> None:
         keys_to_delete = [k for k in self._cache if k.startswith(f"{user_id}:")]
@@ -204,28 +210,49 @@ class MemoryService:
             del self._cache[key]
         self.repository.invalidate_cache(user_id)
 
-    def _cleanup_cache(self) -> None:
+    def _evict_if_needed(self) -> None:
+        """
+        Evictar entradas del cache cuando está lleno.
+
+        Estrategia:
+        1. Primero eliminar entradas expiradas (TTL vencido)
+        2. Si sigue lleno, eliminar las entradas menos recientemente usadas (LRU)
+           hasta quedar en el 75% de capacidad
+        """
+        # Paso 1: eliminar expiradas
         expired_keys = [k for k, v in self._cache.items() if v.is_expired()]
         for key in expired_keys:
             del self._cache[key]
+
+        # Paso 2: si sigue lleno, eliminar LRU (primeros en OrderedDict = menos usados)
         if len(self._cache) >= self.max_cache_size:
-            sorted_keys = sorted(self._cache.keys(), key=lambda k: self._cache[k].created_at)
-            for key in sorted_keys[:max(1, len(sorted_keys) // 4)]:
-                del self._cache[key]
+            target_size = max(0, int(self.max_cache_size * 0.75))
+            while len(self._cache) > target_size:
+                self._cache.popitem(last=False)  # Elimina el menos recientemente usado
+            logger.debug(
+                f"Cache eviction: {len(expired_keys)} expiradas + LRU hasta {target_size} entradas"
+            )
 
     def clear_cache(self) -> None:
         self._cache.clear()
+        self._cache_hits = 0
+        self._cache_misses = 0
         self.repository.clear_cache()
         logger.info("Memory cache cleared")
 
     def get_cache_stats(self) -> dict[str, Any]:
         expired = sum(1 for v in self._cache.values() if v.is_expired())
+        total_requests = self._cache_hits + self._cache_misses
+        hit_rate = round(self._cache_hits / total_requests, 3) if total_requests > 0 else 0.0
         return {
             "total_entries": len(self._cache),
             "active_entries": len(self._cache) - expired,
             "expired_entries": expired,
             "max_size": self.max_cache_size,
             "ttl_seconds": self.cache_ttl_seconds,
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate": hit_rate,
         }
 
     async def health_check(self) -> bool:
