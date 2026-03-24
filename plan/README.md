@@ -10,13 +10,38 @@
 ```
 plan/
 ├── README.md                              # Este indice
+├── BACKLOG.md                             # Lista completa de mejoras identificadas (23)
 ├── 01-completados/                        # Planes finalizados
-│   └── PLAN_REACT_MIGRATION.md            # Migracion a ReAct (100%)
+│   ├── PLAN_REACT_MIGRATION.md            # Migracion a ReAct (100%)
+│   └── PLAN_REFACTOR_REPOSITORY_PATTERN.md # Refactor Repository+Service (100%)
 ├── 02-activos/                            # Planes en progreso
 │   ├── PLAN_CONSOLIDAR_LEGACY.md          # Eliminar codigo legacy (19 tareas)
-│   └── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
+│   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
+│   ├── PLAN_SEC_01_ENCRIPTACION.md        # Encriptacion segura
+│   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting verificacion
+│   ├── PLAN_SEC_03_SQL_VALIDATOR.md       # SQL Validator robusto
+│   ├── PLAN_SEC_04_CORS.md                # CORS con restricciones
+│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync
+│   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU
+│   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado
+│   ├── PLAN_ARQ_08_THREAD_SAFETY.md       # ToolRegistry thread-safe
+│   ├── PLAN_ARQ_09_AUTH_MIDDLEWARE.md     # Auth middleware bug fix
+│   ├── PLAN_CAL_10_ERROR_HANDLING.md      # Error handling ReActAgent
+│   ├── PLAN_CAL_11_TESTS.md               # Cobertura tests al 80%
+│   ├── PLAN_CAL_12_ESTADISTICAS.md        # Estadisticas reales
+│   ├── PLAN_CAL_13_NOTIFICACIONES.md      # Notificaciones al admin
+│   ├── PLAN_CAL_14_STEMMER.md             # Stemmer NLP real
+│   ├── PLAN_CAL_15_FALLBACKS.md           # Fallbacks informativos
+│   ├── PLAN_CAL_16_POOL_CONEXIONES.md     # Pool de conexiones
+│   ├── PLAN_FUN_17_CACHE_LLM.md           # Cache para LLM
+│   ├── PLAN_FUN_18_STREAMING.md           # Streaming de respuestas
+│   ├── PLAN_FUN_19_RAG.md                 # RAG con vectores
+│   ├── PLAN_FUN_20_MULTI_AGENTE.md        # Multi-agente especialistas
+│   ├── PLAN_FUN_21_RETRY.md               # Retry con Tenacity
+│   ├── PLAN_FUN_22_DASHBOARD.md           # Dashboard de monitoreo
+│   └── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
 └── 03-ideas/                              # Ideas y propuestas
-    └── IDEAS_MEJORA_BOT.md                # 10 ideas de mejora priorizadas
+    └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
 ```
 
 ---
@@ -26,8 +51,9 @@ plan/
 | Metrica | Valor |
 |---------|-------|
 | Planes completados | 2 |
-| Planes activos | 2 |
+| Planes activos | 25 |
 | Ideas documentadas | 10 |
+| Backlog total | 23 mejoras |
 
 ---
 
