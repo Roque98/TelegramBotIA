@@ -21,7 +21,7 @@ plan/
 │   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting verificacion
 │   ├── PLAN_SEC_03_SQL_VALIDATOR.md       # SQL Validator robusto
 │   ├── PLAN_SEC_04_CORS.md                # CORS con restricciones
-│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync
+│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync ✅
 │   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU
 │   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado
 │   ├── PLAN_ARQ_08_THREAD_SAFETY.md       # ToolRegistry thread-safe
@@ -50,8 +50,8 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 2 |
-| Planes activos | 25 |
+| Planes completados | 3 |
+| Planes activos | 24 |
 | Ideas documentadas | 10 |
 | Backlog total | 23 mejoras |
 
@@ -63,6 +63,7 @@ plan/
 |------|----------|------|-------|
 | [Migracion ReAct](01-completados/PLAN_REACT_MIGRATION.md) | 100% (47/47) | `feature/react-agent-migration` | 2024-02-13 |
 | [Refactor Repository Pattern](01-completados/PLAN_REFACTOR_REPOSITORY_PATTERN.md) | 100% (26/26) | `feature/refactor-repository-pattern` | 2026-03-24 |
+| [Consolidar async/sync](01-completados/PLAN_ARQ_05_ASYNC_SYNC.md) | 100% (8/8) | `feature/arq-05-async-sync` | 2026-03-24 |
 
 ---
 
