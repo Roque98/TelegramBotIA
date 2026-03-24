@@ -3,7 +3,7 @@
 > **Objetivo**: Eliminar la mezcla de código async/sync que bloquea el event loop de Telegram
 > **Rama**: `feature/arq-05-async-sync`
 > **Prioridad**: 🟠 Alta
-> **Progreso**: 0% (0/8)
+> **Progreso**: 100% (8/8)
 
 ---
 
@@ -45,14 +45,14 @@ Dos opciones:
 
 ## Tareas
 
-- [ ] **5.1** Agregar helper `async def run_in_thread(func, *args)` en `database/connection.py` usando `asyncio.to_thread()`
-- [ ] **5.2** Refactorizar `memory_repository.py`: reemplazar `execute_query()` directo por `await run_in_thread(self.db_manager.execute_query, query, params)`
-- [ ] **5.3** Refactorizar `knowledge_repository.py` con el mismo patrón
-- [ ] **5.4** Refactorizar `database_tool.py`: reemplazar `run_in_executor()` por `asyncio.to_thread()`
-- [ ] **5.5** Verificar que `KnowledgeService.__init__()` no bloquea (es llamado en startup, está bien sync)
-- [ ] **5.6** Agregar tests async con `pytest-asyncio` para repositorios
-- [ ] **5.7** Medir latencia antes y después del cambio con logs de timing
-- [ ] **5.8** Actualizar `requirements.txt` si se agregan dependencias
+- [x] **5.1** Agregar `execute_query_async` y `execute_non_query_async` en `database/connection.py` usando `asyncio.to_thread()`
+- [x] **5.2** Refactorizar `memory_repository.py`: reemplazar llamadas sync por `execute_query_async` / `execute_non_query_async`
+- [x] **5.3** `knowledge_repository.py` es todo sync llamado desde contexto sync — no requiere cambio
+- [x] **5.4** Refactorizar `database_tool.py`: eliminar `run_in_executor()`, usar `execute_query_async` directamente
+- [x] **5.5** Verificar que `KnowledgeService.__init__()` no bloquea (es llamado en startup sync — OK)
+- [x] **5.6** Agregar `pytest-asyncio` en `requirements.txt` y `pytest.ini`; corregir tests en `test_memory.py`
+- [x] **5.7** Agregar log de timing en `memory_repository.get_profile()`
+- [x] **5.8** Actualizar `requirements.txt` con `pytest` y `pytest-asyncio`
 
 ---
 

@@ -147,18 +147,10 @@ class DatabaseTool(BaseTool):
         Returns:
             Lista de resultados como diccionarios
         """
-        # El db_manager puede ser sync o async
-        if hasattr(self.db_manager, "execute_query_async"):
-            results = await self.db_manager.execute_query_async(query)
-        elif hasattr(self.db_manager, "execute_query"):
-            # Wrapper sync
-            import asyncio
-            loop = asyncio.get_event_loop()
-            results = await loop.run_in_executor(
-                None, self.db_manager.execute_query, query
-            )
-        else:
-            raise ValueError("DatabaseManager does not have execute_query method")
+        if not hasattr(self.db_manager, "execute_query_async"):
+            raise ValueError("DatabaseManager does not have execute_query_async method")
+
+        results = await self.db_manager.execute_query_async(query)
 
         # Convertir a lista de dicts si es necesario
         if results is None:

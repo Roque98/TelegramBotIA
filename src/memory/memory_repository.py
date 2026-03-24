@@ -4,6 +4,7 @@ Memory Repository - Persistencia de memoria para el ReAct Agent.
 
 import json
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any, Optional
 
@@ -28,6 +29,7 @@ class MemoryRepository:
             return None
 
         try:
+            _start = time.perf_counter()
             query = """
                 SELECT
                     u.idUsuario AS Id_Usuario,
@@ -43,7 +45,8 @@ class MemoryRepository:
                 LEFT JOIN abcmasplus..UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
             """
-            results = self.db_manager.execute_query(query, {"user_id": str(user_id)})
+            results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
+            logger.debug(f"get_profile query for {user_id}: {(time.perf_counter() - _start) * 1000:.1f}ms")
 
             if not results:
                 return None
@@ -99,7 +102,7 @@ class MemoryRepository:
                     INSERT (id_usuario, resumen_historial_breve, num_interacciones, fecha_creacion, ultima_actualizacion)
                     VALUES (:user_id, :summary, :count, GETDATE(), GETDATE());
             """
-            self.db_manager.execute_non_query(query, {
+            await self.db_manager.execute_non_query_async(query, {
                 "user_id": int(profile.user_id),
                 "summary": profile.long_term_summary,
                 "count": profile.interaction_count,
@@ -127,7 +130,7 @@ class MemoryRepository:
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
                 ORDER BY lo.fechaEjecucion DESC
             """
-            results = self.db_manager.execute_query(query, {"user_id": str(user_id), "limit": limit})
+            results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id), "limit": limit})
 
             messages = []
             for row in reversed(results):
@@ -180,7 +183,7 @@ class MemoryRepository:
                 FROM abcmasplus..UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup AND ut.activo = 1
             """
-            self.db_manager.execute_non_query(query_sql, {
+            await self.db_manager.execute_non_query_async(query_sql, {
                 "operation": "/ia",
                 "chat_id": str(user_id),
                 "params": params_json,
