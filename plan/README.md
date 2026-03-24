@@ -13,7 +13,10 @@ plan/
 ├── BACKLOG.md                             # Lista completa de mejoras identificadas (23)
 ├── 01-completados/                        # Planes finalizados
 │   ├── PLAN_REACT_MIGRATION.md            # Migracion a ReAct (100%)
-│   └── PLAN_REFACTOR_REPOSITORY_PATTERN.md # Refactor Repository+Service (100%)
+│   ├── PLAN_REFACTOR_REPOSITORY_PATTERN.md # Refactor Repository+Service (100%)
+│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync (100%)
+│   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU (100%)
+│   └── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado (100%)
 ├── 02-activos/                            # Planes en progreso
 │   ├── PLAN_CONSOLIDAR_LEGACY.md          # Eliminar codigo legacy (19 tareas)
 │   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
@@ -21,9 +24,6 @@ plan/
 │   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting verificacion
 │   ├── PLAN_SEC_03_SQL_VALIDATOR.md       # SQL Validator robusto
 │   ├── PLAN_SEC_04_CORS.md                # CORS con restricciones
-│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync ✅
-│   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU
-│   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado
 │   ├── PLAN_ARQ_08_THREAD_SAFETY.md       # ToolRegistry thread-safe
 │   ├── PLAN_ARQ_09_AUTH_MIDDLEWARE.md     # Auth middleware bug fix
 │   ├── PLAN_CAL_10_ERROR_HANDLING.md      # Error handling ReActAgent
@@ -50,8 +50,8 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 4 |
-| Planes activos | 23 |
+| Planes completados | 5 |
+| Planes activos | 20 |
 | Ideas documentadas | 10 |
 | Backlog total | 23 mejoras |
 
@@ -65,6 +65,7 @@ plan/
 | [Refactor Repository Pattern](01-completados/PLAN_REFACTOR_REPOSITORY_PATTERN.md) | 100% (26/26) | `feature/refactor-repository-pattern` | 2026-03-24 |
 | [Consolidar async/sync](01-completados/PLAN_ARQ_05_ASYNC_SYNC.md) | 100% (8/8) | `feature/arq-05-async-sync` | 2026-03-24 |
 | [Cache con evicción LRU](01-completados/PLAN_ARQ_06_CACHE_EVICCION.md) | 100% (5/5) | `feature/arq-06-cache-eviccion` | 2026-03-24 |
+| [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | 100% (4/4) | `feature/arq-07-global-state` | 2026-03-24 |
 
 ---
 
