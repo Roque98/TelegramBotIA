@@ -180,7 +180,7 @@ class KnowledgeTool(BaseTool):
             KnowledgeCategory o None
         """
         try:
-            from src.knowledge.knowledge_categories import KnowledgeCategory
+            from src.knowledge.knowledge_entity import KnowledgeCategory
 
             category_map = {
                 "sistemas": KnowledgeCategory.SISTEMAS,

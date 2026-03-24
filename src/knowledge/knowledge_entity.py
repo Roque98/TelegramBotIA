@@ -1,9 +1,12 @@
 """
-Categorías de conocimiento empresarial.
+Entidades del módulo de conocimiento.
 
-Define las categorías para organizar el conocimiento institucional.
+Define los modelos de datos para categorías y entradas de conocimiento.
 """
+
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import List
 
 
 class KnowledgeCategory(Enum):
@@ -31,17 +34,14 @@ class KnowledgeCategory(Enum):
     """Información sobre tablas y estructura de la base de datos"""
 
     def __str__(self) -> str:
-        """Representación en string."""
         return self.value
 
     @classmethod
     def get_all(cls):
-        """Obtener todas las categorías."""
         return list(cls)
 
     @classmethod
     def get_display_name(cls, category: 'KnowledgeCategory') -> str:
-        """Obtener nombre legible de la categoría."""
         names = {
             cls.PROCESOS: "Procesos",
             cls.POLITICAS: "Políticas",
@@ -49,6 +49,21 @@ class KnowledgeCategory(Enum):
             cls.CONTACTOS: "Contactos",
             cls.SISTEMAS: "Sistemas",
             cls.RECURSOS_HUMANOS: "Recursos Humanos",
-            cls.BASE_DATOS: "Base de Datos"
+            cls.BASE_DATOS: "Base de Datos",
         }
         return names.get(category, category.value.title())
+
+
+@dataclass
+class KnowledgeEntry:
+    """Entrada de conocimiento empresarial."""
+
+    category: KnowledgeCategory
+    question: str
+    answer: str
+    keywords: List[str]
+    related_commands: List[str] = field(default_factory=list)
+    priority: int = 1  # 1=normal, 2=high, 3=critical
+
+    def __repr__(self) -> str:
+        return f"KnowledgeEntry(category={self.category.value}, question='{self.question[:50]}...')"

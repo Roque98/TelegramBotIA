@@ -18,7 +18,7 @@ from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agents.providers.openai_provider import OpenAIProvider
-from src.knowledge import KnowledgeManager
+from src.knowledge import KnowledgeService
 from src.config.settings import settings
 from src.memory.memory_service import MemoryService
 from src.memory.memory_repository import MemoryRepository
@@ -49,7 +49,7 @@ def create_tool_registry(
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    # Usar KnowledgeManager proporcionado (ya debe venir con db_manager)
+    # Usar KnowledgeService proporcionado (ya debe venir con db_manager)
     km = knowledge_manager
 
     # Registrar herramientas
@@ -57,7 +57,7 @@ def create_tool_registry(
     if km is not None:
         registry.register(KnowledgeTool(knowledge_manager=km))
     else:
-        logger.warning("KnowledgeTool not registered: no KnowledgeManager available")
+        logger.warning("KnowledgeTool not registered: no KnowledgeService available")
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
     registry.register(SavePreferenceTool(db_manager=db_manager))
@@ -155,12 +155,12 @@ def create_main_handler(
     llm_provider = create_llm_provider()
 
     try:
-        knowledge_manager = KnowledgeManager(db_manager=db)
+        knowledge_manager = KnowledgeService(db_manager=db)
         logger.info(
-            f"KnowledgeManager created: {len(knowledge_manager.knowledge_base)} entries loaded"
+            f"KnowledgeService created: {len(knowledge_manager.knowledge_base)} entries loaded"
         )
     except Exception as e:
-        logger.warning(f"KnowledgeManager creation failed, knowledge search disabled: {e}")
+        logger.warning(f"KnowledgeService creation failed, knowledge search disabled: {e}")
         knowledge_manager = None
 
     react_agent = create_react_agent(
