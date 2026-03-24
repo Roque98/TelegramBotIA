@@ -3,7 +3,7 @@
 > **Objetivo**: Prevenir el memory leak del cache de MemoryService implementando evicción LRU
 > **Rama**: `feature/arq-06-cache-eviccion`
 > **Prioridad**: 🟠 Alta
-> **Progreso**: 0% (0/5)
+> **Progreso**: 100% (5/5)
 
 ---
 
@@ -38,15 +38,11 @@ La clase `CacheEntry` en `memory_entity.py` ya tiene `is_expired()` y `time_rema
 
 ## Tareas
 
-- [ ] **6.1** Reemplazar `dict` por `collections.OrderedDict` en `MemoryService.__init__()`
-- [ ] **6.2** Implementar método privado `_evict_if_needed()`:
-  - Primero eliminar entradas expiradas (TTL vencido)
-  - Si sigue lleno, eliminar la entrada menos recientemente usada (LRU)
-- [ ] **6.3** Llamar `_evict_if_needed()` antes de cada `set` al cache
-- [ ] **6.4** Agregar método `get_cache_stats()` que retorne: total, expiradas, hit rate
-- [ ] **6.5** Agregar tests:
-  - Cache con 1000 entradas + 1 nueva → la más antigua se elimina
-  - Entradas expiradas se eliminan antes que las LRU
+- [x] **6.1** Reemplazar `dict` por `collections.OrderedDict` en `MemoryService.__init__()`
+- [x] **6.2** Implementar `_evict_if_needed()`: primero expiradas, luego LRU con `popitem(last=False)`
+- [x] **6.3** `_add_to_cache()` llama `_evict_if_needed()` + `move_to_end()` en cada set
+- [x] **6.4** `_get_from_cache()` llama `move_to_end()` en hits; `get_cache_stats()` incluye hit_rate, cache_hits, cache_misses
+- [x] **6.5** 6 tests en `TestMemoryServiceCacheEviction`: max_size, expiradas primero, LRU, hit rate, clear reset, evict manual
 
 ---
 

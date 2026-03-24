@@ -556,51 +556,134 @@ class TestMemoryService:
         assert result is False
 
 
-class TestMemoryServiceCacheCleanup:
-    """Tests para limpieza de cache en MemoryService."""
+class TestMemoryServiceCacheEviction:
+    """Tests para evicción LRU del cache en MemoryService."""
+
+    @pytest.fixture
+    def mock_repository(self):
+        repo = AsyncMock(spec=MemoryRepository)
+        repo.invalidate_cache = MagicMock()
+        repo.clear_cache = MagicMock()
+        repo.get_profile.return_value = None
+        repo.get_recent_messages.return_value = []
+        return repo
 
     @pytest.mark.asyncio
-    async def test_cache_cleanup_on_full(self):
-        """El cache debe limpiarse cuando está lleno."""
-        mock_repository = AsyncMock(spec=MemoryRepository)
-        mock_repository.invalidate_cache = MagicMock()
-        mock_repository.get_profile.return_value = None
-        mock_repository.get_recent_messages.return_value = []
-
+    async def test_cache_nunca_supera_max_size(self, mock_repository):
+        """El cache nunca debe superar max_cache_size."""
         service = MemoryService(
             repository=mock_repository,
             cache_ttl_seconds=300,
-            max_cache_size=3,  # Cache muy pequeño
+            max_cache_size=3,
         )
 
-        # Llenar el cache con 5 usuarios distintos
-        for i in range(5):
+        for i in range(10):
             await service.get_context(str(i))
 
-        # Debe haber limpiado algunas entradas
         assert len(service._cache) <= 3
 
     @pytest.mark.asyncio
-    async def test_expired_entries_cleaned(self):
-        """Las entradas expiradas deben eliminarse."""
-        mock_repository = AsyncMock(spec=MemoryRepository)
-        mock_repository.invalidate_cache = MagicMock()
-        mock_repository.get_profile.return_value = None
-        mock_repository.get_recent_messages.return_value = []
-
+    async def test_entradas_expiradas_se_eliminan_primero(self, mock_repository):
+        """Las entradas expiradas deben eliminarse antes que las LRU."""
         service = MemoryService(
             repository=mock_repository,
             cache_ttl_seconds=1,  # TTL muy corto
+            max_cache_size=5,
+        )
+
+        # Cargar 3 entradas
+        for i in range(3):
+            await service.get_context(str(i))
+
+        # Esperar que expiren
+        await asyncio.sleep(1.2)
+
+        # Verificar que están expiradas
+        for key in list(service._cache.keys()):
+            assert service._cache[key].is_expired()
+
+        # Al agregar una nueva, las expiradas deben eliminarse
+        service._evict_if_needed()
+        assert len(service._cache) == 0
+
+    @pytest.mark.asyncio
+    async def test_lru_elimina_menos_reciente(self, mock_repository):
+        """Al llenar el cache, debe eliminarse el menos recientemente usado."""
+        service = MemoryService(
+            repository=mock_repository,
+            cache_ttl_seconds=300,
+            max_cache_size=3,
+        )
+
+        # Llenar el cache con usuarios 0, 1, 2
+        for i in range(3):
+            await service.get_context(str(i))
+
+        # Acceder al usuario 0 para que sea el más reciente
+        await service.get_context("0")
+
+        # Agregar usuario 3 → debe evictar alguno (no el 0 por ser más reciente)
+        await service.get_context("3")
+
+        assert len(service._cache) <= 3
+        # El usuario 0 debe seguir en cache (accedido recientemente)
+        assert any("0:" in k for k in service._cache.keys())
+
+    @pytest.mark.asyncio
+    async def test_hit_rate_se_calcula_correctamente(self, mock_repository):
+        """get_cache_stats debe retornar hit rate correcto."""
+        service = MemoryService(
+            repository=mock_repository,
+            cache_ttl_seconds=300,
             max_cache_size=10,
         )
 
-        # Agregar entrada
+        await service.get_context("123")  # miss
+        await service.get_context("123")  # hit
+        await service.get_context("123")  # hit
+        await service.get_context("456")  # miss
+
+        stats = service.get_cache_stats()
+        assert stats["cache_hits"] == 2
+        assert stats["cache_misses"] == 2
+        assert stats["hit_rate"] == 0.5
+
+    @pytest.mark.asyncio
+    async def test_clear_cache_resetea_contadores(self, mock_repository):
+        """clear_cache debe resetear hits y misses."""
+        service = MemoryService(
+            repository=mock_repository,
+            cache_ttl_seconds=300,
+            max_cache_size=10,
+        )
+
+        await service.get_context("123")
         await service.get_context("123")
 
-        # Esperar que expire
-        await asyncio.sleep(1.5)
+        service.clear_cache()
 
-        # Verificar que está expirada
-        entry = service._cache.get("123:True:True")
-        if entry:
-            assert entry.is_expired() is True
+        stats = service.get_cache_stats()
+        assert stats["cache_hits"] == 0
+        assert stats["cache_misses"] == 0
+        assert stats["hit_rate"] == 0.0
+
+    def test_evict_if_needed_elimina_expiradas(self, mock_repository):
+        """_evict_if_needed debe eliminar entradas expiradas inmediatamente."""
+        from collections import OrderedDict
+        from datetime import timedelta
+        from src.memory.memory_entity import CacheEntry
+        from src.agents.base.events import UserContext
+
+        service = MemoryService(repository=mock_repository, max_cache_size=10)
+
+        # Insertar entradas ya expiradas manualmente
+        expired_entry = CacheEntry(
+            context=UserContext.empty("old"),
+            ttl_seconds=1,
+            created_at=datetime.now(UTC) - timedelta(seconds=10),
+        )
+        service._cache["old:True:True"] = expired_entry
+
+        service._evict_if_needed()
+
+        assert "old:True:True" not in service._cache
