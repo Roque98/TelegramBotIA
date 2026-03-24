@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes, Application
 
-from src.auth import PermissionChecker, UserManager
+from src.auth import UserService
 from src.utils.status_message import StatusMessage
 
 if TYPE_CHECKING:
@@ -55,8 +55,8 @@ class QueryHandler:
                 return
 
             with db_manager.get_session() as session:
-                user_manager = UserManager(session)
-                telegram_user = user_manager.get_user_by_chat_id(chat_id)
+                user_service = UserService(session)
+                telegram_user = user_service.get_user_by_chat_id(chat_id)
 
                 if not telegram_user:
                     await update.message.reply_text(
@@ -91,14 +91,14 @@ class QueryHandler:
 
         # Verificar permiso para consultas con IA
         with db_manager.get_session() as session:
-            permission_checker = PermissionChecker(session)
-            permission = permission_checker.check_permission(
+            user_service = UserService(session)
+            permission = user_service.check_permission(
                 telegram_user.id_usuario,
                 '/ia'
             )
 
             if not permission.is_allowed:
-                permission_checker.log_operation(
+                user_service.log_operation(
                     user_id=telegram_user.id_usuario,
                     comando='/ia',
                     telegram_chat_id=chat_id,
@@ -124,8 +124,8 @@ class QueryHandler:
                 duration_ms = int((time.time() - start_time) * 1000)
 
                 with db_manager.get_session() as session:
-                    permission_checker = PermissionChecker(session)
-                    permission_checker.log_operation(
+                    user_service = UserService(session)
+                    user_service.log_operation(
                         user_id=telegram_user.id_usuario,
                         comando='/ia',
                         telegram_chat_id=chat_id,
@@ -148,8 +148,8 @@ class QueryHandler:
 
                 duration_ms = int((time.time() - start_time) * 1000)
                 with db_manager.get_session() as session:
-                    permission_checker = PermissionChecker(session)
-                    permission_checker.log_operation(
+                    user_service = UserService(session)
+                    user_service.log_operation(
                         user_id=telegram_user.id_usuario,
                         comando='/ia',
                         telegram_chat_id=chat_id,

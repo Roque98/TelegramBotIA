@@ -86,10 +86,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db_manager = context.bot_data.get('db_manager')
         if db_manager:
-            from src.auth import UserManager
+            from src.auth import UserService
             with db_manager.get_session() as session:
-                user_manager = UserManager(session)
-                telegram_user = user_manager.get_user_by_telegram_chat_id(user.id)
+                user_service = UserService(session)
+                telegram_user = user_service.get_user_by_telegram_chat_id(user.id)
                 if telegram_user and telegram_user.usuario:
                     id_rol = telegram_user.usuario.rol
                     logger.debug(f"Usuario tiene rol: {id_rol}")
@@ -146,10 +146,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db_manager = context.bot_data.get('db_manager')
         if db_manager:
-            from src.auth import UserManager
+            from src.auth import UserService
             with db_manager.get_session() as session:
-                user_manager = UserManager(session)
-                telegram_user = user_manager.get_user_by_telegram_chat_id(user.id)
+                user_service = UserService(session)
+                telegram_user = user_service.get_user_by_telegram_chat_id(user.id)
                 if telegram_user and telegram_user.usuario:
                     id_rol = telegram_user.usuario.rol
                     logger.debug(f"Usuario tiene rol: {id_rol}")

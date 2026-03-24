@@ -13,7 +13,7 @@ from typing import Callable, Awaitable
 from telegram import Update
 from telegram.ext import Application, ContextTypes
 from src.database.connection import DatabaseManager
-from src.auth import UserManager
+from src.auth import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +67,10 @@ class AuthMiddleware:
         # Verificar autenticación en base de datos
         try:
             with self.db_manager.get_session() as session:
-                user_manager = UserManager(session)
+                user_service = UserService(session)
 
                 # Buscar usuario
-                user = user_manager.get_user_by_chat_id(chat_id)
+                user = user_service.get_user_by_chat_id(chat_id)
 
                 if not user:
                     # Usuario no registrado
@@ -100,7 +100,7 @@ class AuthMiddleware:
                 context.user_data['telegram_user'] = user
 
                 # Actualizar última actividad
-                user_manager.update_last_activity(chat_id)
+                user_service.update_last_activity(chat_id)
 
                 return True
 
@@ -176,8 +176,8 @@ def require_auth(func: Callable) -> Callable:
         # Verificar autenticación
         try:
             with db_manager.get_session() as session:
-                user_manager = UserManager(session)
-                user = user_manager.get_user_by_chat_id(chat_id)
+                user_service = UserService(session)
+                user = user_service.get_user_by_chat_id(chat_id)
 
                 if not user:
                     await update.message.reply_text(
@@ -204,7 +204,7 @@ def require_auth(func: Callable) -> Callable:
                 context.user_data['telegram_user'] = user
 
                 # Actualizar última actividad
-                user_manager.update_last_activity(chat_id)
+                user_service.update_last_activity(chat_id)
 
                 # Ejecutar handler original
                 return await func(update, context, *args, **kwargs)
@@ -248,11 +248,9 @@ def require_permission(comando: str):
 
             # Verificar permiso
             try:
-                from src.auth import PermissionChecker
-
                 with db_manager.get_session() as session:
-                    permission_checker = PermissionChecker(session)
-                    result = permission_checker.check_permission(
+                    user_service = UserService(session)
+                    result = user_service.check_permission(
                         user.id_usuario,
                         comando
                     )
