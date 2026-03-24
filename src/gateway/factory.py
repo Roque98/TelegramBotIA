@@ -20,9 +20,8 @@ from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.knowledge import KnowledgeManager
 from src.config.settings import settings
-from src.memory.service import MemoryService
-from src.memory.repository import MemoryRepository
-from src.memory.context_builder import ContextBuilder
+from src.memory.memory_service import MemoryService
+from src.memory.memory_repository import MemoryRepository
 
 from .handler import MainHandler
 
@@ -111,16 +110,11 @@ def create_memory_service(
         MemoryService configurado
     """
     repository = MemoryRepository(db_manager=db_manager)
-    context_builder = ContextBuilder(
-        repository=repository,
-        max_working_memory=10,
-    )
-
     service = MemoryService(
         repository=repository,
-        context_builder=context_builder,
-        cache_ttl_seconds=300,  # 5 minutos
+        cache_ttl_seconds=300,
         max_cache_size=1000,
+        max_working_memory=10,
     )
 
     logger.info("MemoryService created")
