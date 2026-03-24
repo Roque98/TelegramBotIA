@@ -1,7 +1,7 @@
 # Planes del Proyecto Iris Bot
 
 > **Proyecto**: Iris - Bot conversacional con LLM
-> **Ultima actualizacion**: 2026-02-16
+> **Ultima actualizacion**: 2026-03-24
 
 ---
 
@@ -25,7 +25,7 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 1 |
+| Planes completados | 2 |
 | Planes activos | 2 |
 | Ideas documentadas | 10 |
 
@@ -36,6 +36,7 @@ plan/
 | Plan | Progreso | Rama | Fecha |
 |------|----------|------|-------|
 | [Migracion ReAct](01-completados/PLAN_REACT_MIGRATION.md) | 100% (47/47) | `feature/react-agent-migration` | 2024-02-13 |
+| [Refactor Repository Pattern](01-completados/PLAN_REFACTOR_REPOSITORY_PATTERN.md) | 100% (26/26) | `feature/refactor-repository-pattern` | 2026-03-24 |
 
 ---
 

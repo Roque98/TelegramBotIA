@@ -11,7 +11,7 @@ from typing import Any, Optional
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from src.auth.token_middleware import TokenMiddleware
+from src.bot.middleware.token_middleware import TokenMiddleware
 from src.config.settings import settings
 
 logger = logging.getLogger(__name__)

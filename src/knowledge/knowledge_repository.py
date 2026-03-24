@@ -8,8 +8,7 @@ import json
 import logging
 from typing import List, Optional, Dict, Any
 from src.database.connection import DatabaseManager
-from .knowledge_categories import KnowledgeCategory
-from .company_knowledge import KnowledgeEntry
+from .knowledge_entity import KnowledgeCategory, KnowledgeEntry
 
 logger = logging.getLogger(__name__)
 

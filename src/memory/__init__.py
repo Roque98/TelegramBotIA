@@ -2,20 +2,18 @@
 Memory Package.
 
 Proporciona servicios de memoria para el ReAct Agent:
-- MemoryService: Servicio principal con caching
+- MemoryService: Servicio principal con caching y construcción de contexto
 - MemoryRepository: Acceso a datos de memoria
-- ContextBuilder: Construcción de UserContext
-- UserProfile: Modelo de perfil de usuario
+- UserProfile, Interaction, CacheEntry: Entidades
 """
 
-from .context_builder import ContextBuilder
-from .repository import Interaction, MemoryRepository, UserProfile
-from .service import CacheEntry, MemoryService
+from .memory_entity import CacheEntry, Interaction, UserProfile
+from .memory_repository import MemoryRepository
+from .memory_service import MemoryService
 
 __all__ = [
     "MemoryService",
     "MemoryRepository",
-    "ContextBuilder",
     "UserProfile",
     "Interaction",
     "CacheEntry",

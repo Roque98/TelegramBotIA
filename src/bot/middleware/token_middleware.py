@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 
-from src.auth.encryption import desencriptar
+from src.utils.encryption_util import desencriptar
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ class TokenMiddleware:
             >>> print(token)
             "xyz123abc..."
         """
-        from src.auth.encryption import encriptar
+        from src.utils.encryption_util import encriptar
 
         # Generar timestamp actual en formato ISO 8601
         timestamp = datetime.now().isoformat()

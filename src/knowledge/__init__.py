@@ -5,16 +5,17 @@ Proporciona acceso a la base de conocimiento institucional
 y funcionalidades de búsqueda.
 """
 
-from .knowledge_categories import KnowledgeCategory
-from .company_knowledge import KnowledgeEntry  # get_knowledge_base, get_entries_by_category - Solo BD ahora
-from .knowledge_manager import KnowledgeManager
+from .knowledge_entity import KnowledgeCategory, KnowledgeEntry
 from .knowledge_repository import KnowledgeRepository
+from .knowledge_service import KnowledgeService
+
+# Alias para compatibilidad
+KnowledgeManager = KnowledgeService
 
 __all__ = [
     'KnowledgeCategory',
     'KnowledgeEntry',
-    'KnowledgeManager',
     'KnowledgeRepository',
-    # 'get_knowledge_base',  # Comentado - Solo usar BD
-    # 'get_entries_by_category'  # Comentado - Solo usar BD
+    'KnowledgeService',
+    'KnowledgeManager',
 ]

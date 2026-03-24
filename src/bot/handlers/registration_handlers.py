@@ -21,7 +21,7 @@ from telegram.ext import (
     ConversationHandler
 )
 from src.database.connection import DatabaseManager
-from src.auth import RegistrationManager
+from src.auth import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +51,11 @@ class RegistrationHandlers:
 
         # Verificar si ya está registrado
         with self.db_manager.get_session() as session:
-            from src.auth import UserManager
-            user_manager = UserManager(session)
+            user_service = UserService(session)
 
-            if user_manager.is_user_registered(user.id):
-                telegram_user = user_manager.get_user_by_chat_id(user.id)
-                reg_info = user_manager.get_registration_info(user.id)
+            if user_service.is_user_registered(user.id):
+                telegram_user = user_service.get_user_by_chat_id(user.id)
+                reg_info = user_service.get_registration_info(user.id)
                 is_verified = (telegram_user and telegram_user.is_verified) or (reg_info and reg_info.get('verificado'))
 
                 if is_verified:
@@ -107,10 +106,10 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Buscar usuario por número de empleado
-                user_data = reg_manager.find_user_by_employee_id(employee_id)
+                user_data = user_service.find_user_by_employee_id(employee_id)
 
                 if not user_data:
                     await update.message.reply_text(
@@ -123,7 +122,7 @@ class RegistrationHandlers:
                     return WAITING_FOR_EMPLOYEE_ID
 
                 # Iniciar registro
-                success, message, verification_code = reg_manager.start_registration(
+                success, message, verification_code = user_service.start_registration(
                     user_id=user_data['idUsuario'],
                     chat_id=user.id,
                     username=user.username,
@@ -197,19 +196,17 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Verificar cuenta
-                success, message = reg_manager.verify_account(
+                success, message = user_service.verify_account(
                     chat_id=user.id,
                     verification_code=verification_code
                 )
 
                 if success:
                     # Obtener información del usuario verificado
-                    from src.auth import UserManager
-                    user_manager = UserManager(session)
-                    telegram_user = user_manager.get_user_by_chat_id(user.id)
+                    telegram_user = user_service.get_user_by_chat_id(user.id)
 
                     await update.message.reply_text(
                         f"🎉 *¡Verificación exitosa!*\n\n"
@@ -242,10 +239,10 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Reenviar código
-                success, message, verification_code = reg_manager.resend_verification_code(
+                success, message, verification_code = user_service.resend_verification_code(
                     chat_id=user.id
                 )
 
