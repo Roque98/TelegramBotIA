@@ -1,1 +1,0 @@
-"""Tests para classifiers module."""

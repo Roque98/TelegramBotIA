@@ -4,7 +4,11 @@
       "Bash(python:*)",
       "Bash(cp:*)",
       "Bash(cd:*)",
-      "Bash(git)"
+      "Bash(git)",
+      "Bash(ls \"C:\\\\Users\\\\Angel David\\\\Documents\\\\proyectos\\\\TelegramBotIA\\\\tests\"\" && ls \"C:UsersAngel DavidDocumentsproyectosTelegramBotIA\" | grep -E \"pytest)",
+      "Bash(setup)",
+      "Bash(pyproject \")",
+      "Bash(find tests:*)"
     ],
     "deny": [],
     "ask": []
