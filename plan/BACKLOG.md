@@ -1,7 +1,7 @@
 # BACKLOG — Iris Bot
 
 > **Última actualización**: 2026-03-25
-> **Completados**: 5 de 23
+> **Completados**: 6 de 23
 > **Total de mejoras identificadas**: 23
 > **Fuente**: Análisis exhaustivo del código fuente
 
@@ -34,7 +34,7 @@
 
 | # | Plan | Archivo clave | Estado |
 |---|------|---------------|--------|
-| 10 | [Error handling ReActAgent](02-activos/PLAN_CAL_10_ERROR_HANDLING.md) | `agents/react/agent.py` | Pendiente |
+| 10 | [Error handling ReActAgent](01-completados/PLAN_CAL_10_ERROR_HANDLING.md) | `agents/react/agent.py` | ✅ Completado |
 | 11 | [Cobertura de tests al 80%](02-activos/PLAN_CAL_11_TESTS.md) | `tests/` | Pendiente |
 | 12 | [Estadísticas reales](02-activos/PLAN_CAL_12_ESTADISTICAS.md) | `bot/handlers/command_handlers.py` | Pendiente |
 | 13 | [Notificaciones al admin](02-activos/PLAN_CAL_13_NOTIFICACIONES.md) | `bot/middleware/logging_middleware.py` | Pendiente |
