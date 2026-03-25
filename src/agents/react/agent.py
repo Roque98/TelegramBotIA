@@ -6,6 +6,7 @@ razona sobre qué hacer, ejecuta una acción, observa el resultado,
 y repite hasta tener suficiente información.
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -220,38 +221,63 @@ class ReActAgent(BaseAgent):
                 data={"scratchpad": scratchpad.to_dict()},
             )
 
-        except MaxIterationsException as e:
+        except asyncio.CancelledError:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"Max iterations exception: {e}")
-            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "MaxIterationsException", tracer)
-            return AgentResponse.error_response(
-                agent_name=self.name,
-                error=str(e),
-                execution_time_ms=elapsed_ms,
-                steps_taken=len(scratchpad),
-            )
+            logger.warning(f"ReAct execution cancelled after {elapsed_ms:.2f}ms")
+            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "CancelledError", tracer)
+            raise
 
-        except LLMException as e:
-            elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"LLM error: {e}")
-            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "LLMException", tracer)
-            return AgentResponse.error_response(
-                agent_name=self.name,
-                error=f"Error del modelo: {e}",
-                execution_time_ms=elapsed_ms,
-                steps_taken=len(scratchpad),
-            )
+        except (MaxIterationsException, LLMException, ToolException, Exception) as e:
+            return self._handle_agent_error(e, start_time, scratchpad, kwargs, tracer)
 
-        except Exception as e:
-            elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.exception(f"Unexpected error in ReAct: {e}")
-            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), type(e).__name__, tracer)
-            return AgentResponse.error_response(
-                agent_name=self.name,
-                error=str(e),
-                execution_time_ms=elapsed_ms,
-                steps_taken=len(scratchpad),
-            )
+    def _handle_agent_error(
+        self,
+        error: Exception,
+        start_time: float,
+        scratchpad: "Scratchpad",
+        kwargs: dict,
+        tracer: Optional[Any],
+    ) -> AgentResponse:
+        """
+        Centraliza el manejo de errores del loop ReAct.
+
+        Calcula elapsed_ms, registra el log apropiado según el tipo de
+        excepción, llama a _record_error_metrics y construye el
+        AgentResponse de error. Agregar soporte para un nuevo tipo de
+        excepción solo requiere modificar este método.
+
+        Args:
+            error: Excepción capturada
+            start_time: Timestamp de inicio (perf_counter)
+            scratchpad: Scratchpad con los pasos ejecutados
+            kwargs: kwargs originales del execute()
+            tracer: Instancia de tracer (puede ser None)
+
+        Returns:
+            AgentResponse de error listo para devolver al caller
+        """
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+        if isinstance(error, MaxIterationsException):
+            logger.error(f"Max iterations exception: {error}")
+            error_msg = str(error)
+        elif isinstance(error, LLMException):
+            logger.error(f"LLM error: {error}")
+            error_msg = f"Error del modelo: {error}"
+        elif isinstance(error, ToolException):
+            logger.error(f"Tool error ({error.tool_name}): {error}")
+            error_msg = f"Error en herramienta '{error.tool_name}': {error.message}"
+        else:
+            logger.exception(f"Unexpected error in ReAct: {error}")
+            error_msg = str(error)
+
+        self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), type(error).__name__, tracer)
+        return AgentResponse.error_response(
+            agent_name=self.name,
+            error=error_msg,
+            execution_time_ms=elapsed_ms,
+            steps_taken=len(scratchpad),
+        )
 
     def _record_error_metrics(
         self,
