@@ -1,8 +1,8 @@
 # BACKLOG — Iris Bot
 
 > **Última actualización**: 2026-03-25
-> **Completados**: 6 de 23
-> **Total de mejoras identificadas**: 23
+> **Completados**: 6 de 24
+> **Total de mejoras identificadas**: 24
 > **Fuente**: Análisis exhaustivo del código fuente
 
 ---
@@ -18,7 +18,7 @@
 
 ---
 
-## 🟠 Alta — Arquitectura y Estabilidad (5)
+## 🟠 Alta — Arquitectura y Estabilidad (6)
 
 | # | Plan | Archivo clave | Estado |
 |---|------|---------------|--------|
@@ -27,6 +27,7 @@
 | 7 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | `api/chat_endpoint.py` | ✅ Completado |
 | 8 | [ToolRegistry thread-safe](01-completados/PLAN_ARQ_08_THREAD_SAFETY.md) | `agents/tools/registry.py` | ✅ Completado |
 | 9 | [Auth middleware bug fix](01-completados/PLAN_ARQ_09_AUTH_MIDDLEWARE.md) | `bot/middleware/auth_middleware.py` | ✅ Completado |
+| 24 | [Limpieza estructural](02-activos/PLAN_ARQ_24_STRUCT_CLEANUP.md) | `tests/`, `src/api/`, raíz | Pendiente |
 
 ---
 
