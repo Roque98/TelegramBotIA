@@ -1,7 +1,7 @@
 # BACKLOG — Iris Bot
 
 > **Última actualización**: 2026-03-25
-> **Completados**: 4 de 23
+> **Completados**: 5 de 23
 > **Total de mejoras identificadas**: 23
 > **Fuente**: Análisis exhaustivo del código fuente
 
@@ -26,7 +26,7 @@
 | 6 | [Cache con evicción](01-completados/PLAN_ARQ_06_CACHE_EVICCION.md) | `memory/memory_service.py` | ✅ Completado |
 | 7 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | `api/chat_endpoint.py` | ✅ Completado |
 | 8 | [ToolRegistry thread-safe](01-completados/PLAN_ARQ_08_THREAD_SAFETY.md) | `agents/tools/registry.py` | ✅ Completado |
-| 9 | [Auth middleware bug fix](02-activos/PLAN_ARQ_09_AUTH_MIDDLEWARE.md) | `bot/middleware/auth_middleware.py` | Pendiente |
+| 9 | [Auth middleware bug fix](01-completados/PLAN_ARQ_09_AUTH_MIDDLEWARE.md) | `bot/middleware/auth_middleware.py` | ✅ Completado |
 
 ---
 

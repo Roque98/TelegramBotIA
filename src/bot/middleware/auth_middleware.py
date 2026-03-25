@@ -61,7 +61,7 @@ class AuthMiddleware:
 
         # Verificar si el comando es público
         message_text = update.message.text if update.message else ""
-        if any(cmd in message_text for cmd in self.PUBLIC_COMMANDS):
+        if any(message_text.startswith(cmd) for cmd in self.PUBLIC_COMMANDS):
             return True
 
         # Verificar autenticación en base de datos
