@@ -9,9 +9,11 @@ Cobertura:
 - ReActAgent: Loop completo con mock LLM
 """
 
+import asyncio
 import pytest
 import json
-from unittest.mock import AsyncMock, MagicMock
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.agents.react.schemas import ActionType, ReActStep, ReActResponse
 from src.agents.react.scratchpad import Scratchpad
@@ -22,6 +24,7 @@ from src.agents.react.prompts import (
     build_continue_prompt,
 )
 from src.agents.base.events import UserContext
+from src.agents.base.exceptions import LLMException, MaxIterationsException, ToolException
 from src.agents.tools.registry import ToolRegistry
 from src.agents.tools.base import BaseTool, ToolDefinition, ToolResult, ToolCategory
 
@@ -491,3 +494,97 @@ class TestReActAgent:
         result = await agent.health_check()
 
         assert result is False
+
+
+class TestHandleAgentError:
+    """Tests para _handle_agent_error — manejo centralizado de errores."""
+
+    @pytest.fixture
+    def agent(self):
+        ToolRegistry.reset()
+        registry = ToolRegistry()
+        llm = AsyncMock()
+        return ReActAgent(llm=llm, tool_registry=registry)
+
+    @pytest.fixture
+    def scratchpad(self):
+        return Scratchpad(max_steps=5)
+
+    def _call_handle(self, agent, error, scratchpad):
+        """Helper para llamar _handle_agent_error con valores dummy."""
+        return agent._handle_agent_error(
+            error=error,
+            start_time=time.perf_counter(),
+            scratchpad=scratchpad,
+            kwargs={},
+            tracer=None,
+        )
+
+    def test_llm_exception_prefija_mensaje(self, agent, scratchpad):
+        """LLMException debe devolver error con prefijo 'Error del modelo'."""
+        error = LLMException(message="timeout", provider="openai")
+        response = self._call_handle(agent, error, scratchpad)
+
+        assert response.success is False
+        assert "Error del modelo" in response.error
+
+    def test_max_iterations_exception_mensaje(self, agent, scratchpad):
+        """MaxIterationsException debe devolver error con su mensaje."""
+        error = MaxIterationsException(max_iterations=10, steps_taken=10)
+        response = self._call_handle(agent, error, scratchpad)
+
+        assert response.success is False
+        assert "iteraciones" in response.error.lower()
+
+    def test_tool_exception_incluye_nombre_tool(self, agent, scratchpad):
+        """ToolException debe incluir el nombre del tool en el mensaje."""
+        error = ToolException(message="connection refused", tool_name="database_query")
+        response = self._call_handle(agent, error, scratchpad)
+
+        assert response.success is False
+        assert "database_query" in response.error
+
+    def test_generic_exception_devuelve_error(self, agent, scratchpad):
+        """Exception genérica debe devolver error con su mensaje."""
+        error = RuntimeError("algo explotó")
+        response = self._call_handle(agent, error, scratchpad)
+
+        assert response.success is False
+        assert "algo explotó" in response.error
+
+    def test_steps_taken_en_respuesta(self, agent, scratchpad):
+        """steps_taken en la respuesta debe reflejar los pasos ejecutados."""
+        scratchpad.add_step("t", ActionType.CALCULATE, {}, "obs")
+        scratchpad.add_step("t2", ActionType.CALCULATE, {}, "obs2")
+
+        error = RuntimeError("fallo")
+        response = self._call_handle(agent, error, scratchpad)
+
+        assert response.steps_taken == 2
+
+    @pytest.mark.asyncio
+    async def test_cancelled_error_se_propaga(self, agent):
+        """asyncio.CancelledError debe re-lanzarse para no bloquear la cancelación."""
+        ToolRegistry.reset()
+        registry = ToolRegistry()
+        agent2 = ReActAgent(llm=AsyncMock(), tool_registry=registry)
+        agent2.llm.generate = AsyncMock(side_effect=asyncio.CancelledError())
+
+        with pytest.raises(asyncio.CancelledError):
+            await agent2.execute("query", UserContext.empty("user_1"))
+
+    @pytest.mark.asyncio
+    async def test_llm_exception_via_execute(self, agent):
+        """LLMException lanzada por el LLM debe producir error response desde execute()."""
+        ToolRegistry.reset()
+        registry = ToolRegistry()
+        llm = AsyncMock()
+        llm.generate = AsyncMock(
+            side_effect=LLMException(message="rate limit", provider="openai")
+        )
+        agent2 = ReActAgent(llm=llm, tool_registry=registry)
+
+        response = await agent2.execute("query", UserContext.empty("user_1"))
+
+        assert response.success is False
+        assert "modelo" in response.error.lower()
