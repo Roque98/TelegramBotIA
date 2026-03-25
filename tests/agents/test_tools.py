@@ -11,6 +11,7 @@ Cobertura:
 """
 
 import pytest
+import threading
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -384,6 +385,26 @@ class TestToolRegistry:
 
         assert len(registry) == 1
         assert "my_tool" in registry
+
+    def test_concurrencia_singleton(self):
+        """10 threads creando ToolRegistry simultáneamente deben obtener la misma instancia."""
+        ToolRegistry.reset()
+        instances = []
+        barrier = threading.Barrier(10)
+
+        def create_instance():
+            barrier.wait()  # Sincronizar todos los threads para que arranquen a la vez
+            instances.append(ToolRegistry())
+
+        threads = [threading.Thread(target=create_instance) for _ in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(instances) == 10
+        first = instances[0]
+        assert all(inst is first for inst in instances), "Todas las instancias deben ser el mismo objeto"
 
 
 class TestSafeMathEvaluator:

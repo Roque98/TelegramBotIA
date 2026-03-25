@@ -6,6 +6,7 @@ la descripción de herramientas para el prompt del LLM.
 """
 
 import logging
+import threading
 from typing import Optional
 
 from .base import BaseTool, ToolCategory
@@ -27,14 +28,17 @@ class ToolRegistry:
     """
 
     _instance: Optional["ToolRegistry"] = None
+    _lock: threading.Lock = threading.Lock()
 
     def __new__(cls) -> "ToolRegistry":
-        """Implementar patrón Singleton."""
+        """Implementar patrón Singleton con double-checked locking (thread-safe)."""
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._tools: dict[str, BaseTool] = {}
-            cls._instance._initialized = True
-            logger.info("ToolRegistry inicializado")
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._tools: dict[str, BaseTool] = {}
+                    cls._instance._initialized = True
+                    logger.info("ToolRegistry inicializado")
         return cls._instance
 
     def register(self, tool: BaseTool) -> None:
@@ -160,7 +164,9 @@ class ToolRegistry:
         """
         Limpia todas las herramientas del registro.
 
-        ADVERTENCIA: Usar solo en testing.
+        .. warning::
+            **Solo para uso en tests.** No llamar en código de producción.
+            Elimina todas las herramientas registradas sin posibilidad de recuperación.
         """
         self._tools.clear()
         logger.warning("ToolRegistry limpiado completamente")
@@ -168,13 +174,16 @@ class ToolRegistry:
     @classmethod
     def reset(cls) -> None:
         """
-        Resetea el singleton.
+        Resetea el singleton completo (instancia + herramientas).
 
-        ADVERTENCIA: Usar solo en testing.
+        .. warning::
+            **Solo para uso en tests.** No llamar en código de producción.
+            Destruye la instancia singleton; el próximo acceso creará una nueva.
         """
-        if cls._instance:
-            cls._instance._tools.clear()
-        cls._instance = None
+        with cls._lock:
+            if cls._instance:
+                cls._instance._tools.clear()
+            cls._instance = None
 
     def get_stats(self) -> dict[str, int]:
         """
