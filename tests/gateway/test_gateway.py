@@ -17,8 +17,8 @@ sys.modules["telegram"] = MagicMock()
 sys.modules["telegram.ext"] = MagicMock()
 
 from src.gateway.message_gateway import MessageGateway
-from src.gateway.handler import MainHandler
-from src.gateway.factory import (
+from src.pipeline.handler import MainHandler
+from src.pipeline.factory import (
     create_tool_registry,
     create_memory_service,
     HandlerManager,
