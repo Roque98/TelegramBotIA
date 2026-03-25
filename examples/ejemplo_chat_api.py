@@ -316,7 +316,7 @@ def main():
     print("+" + "=" * 68 + "+")
     print()
     print("[NOTA] Asegúrate de que el servidor esté corriendo:")
-    print("       python src/api/chat_endpoint.py")
+    print("       python src/chat_endpoint.py")
     print()
 
     try:
@@ -339,7 +339,7 @@ def main():
         print()
         print("[ERROR] No se pudo conectar al servidor")
         print("Asegúrate de ejecutar primero:")
-        print("  python src/api/chat_endpoint.py")
+        print("  python src/chat_endpoint.py")
         print()
 
 
