@@ -39,7 +39,8 @@ plan/
 │   ├── PLAN_FUN_20_MULTI_AGENTE.md        # Multi-agente especialistas
 │   ├── PLAN_FUN_21_RETRY.md               # Retry con Tenacity
 │   ├── PLAN_FUN_22_DASHBOARD.md           # Dashboard de monitoreo
-│   └── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
+│   ├── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
+│   └── PLAN_ARQ_25_SRC_LAYOUT.md         # Reorganización de capas src/
 └── 03-ideas/                              # Ideas y propuestas
     └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
 ```
@@ -53,7 +54,7 @@ plan/
 | Planes completados | 5 |
 | Planes activos | 20 |
 | Ideas documentadas | 10 |
-| Backlog total | 23 mejoras |
+| Backlog total | 25 mejoras |
 
 ---
 
