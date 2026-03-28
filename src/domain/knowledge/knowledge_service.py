@@ -9,7 +9,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from .knowledge_entity import KnowledgeEntry, KnowledgeCategory
 from .knowledge_repository import KnowledgeRepository
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 

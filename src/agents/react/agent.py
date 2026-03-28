@@ -28,7 +28,7 @@ from .scratchpad import Scratchpad
 
 # Importación opcional de observability (no falla si no está disponible)
 try:
-    from src.observability import get_tracer, get_metrics
+    from src.infra.observability import get_tracer, get_metrics
     _OBSERVABILITY_AVAILABLE = True
 except ImportError:
     _OBSERVABILITY_AVAILABLE = False

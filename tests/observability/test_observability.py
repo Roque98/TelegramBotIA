@@ -13,7 +13,7 @@ import pytest
 import time
 from datetime import UTC, datetime
 
-from src.observability.tracing import (
+from src.infra.observability.tracing import (
     TraceSpan,
     TraceContext,
     Tracer,
@@ -21,7 +21,7 @@ from src.observability.tracing import (
     get_tracer,
     configure_tracing,
 )
-from src.observability.metrics import (
+from src.infra.observability.metrics import (
     LatencyStats,
     Counter,
     MetricsCollector,

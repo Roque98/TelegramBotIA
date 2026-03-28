@@ -20,7 +20,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler
 )
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.domain.auth import UserService
 
 logger = logging.getLogger(__name__)

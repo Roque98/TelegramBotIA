@@ -4,7 +4,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sqlalchemy import text
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.agent.memory import MemoryRepository
 
 db_manager = DatabaseManager()

@@ -276,7 +276,7 @@ if __name__ == "__main__":
     )
 
     # Inicializar handler antes de arrancar el servidor (evita race condition)
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
     get_handler_manager().initialize(DatabaseManager())
     logger.info("HandlerManager inicializado correctamente")
 

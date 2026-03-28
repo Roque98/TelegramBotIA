@@ -8,7 +8,7 @@ from typing import Any, List, Dict, Optional
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, Application
 from src.domain.knowledge import KnowledgeRepository
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 

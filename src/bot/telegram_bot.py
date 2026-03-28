@@ -8,7 +8,7 @@ import logging
 from telegram import Update
 from telegram.ext import Application
 from src.config.settings import settings
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.gateway import create_main_handler
 from .handlers import (
     register_command_handlers,

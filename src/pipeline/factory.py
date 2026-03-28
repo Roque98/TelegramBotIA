@@ -26,7 +26,7 @@ from src.domain.memory.memory_repository import MemoryRepository
 from .handler import MainHandler
 
 if TYPE_CHECKING:
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ def create_main_handler(
     Returns:
         MainHandler configurado
     """
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
 
     llm_provider = create_llm_provider()

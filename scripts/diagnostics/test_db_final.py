@@ -6,7 +6,7 @@ Verifica que la configuración corregida funcione correctamente.
 import sys
 import time
 from src.config.settings import settings
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 
 print("="*80)
 print("TEST FINAL DE VALIDACIÓN - SQL SERVER")
