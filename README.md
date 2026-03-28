@@ -114,18 +114,18 @@ git checkout -b develop-mi-proyecto
 
 ### Documentación Completa
 
-- **[COMMIT_GUIDELINES.md](COMMIT_GUIDELINES.md)**: Guía de commits y convenciones
-- **[GITFLOW.md](GITFLOW.md)**: Estrategia completa de branches y versionado
+- **[COMMIT_GUIDELINES.md](docs/desarrollador/COMMIT_GUIDELINES.md)**: Guía de commits y convenciones
+- **[GITFLOW.md](docs/desarrollador/GITFLOW.md)**: Estrategia completa de branches y versionado
 
 ## 🤝 Contribuir
 
 1. Fork del proyecto
 2. Crear feature branch desde `develop` (`git checkout -b feature/AmazingFeature`)
-3. Commit con mensajes descriptivos siguiendo [Conventional Commits](COMMIT_GUIDELINES.md)
+3. Commit con mensajes descriptivos siguiendo [Conventional Commits](docs/desarrollador/COMMIT_GUIDELINES.md)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abrir Pull Request hacia `develop`
 
 ## 📋 Versiones
 
 - **v0.1.0-base**: Versión base/template del proyecto
-- Ver [GITFLOW.md](GITFLOW.md) para información sobre versionado semántico
+- Ver [GITFLOW.md](docs/desarrollador/GITFLOW.md) para información sobre versionado semántico

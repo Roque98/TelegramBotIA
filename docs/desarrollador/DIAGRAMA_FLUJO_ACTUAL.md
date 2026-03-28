@@ -1,362 +1,201 @@
-# 📊 Diagrama de Flujo - Sistema Actual
+# Diagrama de Flujo — Sistema Actual (ReAct)
 
-## 🔄 Flujo General del Bot
+> **Última actualización:** 2026-03-28
+> **Arquitectura:** ReAct Agent (Reasoning + Acting)
+
+---
+
+## Flujo General — Mensaje de Telegram
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    👤 Usuario en Telegram                        │
-│                  /ia ¿Cómo solicito vacaciones?                 │
+│                    Usuario en Telegram                           │
+│            "¿Cuántas ventas hubo ayer?"                         │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      🤖 TelegramBot                              │
-│                  Recibe comando /ia + query                      │
+│                  AuthMiddleware                                  │
+│  - Verifica registro y estado activo (UserService)              │
+│  - Cachea TelegramUser en context.user_data                     │
+│  - Rechaza usuarios no registrados con mensaje apropiado        │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ Usuario válido
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Handler (QueryHandler / tools_handlers)            │
+│  - Extrae texto/comando                                         │
+│  - Verifica permiso para el comando via UserService             │
+│  - Llama a MainHandler.handle_telegram(update, context)         │
 └────────────────────────────┬────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    🧠 LLMAgent.process_query()                   │
+│                    MainHandler._process_event()                  │
 │                                                                  │
-│   ┌──────────────────────────────────────────────────────┐     │
-│   │  1️⃣ QueryClassifier.classify(query)                  │     │
-│   │                                                       │     │
-│   │     ┌─────────────────────────────────────┐          │     │
-│   │     │ KnowledgeManager.search(query)      │          │     │
-│   │     │ • Busca en 24 entradas              │          │     │
-│   │     │ • Scoring por keywords + prioridad  │          │     │
-│   │     │ • Retorna top matches               │          │     │
-│   │     └─────────────────────────────────────┘          │     │
-│   │                      │                                │     │
-│   │                      ▼                                │     │
-│   │     ┌─────────────────────────────────────┐          │     │
-│   │     │ LLM clasifica con contexto          │          │     │
-│   │     │ • Si hay knowledge → KNOWLEDGE      │          │     │
-│   │     │ • Si pide datos → DATABASE          │          │     │
-│   │     │ • Charla general → GENERAL          │          │     │
-│   │     └─────────────────────────────────────┘          │     │
-│   └──────────────────────────────────────────────────────┘     │
-│                             │                                    │
-│                   ┌─────────┴──────────┐                        │
-│                   │                    │                         │
-│         ┌─────────▼────────┐ ┌────────▼────────┐ ┌──────────▼─┐│
-│         │   KNOWLEDGE      │ │    DATABASE     │ │  GENERAL   ││
-│         │   (Políticas,    │ │  (Ventas, BD)   │ │  (Saludos) ││
-│         │   Procesos)      │ │                 │ │            ││
-│         └─────────┬────────┘ └────────┬────────┘ └──────────┬─┘│
-│                   │                   │                      │  │
-└───────────────────┼───────────────────┼──────────────────────┼──┘
-                    │                   │                      │
-                    ▼                   ▼                      ▼
+│  1. MessageGateway.normalize() → ConversationEvent              │
+│  2. MemoryService.get_context(user_id) → UserContext            │
+│     ├── Cache hit (TTL=300s) → UserContext inmediato            │
+│     └── Cache miss → BD (profile + últimas 10 interacciones)   │
+│  3. ReActAgent.execute(query, context) → AgentResponse          │
+│  4. MemoryService.record_interaction() [no-bloqueante]          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
+                  [Ver: Loop ReAct abajo]
 ```
 
 ---
 
-## 🎯 Flujo KNOWLEDGE (Información Empresarial)
+## Loop ReAct — ReActAgent.execute()
 
 ```
+ReActAgent recibe: query="¿Cuántas ventas hubo ayer?", context=UserContext
+         │
+         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Query: "¿Cómo solicito vacaciones?"                            │
+│  Construir system_prompt:                                       │
+│  - Identidad del bot (REACT_SYSTEM_PROMPT)                      │
+│  - tools_description (ToolRegistry.get_tools_prompt())          │
+│  - user_context (nombre, rol, historial)                        │
 └────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              📚 KnowledgeManager.search()                        │
-│                                                                  │
-│  1. Busca keywords: ["vacaciones", "solicitar", "pedir"]        │
-│  2. Calcula scores:                                             │
-│     • Keywords match: +1.0 por keyword                          │
-│     • Priority multiplier: x1.2 (prioridad 2)                   │
-│     • Question similarity: +0.5                                 │
-│  3. Encuentra: "¿Cómo solicito vacaciones?" (score: 2.4)        │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           🎨 get_knowledge_context()                             │
-│                                                                  │
-│  Genera contexto formateado:                                    │
-│  📚 CONOCIMIENTO INSTITUCIONAL RELEVANTE:                       │
-│  **1. ¿Cómo solicito vacaciones?**                              │
-│  🏖️ Para solicitar vacaciones:                                  │
-│  1️⃣ Ingresar al portal...                                       │
-│  2️⃣ Ir a la sección...                                          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│          💬 LLM (GENERAL_RESPONSE_V2 + context)                  │
-│                                                                  │
-│  Genera respuesta en lenguaje natural con:                      │
-│  • Emojis relevantes                                            │
-│  • Buen espaciado                                               │
-│  • Basado en el conocimiento                                    │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ✅ Respuesta al Usuario                       │
-│                                                                  │
-│  🏖️ **Para solicitar vacaciones:**                              │
-│  1️⃣ Ingresar al portal de empleados...                          │
-│  2️⃣ Ir a la sección 'Solicitudes > Vacaciones'...              │
-│  ...                                                             │
-└─────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                    ITERACIÓN DEL LOOP (máx. 10)                   │
+│                                                                   │
+│  OpenAIProvider.generate_structured(prompt, ReActResponse)        │
+│          │                                                        │
+│          ▼                                                        │
+│  {                                                                │
+│    "thought": "Necesito consultar la base de datos",             │
+│    "action": "database_query",                                    │
+│    "action_input": {"query": "ventas de ayer"},                   │
+│    "final_answer": null                                           │
+│  }                                                                │
+│          │                                                        │
+│          ├─ action == "finish" ──────────────────────────────────┼──► AgentResponse
+│          │                                                        │
+│          └─ action == tool_name                                   │
+│                    │                                              │
+│                    ▼                                              │
+│          ToolRegistry.get(action) → BaseTool                      │
+│                    │                                              │
+│                    ▼                                              │
+│          tool.execute(**action_input) → ToolResult                │
+│                    │                                              │
+│          scratchpad.add_step(thought, action, observation)        │
+│                    │                                              │
+│          ──────────┘ (siguiente iteración con scratchpad)         │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📊 Flujo DATABASE (Consultas SQL)
+## Flujo DATABASE — Tool database_query
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Query: "¿Cuántas ventas hay del producto Laptop?"              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│        📚 KnowledgeManager.search()                              │
-│  Score bajo (no hay entrada específica sobre conteo de Laptop)  │
-│  → No es KNOWLEDGE                                              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│         🎯 Clasificado como DATABASE                             │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               🗄️ DatabaseManager.get_schema()                    │
-│  Obtiene esquema de tabla Ventas:                               │
-│  • customer_id, product_name, quantity, unit_price, total_price │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│            💻 SQLGenerator.generate_sql()                        │
-│                                                                  │
-│  Prompt: SQL_GENERATION_V3 + esquema + query                    │
-│  LLM genera:                                                     │
-│  SELECT COUNT(*) as total_ventas,                               │
-│         SUM(quantity) as unidades,                              │
-│         SUM(total_price) as ingresos                            │
-│  FROM [Pruebas].[dbo].[Ventas]                                  │
-│  WHERE product_name = 'Laptop'                                  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              ✅ SQLValidator.validate()                          │
-│  • Verifica que sea solo SELECT                                 │
-│  • No comandos peligrosos (DROP, DELETE, etc)                   │
-│  • Sintaxis válida                                              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│            🗄️ DatabaseManager.execute_query()                    │
-│                                                                  │
-│  Ejecuta SQL → Resultados:                                      │
-│  [                                                               │
-│    {                                                             │
-│      "total_ventas": 15,                                        │
-│      "unidades": 45,                                            │
-│      "ingresos": 22500                                          │
-│    }                                                             │
-│  ]                                                               │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│       🎨 ResponseFormatter.format_query_results()                │
-│                                                                  │
-│  🆕 CON LENGUAJE NATURAL (use_natural_language=True)             │
-│                                                                  │
-│  1. Formatea resultados para LLM:                               │
-│     "1. total_ventas: 15, unidades: 45, ingresos: 22500"       │
-│                                                                  │
-│  2. Usa prompt RESULT_SUMMARY_V2:                               │
-│     • "Genera resumen con EMOJIS"                               │
-│     • "Usa saltos de línea"                                     │
-│     • "Destaca datos importantes"                               │
-│                                                                  │
-│  3. LLM genera respuesta natural                                │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ✅ Respuesta al Usuario                       │
-│                                                                  │
-│  📊 **Ventas de Laptop:**                                        │
-│                                                                  │
-│  Encontré 15 ventas del producto Laptop en el sistema.          │
-│                                                                  │
-│  💰 **Total generado:** $22,500                                 │
-│  📦 **Unidades vendidas:** 45 unidades                          │
-│  💵 **Precio promedio:** $500 por unidad                        │
-│                                                                  │
-│  ✨ Este producto representa el 23% de tus ventas totales       │
-└─────────────────────────────────────────────────────────────────┘
+action_input: {"query": "ventas de ayer"}
+         │
+         ▼
+DatabaseTool.execute(query="ventas de ayer")
+         │
+         ├── 1. LLM genera SQL desde lenguaje natural
+         │         SELECT COUNT(*) FROM Ventas
+         │         WHERE CAST(fecha AS DATE) = CAST(GETDATE()-1 AS DATE)
+         │
+         ├── 2. SQLValidator.validate(sql)
+         │         ✅ Solo SELECT/WITH/EXEC permitido
+         │         ❌ INSERT/UPDATE/DELETE bloqueado
+         │
+         ├── 3. DatabaseManager.execute_query(sql) → [{count: 45}]
+         │
+         └── 4. LLM formatea → "Ayer se registraron 45 ventas"
+                    │
+                    ▼
+         ToolResult(success=True, observation="Ayer se registraron 45 ventas")
 ```
 
 ---
 
-## 🚫 Flujo GENERAL (Redirigir Usuario)
+## Flujo KNOWLEDGE — Tool knowledge_search
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Query: "Hola, ¿cómo estás?"                                    │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│        📚 KnowledgeManager.search()                              │
-│  Score muy bajo (no es información empresarial)                 │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│         🎯 Clasificado como GENERAL                              │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│          🔄 Redirigir al usuario (NO responder)                  │
-│                                                                  │
-│  Mensaje estático explicando el propósito del bot               │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ℹ️ Mensaje Informativo                        │
-│                                                                  │
-│  👋 ¡Hola! Soy un asistente especializado en información        │
-│  empresarial y consultas de base de datos.                      │
-│                                                                  │
-│  🎯 **Puedo ayudarte con:**                                      │
-│  📋 Información Institucional                                   │
-│  📊 Consultas de Base de Datos                                  │
-│                                                                  │
-│  💡 **Ejemplos de preguntas:**                                   │
-│  • /ia ¿Cómo solicito vacaciones?                              │
-│  • /ia ¿Cuántas ventas hay?                                    │
-│                                                                  │
-│  ✨ **¿En qué puedo ayudarte hoy?**                             │
-└─────────────────────────────────────────────────────────────────┘
+action_input: {"query": "¿Cómo solicito vacaciones?"}
+         │
+         ▼
+KnowledgeTool.execute(query="¿Cómo solicito vacaciones?")
+         │
+         ▼
+KnowledgeService.search(query)
+         │
+         ├── Scoring por keywords + prioridad + similitud
+         ├── Retorna top N entradas relevantes
+         │
+         ▼
+ToolResult(
+    success=True,
+    observation="Para solicitar vacaciones debes..."
+)
 ```
 
 ---
 
-## 📦 Componentes Principales
+## Flujo GENERAL — Sin tools (saludos, conversación)
 
 ```
-┌───────────────────────────────────────────────────────────────────────┐
-│                          🧠 LLMAgent                                   │
-│  • Orquestador principal                                              │
-│  • Coordina clasificación, búsqueda y respuesta                       │
-└───────────────────────────────────────────────────────────────────────┘
-           │
-           ├─────────────────────────────────────────────────────────┐
-           │                                                         │
-┌──────────▼──────────┐  ┌─────────────────┐  ┌──────────────────┐ │
-│  QueryClassifier    │  │ KnowledgeManager │  │ SQLGenerator     │ │
-│  • Clasifica query  │  │ • 24 entradas    │  │ • Genera SQL     │ │
-│  • 3 tipos:         │  │ • 7 categorías   │  │ • OpenAI LLM     │ │
-│    KNOWLEDGE        │  │ • Scoring        │  │                  │ │
-│    DATABASE         │  │ • Keywords       │  │                  │ │
-│    GENERAL          │  │                  │  │                  │ │
-└─────────────────────┘  └──────────────────┘  └──────────────────┘ │
-           │                                                          │
-┌──────────▼──────────┐  ┌─────────────────┐  ┌──────────────────┐ │
-│  ResponseFormatter  │  │  SQLValidator   │  │ DatabaseManager  │ │
-│  • Lenguaje natural │  │  • Seguridad    │  │ • Ejecuta SQL    │ │
-│  • Emojis           │  │  • Solo SELECT  │  │ • SQL Server     │ │
-│  • LLM (opcional)   │  │                 │  │                  │ │
-└─────────────────────┘  └─────────────────┘  └──────────────────┘ │
-                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+query: "Hola, ¿cómo estás?"
+         │
+         ▼
+LLM decide:
+{
+    "thought": "Es un saludo, respondo directamente",
+    "action": "finish",
+    "action_input": {},
+    "final_answer": "¡Hola! Estoy aquí para ayudarte..."
+}
+         │
+         ▼
+AgentResponse(success=True, message="¡Hola! Estoy aquí para ayudarte...")
+         │
+         ▼
+Handler envía respuesta al usuario (split si > 4000 chars)
 ```
 
 ---
 
-## 📊 Estadísticas Actuales
+## Flujo REST API
 
 ```
-Knowledge Base:
-├── 24 entradas totales
-├── 7 categorías
-│   ├── PROCESOS (3)
-│   ├── POLITICAS (4) ⭐
-│   ├── FAQS (4)
-│   ├── CONTACTOS (3)
-│   ├── SISTEMAS (2)
-│   ├── RECURSOS_HUMANOS (3)
-│   └── BASE_DATOS (3) 🆕
-├── 6 entradas con emojis visuales
-└── 6 entradas de prioridad 3 (críticas)
-
-Clasificación:
-├── KNOWLEDGE → 24 entradas disponibles
-├── DATABASE → Tabla Ventas (5 campos)
-└── GENERAL → Mensaje de redirección
-
-Respuestas:
-├── Formato: Lenguaje natural con emojis
-├── Powered by: OpenAI GPT
-└── Fallback: Formato estructurado
+POST /api/chat
+{"token": "<AES encriptado>", "message": "¿Cuántos clientes hay?"}
+         │
+         ▼
+TokenMiddleware
+  - Desencripta token AES
+  - Verifica timestamp < TTL (3 min)
+  - Extrae numero_empleado
+         │
+         ▼
+ChatEndpoint
+  - Construye ConversationEvent via MessageGateway.normalize_api()
+  - MainHandler._process_event(event) → AgentResponse
+         │
+         ▼
+{"success": true, "response": "...", "numero_empleado": 12345}
 ```
 
 ---
 
-## 🔑 Decisiones de Clasificación
+## Componentes Clave
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Criterios de Clasificación                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  🟢 KNOWLEDGE (Responde con info empresarial)                    │
-│     • Keywords match en knowledge base                          │
-│     • Score >= 0.5                                              │
-│     • Ejemplos:                                                 │
-│       - "¿Cómo solicito vacaciones?"                           │
-│       - "¿Qué políticas tiene la empresa?"                     │
-│       - "¿Qué tablas están disponibles?"                       │
-│                                                                  │
-│  🔵 DATABASE (Genera SQL y responde)                             │
-│     • Pregunta sobre datos específicos                          │
-│     • Requiere consulta a BD                                    │
-│     • Ejemplos:                                                 │
-│       - "¿Cuántas ventas hay?"                                 │
-│       - "¿Cuál es el producto más vendido?"                    │
-│       - "Muéstrame ventas del cliente 123"                     │
-│                                                                  │
-│  🔴 GENERAL (Redirige, NO responde)                              │
-│     • Saludo o charla general                                   │
-│     • No es información empresarial                             │
-│     • Ejemplos:                                                 │
-│       - "Hola, ¿cómo estás?"                                   │
-│       - "Buenos días"                                          │
-│       - "Cuéntame un chiste"                                   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🎯 FASE Actual: FASE 1 - Knowledge Base Simple
-
-```
-✅ Completado:
-   • KnowledgeManager con scoring
-   • 24 entradas de conocimiento
-   • Clasificación tripartita (KNOWLEDGE/DATABASE/GENERAL)
-   • Respuestas en lenguaje natural
-   • Documentación de BD
-
-⏳ Siguiente (Opcional): FASE 2 - RAG con Vectores
-   • ChromaDB para búsqueda semántica
-   • OpenAI embeddings
-   • Búsqueda híbrida (keywords + vectores)
-```
+| Componente | Archivo | Responsabilidad |
+|-----------|---------|-----------------|
+| `TelegramBot` | `src/bot/telegram_bot.py` | Arranque y registro de handlers |
+| `AuthMiddleware` | `src/bot/middleware/auth_middleware.py` | Validación de usuarios |
+| `MainHandler` | `src/pipeline/handler.py` | Coordinador del flujo principal |
+| `MessageGateway` | `src/gateway/message_gateway.py` | Normalización multi-canal |
+| `ReActAgent` | `src/agents/react/agent.py` | Motor de razonamiento LLM |
+| `ToolRegistry` | `src/agents/tools/registry.py` | Registro de tools disponibles |
+| `MemoryService` | `src/domain/memory/memory_service.py` | Contexto y persistencia |
+| `UserService` | `src/domain/auth/user_service.py` | Autenticación y permisos |
