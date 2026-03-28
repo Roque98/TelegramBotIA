@@ -20,7 +20,7 @@ from src.agents.base.events import ConversationEvent, UserContext
 from src.agents.react.agent import ReActAgent
 from src.domain.memory.memory_service import MemoryService
 
-from .message_gateway import MessageGateway
+from src.gateway.message_gateway import MessageGateway
 
 logger = logging.getLogger(__name__)
 

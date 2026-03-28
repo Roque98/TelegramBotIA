@@ -9,7 +9,7 @@ from telegram import Update
 from telegram.ext import Application
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
-from src.gateway import create_main_handler
+from src.pipeline import create_main_handler
 from .handlers import (
     register_command_handlers,
     register_query_handlers,
