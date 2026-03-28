@@ -7,7 +7,7 @@ import logging
 from typing import Any, List, Dict, Optional
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, Application
-from src.knowledge import KnowledgeRepository
+from src.domain.knowledge import KnowledgeRepository
 from src.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db_manager = context.bot_data.get('db_manager')
         if db_manager:
-            from src.auth import UserService
+            from src.domain.auth import UserService
             with db_manager.get_session() as session:
                 user_service = UserService(session)
                 telegram_user = user_service.get_user_by_telegram_chat_id(user.id)
@@ -146,7 +146,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db_manager = context.bot_data.get('db_manager')
         if db_manager:
-            from src.auth import UserService
+            from src.domain.auth import UserService
             with db_manager.get_session() as session:
                 user_service = UserService(session)
                 telegram_user = user_service.get_user_by_telegram_chat_id(user.id)

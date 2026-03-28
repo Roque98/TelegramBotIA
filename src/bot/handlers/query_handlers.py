@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes, Application
 
-from src.auth import UserService
+from src.domain.auth import UserService
 from src.utils.status_message import StatusMessage
 
 if TYPE_CHECKING:

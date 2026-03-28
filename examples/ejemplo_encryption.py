@@ -4,7 +4,7 @@ Ejemplo de uso del módulo de encriptación compatible con C#.
 Este ejemplo muestra cómo usar la clase Encrypt para encriptar/desencriptar
 datos de forma compatible con el sistema C# existente.
 """
-from src.auth.encryption import Encrypt, encriptar, desencriptar
+from src.domain.auth.encryption import Encrypt, encriptar, desencriptar
 
 
 def ejemplo_basico():

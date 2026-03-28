@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from src.auth.user_entity import TelegramUser, PermissionResult, Operation
+from src.domain.auth.user_entity import TelegramUser, PermissionResult, Operation
 
 logger = logging.getLogger(__name__)
 

@@ -21,7 +21,7 @@ from telegram.ext import (
     ConversationHandler
 )
 from src.database.connection import DatabaseManager
-from src.auth import UserService
+from src.domain.auth import UserService
 
 logger = logging.getLogger(__name__)
 

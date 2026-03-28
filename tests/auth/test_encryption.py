@@ -4,7 +4,7 @@ Tests para el módulo de encriptación.
 Verifica compatibilidad con la implementación C# y funcionalidad correcta.
 """
 import pytest
-from src.auth.encryption import Encrypt, encriptar, desencriptar
+from src.domain.auth.encryption import Encrypt, encriptar, desencriptar
 
 
 class TestEncrypt:
@@ -129,7 +129,7 @@ class TestEncrypt:
 
     def test_singleton_encryptor(self):
         """Verificar que get_encryptor() retorna singleton."""
-        from src.auth.encryption import get_encryptor
+        from src.domain.auth.encryption import get_encryptor
 
         enc1 = get_encryptor()
         enc2 = get_encryptor()
