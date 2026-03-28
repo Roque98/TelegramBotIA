@@ -3,282 +3,107 @@
 ## Ubicación
 
 ```
-src/agent/prompts/
-├── prompt_templates.py   # Templates versionados
-└── prompt_manager.py     # Renderizado con Jinja2
+src/agents/react/prompts.py   ← Prompts del ReAct Agent (activos)
+src/config/personality.py     ← Personalidad del bot
 ```
 
 ---
 
-## Templates Versionados
+## ReAct System Prompt
 
-### CLASSIFICATION (V1, V2, V3)
+**Archivo**: `src/agents/react/prompts.py`
+**Variable**: `REACT_SYSTEM_PROMPT`
 
-**Propósito**: Clasificar intención del usuario
+El prompt del sistema define a **"Amber"** (nombre que usa el bot en el API REST / contexto genérico). En Telegram el bot puede presentarse distinto según `personality.py`.
 
-```python
-# V1: Básico
-CLASSIFICATION_V1 = """
-Clasifica la siguiente consulta:
-Query: {{ query }}
+**Estructura del prompt**:
+```
+1. Definición de identidad y personalidad
+   - Nombre: Amber
+   - Tono: cálida, profesional, español
+   - REGLA CRÍTICA: nunca revelar proceso interno al usuario
 
-Responde: DATABASE, KNOWLEDGE o GENERAL
-"""
+2. Instrucciones de razonamiento (interno — no visible al usuario)
+   - Thought → Action → Observation → Repeat
+   - Usar "finish" para respuesta final
 
-# V2: Con contexto
-CLASSIFICATION_V2 = """
-Clasifica la consulta considerando el contexto disponible.
+3. Herramientas disponibles
+   - Generadas dinámicamente con {tools_description}
+   - Incluye nombre, descripción y parámetros de cada tool
 
-Contexto de conocimiento disponible: {{ knowledge_available }}
-Query: {{ query }}
-
-Responde: DATABASE, KNOWLEDGE o GENERAL
-"""
-
-# V3: Con memoria
-CLASSIFICATION_V3 = """
-Clasifica considerando historial del usuario.
-
-Contexto de memoria: {{ memory_context }}
-Conocimiento disponible: {{ knowledge_available }}
-Query: {{ query }}
-
-Responde: DATABASE, KNOWLEDGE o GENERAL
-"""
+4. Instrucciones de uso
+   - finish directamente para saludos / conversación casual
+   - Cuándo usar cada tool
+   - Reglas de seguridad SQL (solo SELECT)
+   - Formato de respuesta
 ```
 
----
-
-### SQL_GENERATION (V1, V2)
-
-**Propósito**: Generar SQL desde lenguaje natural
-
+**Plantilla**:
 ```python
-SQL_GENERATION_V1 = """
-Eres un experto en SQL Server.
+REACT_SYSTEM_PROMPT = """Eres Amber, una asistente virtual...
 
-## Schema de la base de datos
-{{ schema }}
+## Herramientas Disponibles
+{tools_description}
 
-## Instrucciones
-- Solo genera queries SELECT
-- No uses INSERT, UPDATE, DELETE
-- Usa nombres de tablas y columnas exactos del schema
-
-## Query del usuario
-{{ query }}
-
-Genera SOLO el SQL, sin explicaciones.
-"""
-
-SQL_GENERATION_V2 = """
-Eres un experto en SQL Server para {{ empresa }}.
-
-## Schema
-{{ schema }}
-
-## Ejemplos de queries
-{% for example in examples %}
-- Usuario: {{ example.question }}
-  SQL: {{ example.sql }}
-{% endfor %}
-
-## Restricciones de seguridad
-- Solo SELECT, no modificaciones
-- No usar funciones peligrosas
-- Limitar resultados si no se especifica
-
-## Query actual
-{{ query }}
-
-SQL:
+- **finish**: Termina el razonamiento y da tu respuesta final
+  - Parameters: {"answer": "Tu respuesta al usuario"}
+...
 """
 ```
 
 ---
 
-### RESULT_SUMMARY (V1, V2)
+## Prompt de Usuario (cada turno del loop)
 
-**Propósito**: Convertir resultados SQL a lenguaje natural
-
-```python
-RESULT_SUMMARY_V1 = """
-Convierte estos resultados en una respuesta natural.
-
-Query original: {{ query }}
-Resultados: {{ results }}
-
-Responde de forma concisa y amigable.
-"""
-
-RESULT_SUMMARY_V2 = """
-Eres {{ bot_name }}, asistente de {{ empresa }}.
-
-## Personalidad
-{{ personality }}
-
-## Query del usuario
-{{ query }}
-
-## Resultados de la base de datos
-{{ results }}
-
-## Instrucciones
-- Responde de forma natural
-- Si hay muchos datos, resume los más relevantes
-- Usa formato que sea fácil de leer en Telegram
-- {{ tone_instructions }}
-
-Respuesta:
-"""
-```
-
----
-
-### GENERAL_RESPONSE (V1, V2)
-
-**Propósito**: Respuestas para queries generales
+**Variable**: `REACT_USER_PROMPT`
 
 ```python
-GENERAL_RESPONSE_V1 = """
-Eres {{ bot_name }}, asistente de {{ empresa }}.
-
-{{ personality }}
-
-Usuario pregunta: {{ query }}
-
-Responde de forma {{ tone }}.
-"""
-
-GENERAL_RESPONSE_V2 = """
-Eres {{ bot_name }}, asistente virtual de {{ empresa }}.
-
-## Tu personalidad
-{{ personality }}
-
+REACT_USER_PROMPT = """
 ## Contexto del usuario
-- Nombre: {{ user_name }}
-- Rol: {{ user_role }}
-{% if memory_context %}
-- Historial: {{ memory_context }}
-{% endif %}
+{user_context}
 
-## Conversación reciente
-{% for msg in conversation_history %}
-- {{ msg.role }}: {{ msg.content }}
-{% endfor %}
+## Historial de razonamiento (si aplica)
+{scratchpad}
 
-## Query actual
-{{ query }}
+## Consulta del usuario
+{query}
 
-## Instrucciones
-- Responde de forma natural y {{ tone }}
-- Si no sabes algo, sé honesto
-- Sugiere usar /ia para consultas de datos
-
-Respuesta:
-"""
-```
-
----
-
-### KNOWLEDGE_RESPONSE
-
-**Propósito**: Responder usando base de conocimiento
-
-```python
-KNOWLEDGE_RESPONSE = """
-Eres {{ bot_name }}, asistente de {{ empresa }}.
-
-## Información relevante encontrada
-{% for entry in knowledge_entries %}
-### {{ entry.title }}
-{{ entry.content }}
-{% endfor %}
-
-## Query del usuario
-{{ query }}
-
-## Instrucciones
-- Basa tu respuesta en la información proporcionada
-- Si la información no es suficiente, indícalo
-- Cita la fuente si es relevante
-
-Respuesta:
-"""
-```
-
----
-
-### MEMORY_EXTRACTION
-
-**Propósito**: Generar resúmenes de memoria
-
-```python
-MEMORY_EXTRACTION = """
-Analiza las siguientes interacciones y genera resúmenes.
-
-## Interacciones recientes
-{% for interaction in interactions %}
-- [{{ interaction.date }}] Query: {{ interaction.query }}
-  Respuesta: {{ interaction.response }}
-{% endfor %}
-
-## Resumen anterior
-{{ previous_summary }}
-
-## Genera tres resúmenes cortos:
-
-1. **Contexto laboral**: ¿En qué área trabaja? ¿Qué tipo de datos consulta?
-2. **Temas recientes**: ¿Qué ha preguntado últimamente?
-3. **Historial breve**: Resumen general del usuario.
-
-Responde en formato JSON:
+Responde en JSON:
 {
-  "contexto_laboral": "...",
-  "temas_recientes": "...",
-  "historial_breve": "..."
+    "thought": "...",
+    "action": "nombre_de_tool o finish",
+    "action_input": {...},
+    "final_answer": "solo si action es finish"
 }
 """
 ```
 
+El agente llama a `OpenAIProvider.generate_structured()` con este prompt y el schema `ReActResponse` para obtener JSON validado por Pydantic.
+
 ---
 
-## PromptManager
+## Generación Dinámica de `tools_description`
 
-```python
-# src/agent/prompts/prompt_manager.py
+**Archivo**: `src/agents/tools/registry.py` → `ToolRegistry.get_tools_prompt()`
 
-class PromptManager:
-    def __init__(self):
-        self.env = Environment(...)  # Jinja2
+Genera automáticamente la lista de tools para incluir en el system prompt:
 
-    def render(
-        self,
-        template_name: str,
-        version: str = "V1",
-        **kwargs
-    ) -> str:
-        """Renderiza template con variables."""
-        template = getattr(PromptTemplates, f"{template_name}_{version}")
-        return self.env.from_string(template).render(**kwargs)
-
-    def get_available_versions(self, template_name: str) -> list[str]:
-        """Lista versiones disponibles de un template."""
 ```
+- **database_query**: Ejecuta consultas SQL en lenguaje natural
+  - query (string, required): La consulta en lenguaje natural
 
-**Uso**:
-```python
-prompt_manager = PromptManager()
+- **knowledge_search**: Busca en la base de conocimiento empresarial
+  - query (string, required): Término o pregunta a buscar
 
-prompt = prompt_manager.render(
-    "SQL_GENERATION",
-    version="V2",
-    schema=db_schema,
-    query="¿Cuántas ventas hubo ayer?",
-    empresa="Mi Empresa",
-    examples=[...]
-)
+- **calculate**: Evalúa expresiones matemáticas
+  - expression (string, required): Expresión matemática
+
+- **get_datetime**: Obtiene fecha y hora actual
+  (sin parámetros)
+
+- **save_preference**: Guarda preferencia del usuario
+  - key (string, required): Nombre de la preferencia
+  - value (string, required): Valor de la preferencia
 ```
 
 ---
@@ -302,60 +127,45 @@ BOT_PERSONALITY = {
 }
 
 def get_personality_prompt() -> str:
-    """Genera prompt de personalidad."""
+    """Genera string de personalidad para incluir en prompts."""
+```
+
+> **Nota**: El API REST usa "Amber" (hardcodeado en `react/prompts.py`). El bot de Telegram usa "Iris" vía `personality.py`. Estos pueden unificarse en el futuro.
+
+---
+
+## Schema de Respuesta del LLM
+
+**Archivo**: `src/agents/react/schemas.py`
+
+```python
+class ActionType(str, Enum):
+    FINISH = "finish"
+    # (nombres de tools se validan contra el registry)
+
+class ReActResponse(BaseModel):
+    thought: str                   # Razonamiento interno
+    action: str                    # "finish" o nombre de tool
+    action_input: dict             # Parámetros para la tool
+    final_answer: Optional[str]    # Solo cuando action == "finish"
+
+class ReActStep(BaseModel):
+    thought: str
+    action: str
+    action_input: dict
+    observation: str               # Resultado de la tool
+    timestamp: datetime
 ```
 
 ---
 
-## Mejores Prácticas
+## Prácticas de Modificación
 
-### Versionado
-```python
-# Siempre crear nueva versión, no modificar existente
-TEMPLATE_V1 = "..."  # Original
-TEMPLATE_V2 = "..."  # Con mejoras
-TEMPLATE_V3 = "..."  # Con más contexto
-```
+### Para cambiar la personalidad del bot
+Editar `src/config/personality.py` y/o el `REACT_SYSTEM_PROMPT` en `src/agents/react/prompts.py`.
 
-### Variables claras
-```python
-# ✅ Nombres descriptivos
-{{ user_query }}
-{{ knowledge_context }}
-{{ memory_summary }}
+### Para agregar instrucciones específicas de dominio
+Modificar `REACT_SYSTEM_PROMPT` — agregar sección con contexto empresarial, restricciones de negocio, ejemplos de queries, etc.
 
-# ❌ Nombres ambiguos
-{{ q }}
-{{ ctx }}
-{{ data }}
-```
-
-### Instrucciones específicas
-```python
-# ✅ Específico
-"Responde en máximo 3 oraciones"
-"Usa formato de lista si hay más de 3 items"
-
-# ❌ Vago
-"Responde bien"
-"Sé útil"
-```
-
----
-
-## Testing de Prompts
-
-```python
-# tests/unit/test_prompts.py
-
-def test_sql_generation_prompt():
-    prompt = prompt_manager.render(
-        "SQL_GENERATION",
-        version="V2",
-        schema=mock_schema,
-        query="ventas de hoy"
-    )
-
-    assert "SELECT" in prompt or "ventas" in prompt
-    assert "{{ schema }}" not in prompt  # Variables renderizadas
-```
+### Para cambiar el formato de respuesta del LLM
+Modificar `ReActResponse` en `schemas.py` y actualizar las referencias en `react/agent.py`.

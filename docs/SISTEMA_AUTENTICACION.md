@@ -42,33 +42,26 @@ El sistema de autenticación y autorización garantiza que solo usuarios autoriz
 ┌─────────────────────────────────────────────────────────────┐
 │              Telegram Bot (telegram_bot.py)                 │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌───────────────┐  ┌─────────────────┐  │
-│  │  Middleware  │  │   Handlers    │  │  Decoradores    │  │
-│  │              │  │               │  │                 │  │
-│  │ - Logging    │  │ - Register    │  │ - @require_auth │  │
-│  │ - Auth       │  │ - Verify      │  │ - @require_perm │  │
-│  └──────────────┘  └───────────────┘  └─────────────────┘  │
+│  ┌──────────────┐  ┌───────────────┐                        │
+│  │  Middleware  │  │   Handlers    │                        │
+│  │              │  │               │                        │
+│  │ - Logging    │  │ - Register    │                        │
+│  │ - Auth       │  │ - Verify      │                        │
+│  └──────────────┘  └───────────────┘                        │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                 Módulos de Autenticación                     │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌──────────────────┐  ┌────────────────────────────────┐  │
-│  │  UserManager     │  │   PermissionChecker            │  │
-│  │                  │  │                                │  │
-│  │ - get_user       │  │ - check_permission()           │  │
-│  │ - is_registered  │  │ - get_user_operations()        │  │
-│  │ - update_activity│  │ - log_operation()              │  │
-│  └──────────────────┘  └────────────────────────────────┘  │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │   RegistrationManager                                  │  │
-│  │                                                        │  │
-│  │ - start_registration()                                │  │
-│  │ - verify_account()                                    │  │
-│  │ - resend_verification_code()                          │  │
-│  └────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │   UserService  (src/domain/auth/user_service.py)     │  │
+│  │                                                      │  │
+│  │ - get_user_by_chat_id()   - validate_employee()      │  │
+│  │ - is_registered()         - check_permission()       │  │
+│  │ - create_registration()   - verify_account()         │  │
+│  │ - resend_verification()   - update_last_activity()   │  │
+│  └──────────────────────────────────────────────────────┘  │
 └────────────────┬────────────────────────────────────────────┘
                  │
                  ▼
@@ -96,42 +89,33 @@ El sistema de autenticación y autorización garantiza que solo usuarios autoriz
 
 ## Componentes del Sistema
 
-### 1. UserManager (`src/auth/user_manager.py`)
+### 1. UserService (`src/domain/auth/user_service.py`)
 
-Gestiona los usuarios de Telegram.
+Concentra toda la lógica de negocio de autenticación y permisos.
 
 **Métodos principales:**
 - `get_user_by_chat_id(chat_id)`: Obtiene usuario por su Chat ID
-- `get_user_by_id(user_id)`: Obtiene usuario por su ID en BD
-- `is_user_registered(chat_id)`: Verifica si un chat_id está registrado
-- `update_last_activity(chat_id)`: Actualiza la última actividad
-- `get_user_stats(user_id)`: Obtiene estadísticas de uso
-
-### 2. PermissionChecker (`src/auth/permission_checker.py`)
-
-Verifica permisos y registra operaciones.
-
-**Métodos principales:**
-- `check_permission(user_id, comando)`: Verifica si tiene permiso
-- `get_user_operations(user_id)`: Obtiene todas las operaciones permitidas
-- `log_operation(...)`: Registra la ejecución de una operación
-- `is_operation_critical(user_id, comando)`: Verifica si es crítica
-
-### 3. RegistrationManager (`src/auth/registration.py`)
-
-Maneja el proceso de registro.
-
-**Métodos principales:**
-- `find_user_by_employee_id(employee_id)`: Busca usuario por ID empleado
-- `start_registration(...)`: Inicia el proceso de registro
+- `is_registered(chat_id)`: Verifica si un chat_id está registrado y activo
+- `check_permission(user_id, command)`: Verifica si tiene permiso para un comando
+- `validate_employee(employee_id)`: Busca usuario por ID de empleado
+- `create_registration(user_id, chat_id)`: Inicia el proceso de registro
 - `verify_account(chat_id, code)`: Verifica con código
-- `resend_verification_code(chat_id)`: Genera nuevo código
+- `resend_verification(chat_id)`: Genera nuevo código de verificación
+- `update_last_activity(chat_id)`: Actualiza la última actividad
+
+### 2. Entidades (`src/domain/auth/user_entity.py`)
+
+- `TelegramUser`: Usuario registrado con chat_id, rol, permisos y estado
+- `PermissionResult`: Resultado de verificación de permiso (allowed, reason)
+- `Operation`: Operación/comando con su nivel de criticidad
+
+### 3. UserRepository (`src/domain/auth/user_repository.py`)
+
+Acceso a datos para usuarios — encapsula todas las queries SQL contra tablas de autenticación.
 
 ### 4. Middleware de Autenticación (`src/bot/middleware/auth_middleware.py`)
 
-**Decoradores:**
-- `@require_auth`: Requiere que el usuario esté autenticado
-- `@require_permission(comando)`: Requiere permiso específico
+Intercepta todas las actualizaciones de Telegram antes de los handlers. Usa `UserService` para verificar registro y cachea el `TelegramUser` en `context.user_data`.
 
 ---
 
@@ -619,28 +603,21 @@ ORDER BY l.fechaEjecucion DESC
 
 ---
 
-## Resumen de Archivos Creados
+## Archivos del Módulo
 
-### Módulos de Autenticación
-- ✅ `src/auth/__init__.py`
-- ✅ `src/auth/user_manager.py`
-- ✅ `src/auth/permission_checker.py`
-- ✅ `src/auth/registration.py`
+### Domain (lógica de negocio)
+- `src/domain/auth/user_entity.py` — TelegramUser, PermissionResult, Operation
+- `src/domain/auth/user_repository.py` — acceso a datos
+- `src/domain/auth/user_service.py` — orquestador de autenticación
 
-### Middleware
-- ✅ `src/bot/middleware/auth_middleware.py`
-
-### Handlers
-- ✅ `src/bot/handlers/registration_handlers.py`
+### Bot (entrypoints Telegram)
+- `src/bot/middleware/auth_middleware.py` — intercepta y valida cada update
+- `src/bot/handlers/registration_handlers.py` — flujo /register, /verify, /resend
 
 ### SQL
-- ✅ `docs/sql/04 StoredProcedures.sql`
-
-### Documentación
-- ✅ `docs/SISTEMA_AUTENTICACION.md` (este archivo)
+- `database/migrations/` — Scripts SQL de estructura de tablas y stored procedures
 
 ---
 
-**Última actualización:** 2025-11-07
-**Versión:** 1.0
-**Estado:** ✅ Implementación completa del TODO #1
+**Última actualización:** 2026-03-28
+**Estado:** ✅ Módulo activo — arquitectura domain-driven

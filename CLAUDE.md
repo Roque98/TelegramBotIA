@@ -76,9 +76,13 @@ Scopes del proyecto:
 
 ## Plan Activo
 
-El plan principal está en: `plan/01-completados/PLAN_REACT_MIGRATION.md` (completado)
-- Ideas de mejora: `plan/03-ideas/IDEAS_MEJORA_BOT.md`
-- Nuevos planes activos: `plan/02-activos/`
+Planes completados recientes:
+- `plan/01-completados/PLAN_REACT_MIGRATION.md` — Migración a ReAct
+- `plan/01-completados/PLAN_ARQ_25_SRC_LAYOUT.md` — Reorganización de capas src/
+
+Ideas y planes activos:
+- `plan/03-ideas/IDEAS_MEJORA_BOT.md`
+- `plan/02-activos/` — ver `plan/README.md` para el índice completo
 
 ## Archivos de Contexto
 

@@ -1,78 +1,69 @@
-# Documentación del Proyecto - Agente de Base de Datos con Telegram
+# Documentación — IRIS Bot
 
-## Índice
-
-1. [Introducción](#introducción)
-2. [Estructura del Proyecto](estructura.md)
-3. [Configuración](#configuración)
-4. [Componentes Principales](#componentes-principales)
-5. [Guías de Uso](#guías-de-uso)
+> **Última actualización:** 2026-03-28
+> **Arquitectura:** ReAct Agent activo
 
 ---
 
-## Introducción
+## Documentación Técnica
 
-Este proyecto implementa un bot de Telegram que funciona como un agente inteligente capaz de:
-- Interpretar consultas en lenguaje natural
-- Traducirlas a consultas SQL
-- Ejecutarlas en una base de datos
-- Devolver los resultados de manera conversacional
+| Documento | Descripción |
+|-----------|-------------|
+| [estructura.md](estructura.md) | Árbol de directorios completo y variables de entorno |
+| [SISTEMA_AUTENTICACION.md](SISTEMA_AUTENTICACION.md) | Sistema de registro, permisos y middleware auth |
+| [CHAT_API_GUIDE.md](CHAT_API_GUIDE.md) | Guía de uso de la API REST con autenticación AES |
+| [API_ENDPOINTS.md](API_ENDPOINTS.md) | Especificación de endpoints REST |
+| [resumen.md](resumen.md) | Resumen ejecutivo del proyecto |
 
-## Configuración
+---
 
-### Variables de Entorno
+## Documentación de Desarrollo
 
-Copiar `.env.example` a `.env` y configurar:
+| Documento | Descripción |
+|-----------|-------------|
+| [desarrollador/GUIA_DESARROLLADOR.md](desarrollador/GUIA_DESARROLLADOR.md) | Guía completa para contribuidores |
+| [desarrollador/DIAGRAMA_FLUJO_ACTUAL.md](desarrollador/DIAGRAMA_FLUJO_ACTUAL.md) | Diagramas de flujo de la arquitectura ReAct |
+| [desarrollador/COMMIT_GUIDELINES.md](desarrollador/COMMIT_GUIDELINES.md) | Convenciones de commits |
+| [desarrollador/GITFLOW.md](desarrollador/GITFLOW.md) | Estrategia de branches y versionado |
 
-- **TELEGRAM_BOT_TOKEN**: Token del bot de Telegram (obtener de @BotFather)
-- **OPENAI_API_KEY** o **ANTHROPIC_API_KEY**: Clave API del LLM
-- **DB_***: Credenciales de la base de datos
+---
 
-### Instalación de Dependencias
+## Contexto Vivo del Proyecto
+
+Los archivos en `.claude/context/` reflejan el estado actual del código:
+
+| Archivo | Qué contiene |
+|---------|-------------|
+| [INDEX.md](../.claude/context/INDEX.md) | Índice de módulos y flujo general |
+| [ARCHITECTURE.md](../.claude/context/ARCHITECTURE.md) | Capas, patrones y flujos detallados |
+| [AGENTS.md](../.claude/context/AGENTS.md) | ReActAgent, contratos base |
+| [TOOLS.md](../.claude/context/TOOLS.md) | 5 tools disponibles y cómo crear nuevas |
+| [HANDLERS.md](../.claude/context/HANDLERS.md) | Comandos Telegram registrados |
+| [MEMORY.md](../.claude/context/MEMORY.md) | Sistema de memoria y contexto |
+| [PROMPTS.md](../.claude/context/PROMPTS.md) | System prompt y schemas de respuesta |
+
+---
+
+## Inicio Rápido
 
 ```bash
+# Instalar dependencias
 pip install -r requirements.txt
-```
 
-## Componentes Principales
+# Configurar entorno
+cp .env.example .env
+# Editar .env con tus credenciales
 
-### 1. Bot de Telegram (`src/bot/`)
-Maneja la comunicación con los usuarios a través de Telegram.
-
-### 2. Agente LLM (`src/agent/`)
-Interpreta las consultas del usuario y las convierte en consultas SQL.
-
-### 3. Base de Datos (`src/database/`)
-Gestiona las conexiones y ejecución de consultas en la base de datos.
-
-### 4. Configuración (`src/config/`)
-Centraliza la configuración del proyecto.
-
-## Guías de Uso
-
-### Iniciar el Bot
-
-```bash
+# Arrancar bot Telegram
 python main.py
-```
 
-### Ejemplo de Conversación
-
-```
-Usuario: ¿Cuántos usuarios tenemos registrados?
-Bot: Consultando la base de datos...
-Bot: Actualmente hay 1,234 usuarios registrados en el sistema.
-
-Usuario: Muéstrame los 5 últimos usuarios
-Bot: Aquí están los 5 últimos usuarios registrados:
-     1. Juan Pérez - 2024-01-15
-     2. María González - 2024-01-14
-     ...
+# Arrancar API REST (opcional)
+python src/api/chat_endpoint.py
 ```
 
 ---
 
-## Enlaces Útiles
+## Archivo Histórico
 
-- [Estructura del Proyecto](estructura.md) - Detalles sobre la organización de carpetas
-- [README principal](../README.md) - Información general del proyecto
+Documentos obsoletos (arquitectura anterior) en [`docs/archivo/`](archivo/).
+

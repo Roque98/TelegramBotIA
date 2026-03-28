@@ -1,7 +1,7 @@
 # Planes del Proyecto Iris Bot
 
 > **Proyecto**: Iris - Bot conversacional con LLM
-> **Ultima actualizacion**: 2026-03-24
+> **Ultima actualizacion**: 2026-03-28
 
 ---
 
@@ -16,7 +16,8 @@ plan/
 │   ├── PLAN_REFACTOR_REPOSITORY_PATTERN.md # Refactor Repository+Service (100%)
 │   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync (100%)
 │   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU (100%)
-│   └── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado (100%)
+│   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado (100%)
+│   └── PLAN_ARQ_25_SRC_LAYOUT.md         # Reorganizacion capas src/ (100%)
 ├── 02-activos/                            # Planes en progreso
 │   ├── PLAN_CONSOLIDAR_LEGACY.md          # Eliminar codigo legacy (19 tareas)
 │   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
@@ -40,7 +41,6 @@ plan/
 │   ├── PLAN_FUN_21_RETRY.md               # Retry con Tenacity
 │   ├── PLAN_FUN_22_DASHBOARD.md           # Dashboard de monitoreo
 │   ├── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
-│   ├── PLAN_ARQ_25_SRC_LAYOUT.md         # Reorganización de capas src/
 │   └── PLAN_DOC_26_DOCS_UPDATE.md        # Actualización y organización de docs
 └── 03-ideas/                              # Ideas y propuestas
     └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
@@ -52,7 +52,7 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 5 |
+| Planes completados | 6 |
 | Planes activos | 20 |
 | Ideas documentadas | 10 |
 | Backlog total | 26 mejoras |
@@ -68,6 +68,7 @@ plan/
 | [Consolidar async/sync](01-completados/PLAN_ARQ_05_ASYNC_SYNC.md) | 100% (8/8) | `feature/arq-05-async-sync` | 2026-03-24 |
 | [Cache con evicción LRU](01-completados/PLAN_ARQ_06_CACHE_EVICCION.md) | 100% (5/5) | `feature/arq-06-cache-eviccion` | 2026-03-24 |
 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | 100% (4/4) | `feature/arq-07-global-state` | 2026-03-24 |
+| [Reorganización capas src/](01-completados/PLAN_ARQ_25_SRC_LAYOUT.md) | 100% (20/20) | `feature/arq-25-src-layout` | 2026-03-28 |
 
 ---
 

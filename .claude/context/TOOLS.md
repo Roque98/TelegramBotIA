@@ -4,62 +4,97 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Tools registrados | 1 |
-| Comandos totales | 2 |
-| Categorías usadas | 1 (DATABASE) |
+| Tools registradas | 5 |
+| Ubicación | `src/agents/tools/` |
+| Patrón | BaseTool abstracta + ToolRegistry singleton |
 
 ---
 
-## Tools Registrados
+## Tools Registradas
 
-### QueryTool
+### 1. DatabaseTool — `database_query`
+
+**Archivo**: `src/agents/tools/database_tool.py`
+**Descripción**: Ejecuta consultas SQL en lenguaje natural contra SQL Server
 
 ```yaml
-Nombre: "query"
-Versión: "2.0.0"
-Descripción: "Consultar base de datos en lenguaje natural"
+Nombre: "database_query"
 Categoría: DATABASE
-
-Comandos:
-  - /ia
-  - /query
-
-Autenticación:
-  requires_auth: true
-  required_permissions: ["/ia"]
-
 Parámetros:
-  - name: query
-    type: STRING
-    required: true
-    min_length: 3
-    max_length: 1000
-    description: "Consulta en lenguaje natural"
-
-Archivo: src/tools/builtin/query_tool.py
+  - query (string, required): Consulta en lenguaje natural
+Requiere: DatabaseManager
 ```
 
-**Flujo de ejecución**:
+**Flujo**:
 ```
-QueryTool.execute()
-    │
-    ▼
-context.llm_agent.process_query()
-    │
-    ├── QueryClassifier → DATABASE | KNOWLEDGE | GENERAL
-    │
-    ├── Si DATABASE:
-    │   ├── SQLGenerator.generate_sql()
-    │   ├── SQLValidator.validate()
-    │   ├── DatabaseManager.execute_query()
-    │   └── ResponseFormatter.format()
-    │
-    ├── Si KNOWLEDGE:
-    │   ├── KnowledgeManager.search()
-    │   └── LLM genera respuesta con contexto
-    │
-    └── Si GENERAL:
-        └── LLM responde directamente
+1. LLM genera SQL desde la query de texto natural
+2. SQLValidator.validate(sql) — solo SELECT/WITH/EXEC
+3. DatabaseManager.execute_query(sql) → resultados
+4. LLM formatea resultados como texto natural
+```
+
+---
+
+### 2. KnowledgeTool — `knowledge_search`
+
+**Archivo**: `src/agents/tools/knowledge_tool.py`
+**Descripción**: Busca en la base de conocimiento empresarial
+
+```yaml
+Nombre: "knowledge_search"
+Categoría: KNOWLEDGE
+Parámetros:
+  - query (string, required): Término o pregunta a buscar
+Requiere: KnowledgeService
+```
+
+**Flujo**:
+```
+1. KnowledgeService.search(query) → list[KnowledgeEntry]
+2. Retorna las entradas más relevantes como observación
+```
+
+---
+
+### 3. CalculateTool — `calculate`
+
+**Archivo**: `src/agents/tools/calculate_tool.py`
+**Descripción**: Evalúa expresiones matemáticas de forma segura
+
+```yaml
+Nombre: "calculate"
+Categoría: CALCULATION
+Parámetros:
+  - expression (string, required): Expresión matemática (ej: "15 * 1.16")
+```
+
+---
+
+### 4. DateTimeTool — `get_datetime`
+
+**Archivo**: `src/agents/tools/datetime_tool.py`
+**Descripción**: Obtiene fecha y hora actual del sistema
+
+```yaml
+Nombre: "get_datetime"
+Categoría: DATETIME
+Parámetros: (ninguno)
+```
+
+---
+
+### 5. SavePreferenceTool — `save_preference`
+
+**Archivo**: `src/agents/tools/preference_tool.py`
+**Descripción**: Guarda preferencias del usuario en BD
+
+```yaml
+Nombre: "save_preference"
+Categoría: UTILITY
+Parámetros:
+  - key (string, required): Nombre de la preferencia
+  - value (string, required): Valor a guardar
+Requiere: DatabaseManager
 ```
 
 ---
@@ -69,265 +104,178 @@ context.llm_agent.process_query()
 ### Archivos
 
 ```
-src/tools/
-├── __init__.py              # Exporta API pública
-├── tool_base.py             # Clases base
-│   ├── ToolCategory (enum)
-│   ├── ParameterType (enum)
-│   ├── ToolParameter (dataclass)
-│   ├── ToolMetadata (dataclass)
-│   ├── ToolResult (dataclass)
-│   └── BaseTool (abstract)
-├── tool_registry.py         # ToolRegistry (singleton)
-├── tool_orchestrator.py     # ToolOrchestrator
-├── execution_context.py     # ExecutionContext + Builder
-└── builtin/
-    └── query_tool.py        # QueryTool
+src/agents/tools/
+├── base.py            ← BaseTool, ToolResult, ToolDefinition, ToolCategory
+├── registry.py        ← ToolRegistry (singleton, thread-safe)
+├── database_tool.py   ← DatabaseTool
+├── knowledge_tool.py  ← KnowledgeTool
+├── calculate_tool.py  ← CalculateTool
+├── datetime_tool.py   ← DateTimeTool
+└── preference_tool.py ← SavePreferenceTool
 ```
 
 ---
 
-## Enumeraciones
+## BaseTool (Contrato)
 
-### ToolCategory
+**Archivo**: `src/agents/tools/base.py`
+
 ```python
-DATABASE        = "database"         # Operaciones de BD
-SYSTEM          = "system"           # Sistema
-USER_MANAGEMENT = "user_management"  # Gestión usuarios
-ANALYTICS       = "analytics"        # Análisis
-UTILITY         = "utility"          # Utilidades
-INTEGRATION     = "integration"      # Integraciones
+class BaseTool(ABC):
+    @property
+    @abstractmethod
+    def name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def description(self) -> str: ...
+
+    @abstractmethod
+    def get_parameters(self) -> list[ToolParameter]: ...
+
+    @abstractmethod
+    async def execute(self, **kwargs: Any) -> ToolResult: ...
+
+    def get_definition(self) -> ToolDefinition:
+        """Genera metadata para el prompt del LLM."""
+
+    def to_prompt_format(self) -> str:
+        """Genera descripción legible para incluir en system prompt."""
 ```
 
-### ParameterType
 ```python
-STRING   = "string"
-INTEGER  = "integer"
-FLOAT    = "float"
-BOOLEAN  = "boolean"
-LIST     = "list"
-DICT     = "dict"
-```
-
----
-
-## ToolRegistry
-
-**Patrón**: Singleton
-
-```python
-from src.tools import get_registry
-
-registry = get_registry()
-
-# Registrar tool
-registry.register(MiTool())
-
-# Buscar por nombre
-tool = registry.get_tool_by_name("query")
-
-# Buscar por comando
-tool = registry.get_tool_by_command("/ia")
-
-# Todos los tools
-tools = registry.get_all_tools()
-
-# Por categoría
-tools = registry.get_tools_by_category(ToolCategory.DATABASE)
-
-# Estadísticas
-stats = registry.get_stats()
-# {"total_tools": 1, "total_commands": 2, "categories": {"database": 1}}
-```
-
----
-
-## ToolOrchestrator
-
-**Responsabilidades**:
-1. Buscar tool por comando
-2. Verificar autenticación
-3. Verificar permisos
-4. Validar parámetros
-5. Ejecutar tool
-6. Auditar operación
-
-```python
-from src.tools import ToolOrchestrator
-
-orchestrator = ToolOrchestrator()
-
-result = await orchestrator.execute_command(
-    user_id=123,
-    command="/ia",
-    params={"query": "¿Ventas de hoy?"},
-    context=execution_context
-)
-
-if result.success:
-    print(result.data)
-else:
-    print(result.error)
-```
-
----
-
-## ExecutionContext
-
-**Propósito**: Contenedor de dependencias para tools
-
-```python
-from src.tools import ExecutionContextBuilder
-
-context = (
-    ExecutionContextBuilder()
-    .with_telegram(update, telegram_context)
-    .with_db_manager(db_manager)
-    .with_llm_agent(llm_agent)
-    .with_user_manager(user_manager)
-    .with_permission_checker(permission_checker)
-    .build()
-)
-
-# Acceso a componentes
-context.db_manager
-context.llm_agent
-context.user_manager
-
-# Propiedades proxy al LLMAgent
-context.llm_provider
-context.query_classifier
-context.sql_generator
-context.response_formatter
-
-# Datos de Telegram
-context.get_user_id()
-context.get_chat_id()
-context.get_username()
-
-# Validación
-is_valid, error = context.validate_required_components('llm_agent', 'db_manager')
-```
-
----
-
-## ToolResult
-
-```python
-@dataclass
-class ToolResult:
+class ToolResult(BaseModel):
     success: bool
+    observation: str              # Lo que el agente "observa" como resultado
     data: Optional[Any] = None
     error: Optional[str] = None
-    user_friendly_error: Optional[str] = None
-    metadata: Dict[str, Any] = {}
-    execution_time_ms: Optional[float] = None
-    timestamp: datetime = now()
+    execution_time_ms: float = 0.0
+```
 
-# Factory methods
-ToolResult.success_result(data={"ventas": 45})
-ToolResult.error_result(error="SQL inválido", user_friendly_error="No pude procesar tu consulta")
+```python
+class ToolCategory(str, Enum):
+    DATABASE    = "database"
+    KNOWLEDGE   = "knowledge"
+    CALCULATION = "calculation"
+    DATETIME    = "datetime"
+    UTILITY     = "utility"
 ```
 
 ---
 
-## Crear Nuevo Tool
+## ToolRegistry (Singleton)
+
+**Archivo**: `src/agents/tools/registry.py`
 
 ```python
-# src/tools/builtin/mi_tool.py
-from src.tools.tool_base import (
-    BaseTool, ToolMetadata, ToolParameter, ToolResult,
-    ToolCategory, ParameterType
-)
-from src.tools.execution_context import ExecutionContext
+registry = ToolRegistry()
+
+# Registrar tool
+registry.register(DatabaseTool(db_manager=db))
+
+# Obtener tool por nombre
+tool = registry.get("database_query")       # Optional[BaseTool]
+
+# Listar todas
+tools = registry.get_all()                  # list[BaseTool]
+
+# Generar descripción para el prompt
+prompt_text = registry.get_tools_prompt()   # str con todas las tools formateadas
+
+# Resetear (para tests)
+ToolRegistry.reset()
+```
+
+**Thread-safety**: usa `threading.Lock` con double-checked locking.
+
+---
+
+## Cómo Crear una Nueva Tool
+
+```python
+# src/agents/tools/mi_tool.py
+from src.agents.tools.base import BaseTool, ToolParameter, ToolResult, ToolCategory
 
 class MiTool(BaseTool):
-    def get_metadata(self) -> ToolMetadata:
-        return ToolMetadata(
-            name="mi_tool",
-            description="Descripción del tool",
-            commands=["/mi_comando"],
-            category=ToolCategory.UTILITY,
-            requires_auth=True,
-            required_permissions=["/mi_comando"],
-            version="1.0.0"
-        )
+    @property
+    def name(self) -> str:
+        return "mi_tool"
 
-    def get_parameters(self) -> List[ToolParameter]:
+    @property
+    def description(self) -> str:
+        return "Descripción que verá el LLM"
+
+    def get_parameters(self) -> list[ToolParameter]:
         return [
             ToolParameter(
                 name="param1",
-                type=ParameterType.STRING,
-                description="Descripción",
+                param_type="string",
+                description="Descripción del parámetro",
                 required=True,
-                validation_rules={"max_length": 500}
             )
         ]
 
-    async def execute(
-        self,
-        user_id: int,
-        params: Dict[str, Any],
-        context: ExecutionContext
-    ) -> ToolResult:
+    async def execute(self, param1: str, **kwargs) -> ToolResult:
         try:
-            # Lógica
-            resultado = await self._procesar(params["param1"], context)
-            return ToolResult.success_result(data=resultado)
+            resultado = await self._hacer_algo(param1)
+            return ToolResult(success=True, observation=str(resultado))
         except Exception as e:
-            return ToolResult.error_result(
-                error=str(e),
-                user_friendly_error="Ocurrió un error"
-            )
+            return ToolResult(success=False, observation="Error", error=str(e))
 ```
 
-**Registrar**:
+**Registrar en la factory** (`src/pipeline/factory.py`):
 ```python
-# src/tools/tool_initializer.py
-from .builtin.mi_tool import MiTool
-
-builtin_tools = [
-    QueryTool(),
-    MiTool(),  # Agregar aquí
-]
+def create_tool_registry(db_manager=None, knowledge_manager=None) -> ToolRegistry:
+    registry = ToolRegistry()
+    registry.register(DatabaseTool(db_manager=db_manager))
+    registry.register(KnowledgeTool(knowledge_manager=knowledge_manager))
+    registry.register(CalculateTool())
+    registry.register(DateTimeTool())
+    registry.register(SavePreferenceTool(db_manager=db_manager))
+    registry.register(MiTool())  # ← agregar aquí
+    return registry
 ```
 
 ---
 
-## Flujo Completo de Ejecución
+## Flujo Completo Tool en ReAct Loop
 
 ```
-/ia ¿Cuántos usuarios hay?
-    │
-    ▼
-[tools_handlers.py]
-handle_ia_command()
-    │
-    ▼
-ExecutionContextBuilder().build()
-    │
-    ▼
-[ToolOrchestrator]
-execute_command(user_id, "/ia", {"query": "..."}, context)
-    │
-    ├── 1. get_registry().get_tool_by_command("/ia")
-    │      └── QueryTool
-    │
-    ├── 2. _verify_authentication()
-    │      └── UserManager.is_registered()
-    │
-    ├── 3. _verify_permissions()
-    │      └── PermissionChecker.check_permission("/ia")
-    │
-    ├── 4. _validate_parameters()
-    │      └── Verifica tipo, min_length, max_length
-    │
-    ├── 5. QueryTool.execute()
-    │      └── context.llm_agent.process_query()
-    │
-    └── 6. _audit_execution()
-           └── Log operación
-    │
-    ▼
-ToolResult(success=True, data="Hay 1,234 usuarios registrados")
+ReActAgent recibe query: "¿Cuántas ventas hubo ayer?"
+        │
+        ▼
+LLM (con system_prompt que incluye tools_description):
+{
+    "thought": "Necesito consultar la base de datos",
+    "action": "database_query",
+    "action_input": {"query": "ventas de ayer"},
+    "final_answer": null
+}
+        │
+        ▼
+registry.get("database_query") → DatabaseTool
+        │
+        ▼
+DatabaseTool.execute(query="ventas de ayer")
+        │
+        ├── SQLValidator → "SELECT COUNT(*) FROM ventas WHERE ..."
+        ├── DatabaseManager.execute_query(sql) → [{"count": 45}]
+        └── LLM formatea → "Ayer se registraron 45 ventas"
+        │
+        ▼
+ToolResult(success=True, observation="Ayer se registraron 45 ventas")
+        │
+        ▼
+scratchpad.add_step(thought, "database_query", observation)
+        │
+        ▼ (siguiente iteración del loop)
+LLM:
+{
+    "thought": "Ya tengo la información",
+    "action": "finish",
+    "final_answer": "Ayer se registraron 45 ventas."
+}
+        │
+        ▼
+AgentResponse(success=True, message="Ayer se registraron 45 ventas.")
 ```

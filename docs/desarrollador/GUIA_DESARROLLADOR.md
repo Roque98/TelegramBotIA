@@ -1,8 +1,12 @@
-# Guía Completa del Desarrollador - Bot Telegram IA
+# Guía Completa del Desarrollador - IRIS Bot
 
-**Versión del Proyecto:** v0.3.0
-**Última Actualización:** 2025-11-30
+**Versión del Proyecto:** v1.0.0 (Arquitectura ReAct)
+**Última Actualización:** 2026-03-28
 **Rama Actual:** develop
+
+> ⚠️ **Nota:** Las secciones 2-3 reflejan la arquitectura actual (ReAct Agent).
+> Para diagramas de flujo detallados, ver [`DIAGRAMA_FLUJO_ACTUAL.md`](DIAGRAMA_FLUJO_ACTUAL.md).
+> Para la estructura completa de módulos, ver [`docs/estructura.md`](../estructura.md).
 
 ---
 
@@ -119,11 +123,13 @@ Bot: La base de datos contiene las siguientes tablas:
 
 | Capa | Responsabilidad | Componentes |
 |------|-----------------|-------------|
-| **Presentación** | Interfaz con usuario | TelegramBot, Handlers, Keyboards |
-| **Aplicación** | Lógica de negocio | ToolOrchestrator, LLMAgent |
-| **Dominio** | Entidades y reglas | Tools, Providers, Knowledge |
-| **Infraestructura** | Acceso a datos | DatabaseManager, KnowledgeRepository |
-| **Configuración** | Settings globales | Settings (Pydantic) |
+| **Entrypoints** | Interfaz con usuario | `src/bot/` (Telegram), `src/api/` (REST) |
+| **Gateway** | Normalización multi-canal | `src/gateway/` (MessageGateway) |
+| **Pipeline** | Coordinación del flujo | `src/pipeline/` (MainHandler, factory) |
+| **Agents** | Motor LLM ReAct | `src/agents/` (ReActAgent, tools) |
+| **Domain** | Lógica de negocio pura | `src/domain/` (auth, memory, knowledge) |
+| **Infra** | Servicios técnicos | `src/infra/` (database, events, observability) |
+| **Configuración** | Settings globales | `src/config/` (Pydantic BaseSettings) |
 
 ### 2.3 Flujo de Datos Simplificado
 
@@ -151,109 +157,30 @@ Mensaje Usuario → Handler → Tool Orchestrator → Tool (QueryTool)
 
 ## 3. Estructura de Directorios
 
+> Para el árbol completo y actualizado, ver [`docs/estructura.md`](../estructura.md).
+
 ```
-D:\proyectos\gs\AgenteCodigoAutomatico\GPT5/
+TelegramBotIA/
+├── src/
+│   ├── api/            # Entrypoint REST (Flask, token AES)
+│   ├── bot/            # Entrypoint Telegram (handlers, keyboards, middleware)
+│   ├── gateway/        # Normalización multi-canal (MessageGateway)
+│   ├── pipeline/       # Coordinación (MainHandler, factory/DI)
+│   ├── agents/         # Motor LLM ReAct (ReActAgent, tools, providers)
+│   ├── domain/         # Lógica de negocio (auth, memory, knowledge)
+│   ├── infra/          # Servicios técnicos (database, events, observability)
+│   ├── config/         # Settings (Pydantic BaseSettings)
+│   └── utils/          # Utilidades (encryption, rate_limiter, retry...)
 │
-├── src/                              # Código fuente (3,727 líneas Python)
-│   ├── agent/                        # Módulo de IA/LLM
-│   │   ├── llm_agent.py              # Orquestador principal
-│   │   ├── providers/                # Proveedores de LLM
-│   │   │   ├── base_provider.py      # Interfaz abstracta
-│   │   │   ├── openai_provider.py    # Implementación OpenAI
-│   │   │   └── anthropic_provider.py # Implementación Anthropic
-│   │   ├── classifiers/              # Clasificación de consultas
-│   │   │   └── query_classifier.py
-│   │   ├── knowledge/                # Sistema de conocimiento
-│   │   │   ├── knowledge_manager.py
-│   │   │   ├── knowledge_repository.py
-│   │   │   ├── company_knowledge.py
-│   │   │   └── knowledge_categories.py
-│   │   ├── sql/                      # Generación SQL
-│   │   │   ├── sql_generator.py
-│   │   │   └── sql_validator.py
-│   │   ├── formatters/               # Formateo de respuestas
-│   │   │   └── response_formatter.py
-│   │   └── prompts/                  # Sistema de prompts
-│   │       ├── prompt_manager.py
-│   │       └── prompt_templates.py
-│   │
-│   ├── bot/                          # Módulo de Telegram
-│   │   ├── telegram_bot.py           # Clase principal
-│   │   ├── handlers/                 # Manejadores de eventos
-│   │   │   ├── command_handlers.py
-│   │   │   ├── query_handlers.py
-│   │   │   ├── registration_handlers.py
-│   │   │   ├── tools_handlers.py
-│   │   │   └── universal_handler.py
-│   │   ├── keyboards/                # Teclados personalizados
-│   │   │   ├── main_keyboard.py
-│   │   │   └── inline_keyboards.py
-│   │   └── middleware/               # Middleware
-│   │       ├── auth_middleware.py
-│   │       └── logging_middleware.py
-│   │
-│   ├── tools/                        # Sistema de Tools
-│   │   ├── tool_base.py              # Clases base
-│   │   ├── tool_registry.py          # Registro (Singleton)
-│   │   ├── tool_orchestrator.py      # Orquestador
-│   │   ├── execution_context.py      # Contexto de ejecución
-│   │   ├── tool_initializer.py       # Inicializador
-│   │   └── builtin/                  # Tools incorporados
-│   │       └── query_tool.py
-│   │
-│   ├── orchestrator/                 # Orquestación avanzada
-│   │   └── tool_selector.py          # Selección con LLM
-│   │
-│   ├── database/                     # Base de datos
-│   │   ├── connection.py             # Gestor de conexiones
-│   │   └── migrations/               # Migraciones
-│   │
-│   ├── auth/                         # Autenticación
-│   │   ├── user_manager.py
-│   │   ├── permission_checker.py
-│   │   └── registration.py
-│   │
-│   ├── config/                       # Configuración
-│   │   └── settings.py               # Pydantic Settings
-│   │
-│   └── utils/                        # Utilidades
-│       ├── status_message.py
-│       └── logger.py
-│
-├── tests/                            # Testing
-│   ├── agent/
-│   ├── handlers/
-│   ├── orchestrator/
-│   └── tools/
-│
-├── docs/                             # Documentación
-│   ├── estructura.md
-│   ├── prompts/
-│   ├── sql/
-│   └── guia del desarrollador/       # Guías HTML
-│
-├── database/                         # Archivos de BD
-│   └── migrations/
-│
-├── Ejemplos/                         # Ejemplos de uso
-│
-├── main.py                           # Punto de entrada
-├── requirements.txt                  # Dependencias
-├── Pipfile / Pipfile.lock           # Configuración Pipenv
-├── .env.example                      # Template de variables
-├── .gitignore
-├── README.md
-│
-└── Documentos de Planificación
-    ├── DIAGRAMA_FLUJO_ACTUAL.md
-    ├── GITFLOW.md
-    ├── COMMIT_GUIDELINES.md
-    ├── PENDIENTES.md
-    ├── ROADMAP.md
-    ├── QUICK_START_TOOLS.md
-    ├── TESTING_TOOLS.md
-    ├── PLAN_ORQUESTADOR_TOOLS.md
-    └── PLAN_KNOWLEDGE_BASE_RAG.md
+├── tests/              # Tests por módulo
+├── docs/               # Documentación
+├── plan/               # Planes de proyecto
+├── database/migrations/# Scripts SQL
+├── scripts/            # Diagnóstico y utilidades
+├── examples/           # Ejemplos de integración
+├── main.py             # Punto de entrada (polling Telegram)
+├── Pipfile             # Dependencias
+└── .env.example        # Variables de entorno requeridas
 ```
 
 ---
