@@ -66,9 +66,10 @@ python main.py
 
 ### Documentación Técnica
 
-- [docs/estructura.md](docs/estructura.md) - Estructura detallada del código
-- [docs/SISTEMA_AUTENTICACION.md](docs/SISTEMA_AUTENTICACION.md) - Sistema de autenticación
-- [docs/GuiaKeyboards.md](docs/GuiaKeyboards.md) - Guía de teclados de Telegram
+- [docs/desarrollador/ESTRUCTURA_PROYECTO.md](docs/desarrollador/ESTRUCTURA_PROYECTO.md) - Estructura detallada del código
+- [docs/modulos/SISTEMA_AUTENTICACION.md](docs/modulos/SISTEMA_AUTENTICACION.md) - Sistema de autenticación
+- [docs/modulos/GUIA_KEYBOARDS.md](docs/modulos/GUIA_KEYBOARDS.md) - Guía de teclados de Telegram
+- [docs/api/CHAT_API_GUIDE.md](docs/api/CHAT_API_GUIDE.md) - API REST e integración
 
 ## 🔄 Flujo de Trabajo (GitFlow)
 
