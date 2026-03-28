@@ -5,150 +5,157 @@
 | Tipo | Cantidad |
 |------|----------|
 | CommandHandlers | 9 |
-| MessageHandlers | 2 |
-| ConversationHandlers | 1 |
-| CallbackQueryHandlers | 0 |
+| MessageHandlers | 1 (QueryHandler) |
+| ConversationHandlers | 1 (registro) |
+
+**Dependencia principal**: `pipeline/handler.py` → `MainHandler` (ReActAgent)
+
+---
+
+## TelegramBot (Arranque)
+
+**Archivo**: `src/bot/telegram_bot.py`
+
+```python
+class TelegramBot:
+    def __init__(self):
+        self.db_manager = DatabaseManager()
+        self.main_handler = create_main_handler(self.db_manager)  # pipeline/factory
+        self.application = Application.builder().token(...).build()
+
+    def setup(self):
+        # Inyecta dependencias en bot_data (disponibles en todos los handlers)
+        self.application.bot_data['main_handler'] = self.main_handler
+        self.application.bot_data['db_manager'] = self.db_manager
+
+        # Registra handlers
+        register_command_handlers(application)
+        register_query_handlers(application, self.main_handler)
+        register_registration_handlers(application, self.db_manager)
+        register_tools_handlers(application)
+
+        # Middlewares
+        setup_logging_middleware(application)
+        setup_auth_middleware(application)
+
+    def run(self):
+        self.application.run_polling()
+```
 
 ---
 
 ## Comandos Registrados
 
 ### /start
-- **Archivo**: `src/bot/handlers/command_handlers.py:72`
+- **Archivo**: `src/bot/handlers/command_handlers.py`
 - **Función**: `start_command`
-- **Descripción**: Genera mensaje de bienvenida dinámicamente desde BD con categorías y ejemplos filtrados por rol
+- **Descripción**: Genera mensaje de bienvenida dinámico desde BD (categorías y ejemplos filtrados por rol)
 - **Requiere auth**: No
 
 ### /help
-- **Archivo**: `src/bot/handlers/command_handlers.py:132`
+- **Archivo**: `src/bot/handlers/command_handlers.py`
 - **Función**: `help_command`
-- **Descripción**: Genera guía dinámicamente desde BD mostrando categorías disponibles y ejemplos
+- **Descripción**: Genera guía de uso dinámicamente desde BD
 - **Requiere auth**: No
 
 ### /stats
-- **Archivo**: `src/bot/handlers/command_handlers.py:203`
+- **Archivo**: `src/bot/handlers/command_handlers.py`
 - **Función**: `stats_command`
-- **Descripción**: Muestra estadísticas de uso (placeholder)
+- **Descripción**: Estadísticas de uso (placeholder — pendiente implementar)
 - **Requiere auth**: Sí
 
 ### /cancel
-- **Archivo**: `src/bot/handlers/command_handlers.py:234`
+- **Archivo**: `src/bot/handlers/command_handlers.py`
 - **Función**: `cancel_command`
-- **Descripción**: Cancela operación actual (útil en flujos conversacionales)
+- **Descripción**: Cancela operación en curso (útil en flujos conversacionales)
 - **Requiere auth**: No
 
 ### /ia
-- **Archivo**: `src/bot/handlers/tools_handlers.py:21`
+- **Archivo**: `src/bot/handlers/tools_handlers.py`
 - **Función**: `handle_ia_command`
-- **Descripción**: Consulta inteligente via ToolOrchestrator → QueryTool → LLMAgent
+- **Descripción**: Consulta inteligente — delega a `MainHandler.handle_telegram()` (ReActAgent)
 - **Requiere auth**: Sí
-- **Permisos**: `/ia`
 
 ### /query
-- **Archivo**: `src/bot/handlers/tools_handlers.py:111`
+- **Archivo**: `src/bot/handlers/tools_handlers.py`
 - **Función**: `handle_query_command`
-- **Descripción**: Alias de /ia, delega a handle_ia_command
+- **Descripción**: Alias de /ia
 - **Requiere auth**: Sí
 
 ### /register
-- **Archivo**: `src/bot/handlers/registration_handlers.py:44`
+- **Archivo**: `src/bot/handlers/registration_handlers.py`
 - **Función**: `RegistrationHandlers.cmd_register`
-- **Descripción**: Inicia proceso de registro solicitando número de empleado
+- **Descripción**: Inicia proceso de registro (solicita número de empleado)
 - **Flujo**: ConversationHandler
 
 ### /verify
-- **Archivo**: `src/bot/handlers/registration_handlers.py:176`
+- **Archivo**: `src/bot/handlers/registration_handlers.py`
 - **Función**: `RegistrationHandlers.cmd_verify`
-- **Descripción**: Verifica cuenta con código enviado
 - **Uso**: `/verify <código>`
 
 ### /resend
-- **Archivo**: `src/bot/handlers/registration_handlers.py:235`
+- **Archivo**: `src/bot/handlers/registration_handlers.py`
 - **Función**: `RegistrationHandlers.cmd_resend`
-- **Descripción**: Genera nuevo código de verificación
+- **Descripción**: Regenera código de verificación
 
 ---
 
-## Message Handlers
+## Message Handler: QueryHandler
 
-### QueryHandler
-- **Archivo**: `src/bot/handlers/query_handlers.py:40`
-- **Clase**: `QueryHandler`
-- **Método**: `handle_text_message`
-- **Filtro**: `filters.TEXT & ~filters.COMMAND`
-- **Descripción**: Procesa mensajes de texto como consultas
-- **Flujo**:
-  1. Validar autenticación (UserManager)
-  2. Validar permisos (PermissionChecker)
-  3. Auto-seleccionar tool (ToolSelector)
-  4. Ejecutar via ToolOrchestrator
-  5. Fallback a LLMAgent.process_query()
+**Archivo**: `src/bot/handlers/query_handlers.py`
+**Filtro**: `filters.TEXT & ~filters.COMMAND`
+**Descripción**: Procesa mensajes de texto libres (sin comando) como consultas al ReActAgent
 
-### Registration Employee ID Handler
-- **Archivo**: `src/bot/handlers/registration_handlers.py:88`
-- **Función**: `handle_employee_id`
-- **Contexto**: Parte del ConversationHandler de registro
-- **Descripción**: Procesa número de empleado ingresado
+```python
+class QueryHandler:
+    def __init__(self, main_handler: MainHandler)
+
+    async def handle_text_message(update, context)
+```
+
+**Flujo**:
+```
+1. Obtener telegram_user del context (cacheado por auth_middleware)
+   └── Si no está: UserService.get_user_by_chat_id(chat_id) desde BD
+2. Validar que usuario está registrado y activo
+3. Verificar permiso para consultas (/ia)
+4. main_handler.handle_telegram(update, context) → respuesta
+5. Enviar respuesta (split si > 4000 chars)
+```
+
+**Dependencias**:
+- `pipeline/handler.py` → `MainHandler`
+- `domain/auth` → `UserService`
+- `utils/status_message.py` → `StatusMessage`
 
 ---
 
 ## ConversationHandler: Registro
 
-**Archivo**: `src/bot/handlers/registration_handlers.py:299`
+**Archivo**: `src/bot/handlers/registration_handlers.py`
 
 ```
 Estados:
-┌─────────────────────────────────────────┐
-│          WAITING_FOR_EMPLOYEE_ID        │
-└────────────────────┬────────────────────┘
-                     │
-    Usuario envía número de empleado
-                     │
-                     ▼
-         ┌───────────────────────┐
-         │  Validar en BD        │
-         │  ¿Existe empleado?    │
-         └───────────┬───────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-         ▼                       ▼
-    ❌ No existe            ✅ Existe
-    (retry)                 (ConversationHandler.END)
-                                 │
-                                 ▼
-                     Enviar código verificación
+┌─────────────────────────────────────┐
+│        WAITING_FOR_EMPLOYEE_ID      │
+└────────────────┬────────────────────┘
+                 │
+     Usuario envía número de empleado
+                 │
+                 ▼
+     ┌──────────────────────┐
+     │  UserService.        │
+     │  validate_employee() │
+     └──────────┬───────────┘
+                │
+     ┌──────────┴──────────┐
+     │                     │
+     ▼                     ▼
+❌ No existe           ✅ Existe
+(solicitar reintento)  (enviar código, END)
 ```
 
-**Entry points**: `CommandHandler('register', cmd_register)`
-**Fallbacks**: `CommandHandler('cancel', cmd_cancel)`
-
----
-
-## Clases de Handlers
-
-### QueryHandler
 ```python
-# src/bot/handlers/query_handlers.py:22
-class QueryHandler:
-    def __init__(self, agent: LLMAgent)
-
-    async def handle_text_message(update, context)
-    async def _send_response(update, response)
-    async def _send_long_response(update, response)  # Split >4000 chars
-    async def _send_error_message(update, error)
-```
-
-**Dependencias**:
-- LLMAgent
-- ToolSelector
-- ToolOrchestrator
-- UserManager
-- PermissionChecker
-
-### RegistrationHandlers
-```python
-# src/bot/handlers/registration_handlers.py:32
 class RegistrationHandlers:
     def __init__(self, db_manager: DatabaseManager)
 
@@ -159,65 +166,26 @@ class RegistrationHandlers:
     async def cmd_cancel(update, context)
 ```
 
-### UniversalHandler
-```python
-# src/bot/handlers/universal_handler.py:22
-class UniversalHandler:
-    def __init__(self)
-
-    async def handle_command(update, context)
-    async def handle_text_message(update, context)
-
-    # Rate limiting: 10 req/min por usuario
-    # Input validation incluida
-```
-
 ---
 
-## Funciones de Registro
+## Middlewares
 
-```python
-# En main.py se llaman estas funciones:
+**Archivos**: `src/bot/middleware/`
 
-register_command_handlers(application)
-# → /start, /help, /stats, /cancel
+### AuthMiddleware (`auth_middleware.py`)
+- Intercepta todos los mensajes antes de los handlers
+- Verifica autenticación con `UserService`
+- Cachea `telegram_user` en `context.user_data`
+- Rechaza usuarios no registrados con mensaje apropiado
 
-register_query_handlers(application, agent)
-# → MessageHandler para texto
+### LoggingMiddleware (`logging_middleware.py`)
+- Registra todas las interacciones (user_id, comando, duración)
+- No bloquea el flujo
 
-register_registration_handlers(application, db_manager)
-# → ConversationHandler + /verify, /resend
-
-register_tools_handlers(application)
-# → /ia, /query
-```
-
----
-
-## Flujo de Autenticación
-
-```
-Mensaje de usuario
-    │
-    ▼
-¿Usuario en context.user_data?
-    │
-    ├─ No → Consultar UserManager.is_registered()
-    │           │
-    │           ├─ No registrado → "Usa /register"
-    │           └─ Registrado → Cachear en context
-    │
-    └─ Sí → Continuar
-    │
-    ▼
-¿Usuario activo y verificado?
-    │
-    ├─ No → Mensaje de error apropiado
-    └─ Sí → Verificar permisos para /ia
-              │
-              ├─ Sin permiso → "No tienes acceso"
-              └─ Con permiso → Ejecutar consulta
-```
+### TokenMiddleware (`token_middleware.py`)
+- Usado exclusivamente por el API REST (`src/api/chat_endpoint.py`)
+- Valida tokens AES encriptados con `numero_empleado` + `timestamp`
+- TTL configurable (por defecto 3 minutos)
 
 ---
 
@@ -225,26 +193,24 @@ Mensaje de usuario
 
 ```
 command_handlers.py
-├── start_command → KnowledgeRepository, UserManager
-├── help_command → KnowledgeRepository, UserManager
+├── start_command → domain/knowledge/KnowledgeRepository, domain/auth/UserService
+├── help_command  → domain/knowledge/KnowledgeRepository, domain/auth/UserService
 ├── stats_command → (placeholder)
 └── cancel_command → (ninguna)
 
-query_handlers.py
-└── QueryHandler
-    ├── LLMAgent
-    ├── ToolSelector
-    ├── ToolOrchestrator
-    ├── UserManager
-    └── PermissionChecker
+query_handlers.py (QueryHandler)
+├── pipeline/handler.py → MainHandler
+└── domain/auth → UserService
 
 tools_handlers.py
-├── handle_ia_command → ToolOrchestrator, ExecutionContextBuilder
+├── handle_ia_command → context.bot_data['main_handler'] (MainHandler)
 └── handle_query_command → handle_ia_command
 
-registration_handlers.py
-└── RegistrationHandlers
-    ├── UserManager
-    ├── RegistrationManager
-    └── DatabaseManager
+registration_handlers.py (RegistrationHandlers)
+├── domain/auth → UserService
+└── infra/database → DatabaseManager
+
+telegram_bot.py (TelegramBot)
+├── pipeline/factory.py → create_main_handler
+└── infra/database → DatabaseManager
 ```

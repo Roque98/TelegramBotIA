@@ -1,193 +1,123 @@
 # Sistema de Memoria
 
-## Arquitectura de Memoria en Capas
+## Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    WORKING MEMORY                           │
-│                  (Corto plazo - RAM)                        │
-│                                                             │
-│  ConversationHistory                                        │
-│  - Últimos 3-10 mensajes                                    │
-│  - Se pierde al reiniciar                                   │
-│  - Acceso inmediato                                         │
-└─────────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   LONG-TERM MEMORY                          │
-│                 (Largo plazo - Base de datos)               │
-│                                                             │
-│  UserMemoryProfiles                                         │
-│  - Resúmenes generados por LLM                              │
-│  - Persiste entre sesiones                                  │
-│  - Se actualiza cada N interacciones                        │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│               WORKING MEMORY (RAM)               │
+│                                                  │
+│  UserContext.working_memory                      │
+│  - Últimas N interacciones (max_working_memory)  │
+│  - Se construye desde BD en cada sesión          │
+│  - Se pierde al terminar la sesión               │
+└──────────────────────────────────────────────────┘
+                        │
+                        ▼
+┌──────────────────────────────────────────────────┐
+│            LONG-TERM MEMORY (Base de datos)      │
+│                                                  │
+│  UserProfile (tabla UserMemoryProfiles)          │
+│  - Resumen de contexto laboral                   │
+│  - Temas recientes                               │
+│  - Historial breve                               │
+│  - Preferencias del usuario                      │
+│  - Persiste entre sesiones                       │
+└──────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Componentes
 
-### ConversationHistory (Working Memory)
+### MemoryService (Orquestador)
 
-**Archivo**: `src/agent/conversation_history.py`
-
-```python
-class ConversationHistory:
-    def __init__(self, max_messages: int = 10):
-        self.messages: list[dict] = []
-        self.max_messages = max_messages
-
-    def add_user_message(self, content: str)
-    def add_bot_response(self, content: str)
-    def get_context(self) -> str
-    def clear(self)
-```
-
-**Estructura de mensaje**:
-```python
-{
-    "role": "user" | "assistant",
-    "content": "texto del mensaje",
-    "timestamp": datetime
-}
-```
-
----
-
-### MemoryManager (Orquestador)
-
-**Archivo**: `src/agent/memory/memory_manager.py`
+**Archivo**: `src/domain/memory/memory_service.py`
 
 ```python
-class MemoryManager:
+class MemoryService:
     def __init__(
         self,
-        db_manager: DatabaseManager,
-        llm_provider: LLMProvider,
-        update_threshold: int = 10  # Actualizar cada N interacciones
+        repository: Optional[MemoryRepository] = None,
+        cache_ttl_seconds: int = 300,
+        max_cache_size: int = 1000,
+        max_working_memory: int = 10,
     )
 
-    async def get_memory_context(self, user_id: int) -> str
+    # Construye UserContext completo (working + long-term)
+    async def build_context(
+        self,
+        user_id: str,
+        include_working_memory: bool = True,
+        include_long_term: bool = True,
+    ) -> UserContext
+
+    # Alias para MainHandler
+    async def get_context(self, user_id: str) -> UserContext
+
+    # Registra una interacción (query + response)
     async def record_interaction(
         self,
-        user_id: int,
+        user_id: str,
         query: str,
         response: str,
-        query_type: str
-    )
+        metadata: dict = {},
+    ) -> None
+
+    # Health check
+    async def health_check(self) -> bool
 ```
 
-**Flujo de get_memory_context()**:
-```
-1. Verificar cache
-   ├── Cache hit → Retornar cached
-   └── Cache miss → Continuar
-
-2. Obtener perfil de BD
-   └── MemoryRepository.get_user_memory_profile()
-
-3. Construir contexto
-   └── MemoryInjector.build_context(profile)
-
-4. Cachear resultado (TTL: 5 min)
-
-5. Retornar contexto
-```
-
-**Flujo de record_interaction()**:
-```
-1. Guardar en LogOperaciones (siempre)
-
-2. Incrementar contador de interacciones
-
-3. ¿Contador >= threshold?
-   ├── No → Terminar
-   └── Sí → Actualizar memoria
-         ├── Obtener últimas N interacciones
-         ├── MemoryExtractor.generate_summary()
-         ├── MemoryRepository.save_profile()
-         └── Invalidar cache
-```
+**Cache interno** (LRU con TTL):
+- Implementado con `OrderedDict` + asyncio.Lock (thread-safe)
+- TTL por defecto: 300s
+- Tamaño máximo: 1000 entradas
+- Se invalida al registrar nueva interacción
+- `_cache_hits` y `_cache_misses` disponibles para métricas
 
 ---
 
 ### MemoryRepository (Persistencia)
 
-**Archivo**: `src/agent/memory/memory_repository.py`
+**Archivo**: `src/domain/memory/memory_repository.py`
 
 ```python
-@dataclass
-class UserMemoryProfile:
-    id_usuario: int
-    resumen_contexto_laboral: Optional[str]   # "Trabaja en ventas..."
-    resumen_temas_recientes: Optional[str]    # "Ha preguntado sobre..."
-    resumen_historial_breve: Optional[str]    # "Usuario activo que..."
-    num_interacciones: int
-    ultima_actualizacion: datetime
-    version: int
-
 class MemoryRepository:
-    async def get_user_memory_profile(self, user_id: int) -> Optional[UserMemoryProfile]
-    async def save_memory_profile(self, profile: UserMemoryProfile)
-    async def get_user_interactions(self, user_id: int, limit: int = 50) -> list[UserInteraction]
+    def __init__(self, db_manager=None)
+
+    async def get_profile(self, user_id: str) -> Optional[UserProfile]
+    async def save_profile(self, profile: UserProfile) -> None
+    async def get_interactions(self, user_id: str, limit: int = 10) -> list[Interaction]
+    async def save_interaction(self, user_id: str, query: str, response: str, metadata: dict) -> None
+    async def health_check(self) -> bool
 ```
 
 ---
 
-### MemoryExtractor (Generación de Resúmenes)
-
-**Archivo**: `src/agent/memory/memory_extractor.py`
+### Entidades (`src/domain/memory/memory_entity.py`)
 
 ```python
-class MemoryExtractor:
-    def __init__(self, llm_provider: LLMProvider)
+class UserProfile(BaseModel):
+    user_id: str
+    display_name: str = ""
+    roles: list[str] = []
+    preferences: dict = {}
+    long_term_summary: Optional[str] = None
+    interaction_count: int = 0
+    last_updated: Optional[datetime] = None
 
-    async def generate_memory_summary(
-        self,
-        interactions: list[UserInteraction],
-        previous_profile: Optional[UserMemoryProfile]
-    ) -> UserMemoryProfile
-```
+class Interaction(BaseModel):
+    user_id: str
+    query: str
+    response: str
+    timestamp: datetime
+    metadata: dict = {}
 
-**Prompt de extracción**:
-```
-Analiza las interacciones del usuario y genera resúmenes:
+class CacheEntry(BaseModel):
+    data: Any
+    created_at: datetime
+    ttl_seconds: int
 
-## Interacciones recientes
-- [2024-01-15] "¿Ventas de enero?" → "Las ventas fueron $50,000"
-- [2024-01-16] "¿Top vendedores?" → "Juan, María, Pedro"
-...
-
-## Genera:
-1. Contexto laboral: ¿Qué área? ¿Qué consulta frecuentemente?
-2. Temas recientes: ¿Qué ha preguntado últimamente?
-3. Historial breve: Resumen general del usuario
-```
-
----
-
-### MemoryInjector (Inyección en Prompts)
-
-**Archivo**: `src/agent/memory/memory_injector.py`
-
-```python
-class MemoryInjector:
-    def build_context(self, profile: UserMemoryProfile) -> str
-    def inject_into_prompt(self, prompt: str, profile: UserMemoryProfile) -> str
-```
-
-**Ejemplo de contexto generado**:
-```
-## Contexto del usuario
-Este usuario trabaja en el área de ventas y frecuentemente
-consulta sobre métricas de rendimiento y comparativas.
-
-Últimamente ha preguntado sobre ventas mensuales y productos
-más vendidos.
-
-Es un usuario activo con 45 interacciones en el último mes.
+    def is_expired(self) -> bool: ...
 ```
 
 ---
@@ -195,29 +125,18 @@ Es un usuario activo con 45 interacciones en el último mes.
 ## Tabla de Base de Datos
 
 ```sql
+-- Perfiles de memoria de usuarios
 CREATE TABLE UserMemoryProfiles (
-    idMemoryProfile INT PRIMARY KEY IDENTITY,
-    idUsuario INT FK UNIQUE NOT NULL,
-    resumenContextoLaboral NVARCHAR(MAX),
-    resumenTemasRecientes NVARCHAR(MAX),
-    resumenHistorialBreve NVARCHAR(MAX),
-    numInteracciones INT DEFAULT 0,
-    ultimaActualizacion DATETIME2 DEFAULT GETDATE(),
-    fechaCreacion DATETIME2 DEFAULT GETDATE(),
-    version INT DEFAULT 1
+    idMemoryProfile     INT PRIMARY KEY IDENTITY,
+    idUsuario           INT FK UNIQUE NOT NULL,
+    displayName         NVARCHAR(255),
+    roles               NVARCHAR(MAX),           -- JSON array
+    preferences         NVARCHAR(MAX),           -- JSON dict
+    longTermSummary     NVARCHAR(MAX),
+    interactionCount    INT DEFAULT 0,
+    lastUpdated         DATETIME2 DEFAULT GETDATE(),
+    fechaCreacion       DATETIME2 DEFAULT GETDATE()
 );
-```
-
----
-
-## Configuración
-
-```python
-# .env
-ENABLE_MEMORY_SYSTEM=true
-MEMORY_UPDATE_THRESHOLD=10      # Cada cuántas interacciones actualizar
-MEMORY_CACHE_TTL=300            # TTL del cache en segundos
-MEMORY_INTERACTIONS_LIMIT=50    # Cuántas interacciones analizar
 ```
 
 ---
@@ -226,58 +145,50 @@ MEMORY_INTERACTIONS_LIMIT=50    # Cuántas interacciones analizar
 
 ```
 Usuario envía: "¿Cuántas ventas hubo ayer?"
-    │
-    ▼
-LLMAgent.process_query()
-    │
-    ├── 1. Obtener contexto de memoria
-    │      memory_manager.get_memory_context(user_id)
-    │      │
-    │      ├── Cache hit? → Usar cached
-    │      │
-    │      └── Cache miss?
-    │           ├── repository.get_profile()
-    │           ├── injector.build_context()
-    │           └── Cachear
-    │
-    ├── 2. Clasificar query (con contexto de memoria)
-    │      query_classifier.classify(query, memory_context)
-    │
-    ├── 3. Procesar (DATABASE/KNOWLEDGE/GENERAL)
-    │      ...
-    │
-    └── 4. Registrar interacción (async)
-           memory_manager.record_interaction()
-           │
-           ├── Guardar en LogOperaciones
-           │
-           └── ¿Threshold alcanzado?
-                ├── No → Terminar
-                └── Sí → Actualizar memoria
-                     ├── Obtener interacciones
-                     ├── extractor.generate_summary()
-                     ├── repository.save_profile()
-                     └── Invalidar cache
+        │
+        ▼
+MainHandler._process_event(event)
+        │
+        ├── MemoryService.get_context(user_id)
+        │       │
+        │       ├── Cache hit? → Retornar UserContext cacheado
+        │       │
+        │       └── Cache miss?
+        │            ├── MemoryRepository.get_profile(user_id)
+        │            ├── MemoryRepository.get_interactions(user_id, limit=10)
+        │            ├── build UserContext(profile + interactions)
+        │            └── Cachear (TTL=300s)
+        │
+        ▼ UserContext
+ReActAgent.execute(query, context)
+        │
+        ▼ AgentResponse
+        │
+        └── MemoryService.record_interaction() [asyncio.create_task — no bloqueante]
+                 ├── MemoryRepository.save_interaction()
+                 └── Invalidar cache del usuario
 ```
 
 ---
 
-## Arquitectura Futura: MemoryAgent
-
-En la migración a ReAct, la memoria se convertirá en un agente dedicado:
+## Configuración
 
 ```python
-class MemoryAgent:
-    """Gestiona contexto del usuario."""
-
-    async def get_context(self, user_id: str) -> UserContext
-    async def record(self, event: ConversationEvent, response: AgentResponse)
-    async def update_summary(self, user_id: str)
-    async def extract_preferences(self, event: ConversationEvent)
+# src/config/settings.py
+memory_cache_ttl: int = 300        # TTL del cache en segundos
+memory_max_cache_size: int = 1000  # Máximo de entradas en cache
+memory_max_working: int = 10       # Interacciones en working memory
 ```
 
-**Mejoras planificadas**:
-- Extracción automática de preferencias
-- Memoria semántica con embeddings
-- Búsqueda por similitud en historial
-- Compresión progresiva de memoria antigua
+## Construcción (pipeline/factory.py)
+
+```python
+def create_memory_service(db_manager=None) -> MemoryService:
+    repository = MemoryRepository(db_manager=db_manager)
+    return MemoryService(
+        repository=repository,
+        cache_ttl_seconds=300,
+        max_cache_size=1000,
+        max_working_memory=10,
+    )
+```
