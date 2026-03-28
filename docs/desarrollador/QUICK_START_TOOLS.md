@@ -1,209 +1,131 @@
-# 🚀 Quick Start - Sistema de Tools
+# Quick Start — Sistema de Tools
 
-Guía rápida para probar el sistema de Tools implementado.
+> **Última actualización:** 2026-03-28
+> **Ubicación del código:** `src/agents/tools/`
 
-## ✅ Sistema Validado
+Guía rápida para entender, usar y extender el sistema de tools del ReActAgent.
 
-El sistema de Tools ha sido probado exitosamente:
-- ✅ 63/63 tests unitarios pasando (100%)
-- ✅ QueryTool funciona con queries reales
-- ✅ Integración con LLMAgent verificada
-- ✅ Tiempo de respuesta: ~15 segundos por query
+---
 
-## 🎯 Opción 1: Probar con Bot de Telegram (Recomendado)
+## Las 5 Tools disponibles
 
-### Paso 1: Iniciar el bot
+| Tool | Nombre | Cuándo la usa el agente |
+|------|--------|------------------------|
+| `DatabaseTool` | `database_query` | Consultas de datos en lenguaje natural |
+| `KnowledgeTool` | `knowledge_search` | Políticas, procesos, FAQs |
+| `CalculateTool` | `calculate` | Expresiones matemáticas |
+| `DateTimeTool` | `get_datetime` | Fecha y hora actual del sistema |
+| `SavePreferenceTool` | `save_preference` | Guardar preferencias del usuario |
+
+---
+
+## Probar con el bot de Telegram
 
 ```bash
+# 1. Configurar .env
+cp .env.example .env
+# Editar .env con TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, DB_*
+
+# 2. Arrancar
 python main.py
-```
 
-**Salida esperada:**
-```
-INFO - Inicializando TelegramBot...
-INFO - Inicializando sistema de Tools...
-INFO - Tool registrado: query (comandos: ['/ia', '/query'])
-INFO - Sistema de Tools inicializado correctamente
-INFO - TelegramBot inicializado exitosamente con LLM provider: OpenAI
-INFO - Bot iniciado. Presiona Ctrl+C para detener.
-```
-
-### Paso 2: Probar en Telegram
-
-Envía estos comandos a tu bot:
-
-**Query de base de datos:**
-```
-/ia ¿Cuántos usuarios hay registrados?
-```
-
-**Query general:**
-```
-/ia ¿Qué es Python?
-```
-
-**Comando alternativo:**
-```
-/query Dame un resumen del sistema
-```
-
-**Query sin comando (implícita):**
-```
-¿Qué tablas tiene la base de datos?
-```
-
-### Respuesta Esperada
-
-```
-🔍 Analizando tu consulta...
-🤖 Procesando con IA...
-
-**Resultados encontrados:** 1
-
-total_registered_users: 30
+# 3. En Telegram
+/ia ¿Cuántas ventas hubo ayer?          → database_query
+/ia ¿Cómo solicito vacaciones?          → knowledge_search
+/ia ¿Cuánto es 15 * 1.16?               → calculate
+/ia ¿Qué día es hoy?                    → get_datetime
 ```
 
 ---
 
-## 📊 Opción 2: Tests Unitarios (Más Rápido)
+## Probar con la API REST
 
 ```bash
-# Tests rápidos (~1 segundo)
-pytest tests/tools/ -v
+# 1. Arrancar el API
+python src/api/chat_endpoint.py
 
-# Con coverage
-pytest tests/tools/ --cov=src/tools --cov-report=html
-```
+# 2. Generar token de prueba
+python scripts/generar_token.py 12345
 
-**Resultado esperado:**
-```
-===== 63 passed in 0.40s =====
+# 3. Enviar request
+curl -X POST http://localhost:5000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"token": "<token>", "message": "¿Cuántas ventas hubo ayer?"}'
 ```
 
 ---
 
-## 🧪 Opción 3: Script de Prueba Manual
+## Crear una nueva tool
 
-Para probar sin Telegram:
-
-```bash
-python test_tools_manual.py
-```
-
-**Lo que hace:**
-- Inicializa el sistema de Tools
-- Ejecuta QueryTool con queries reales
-- Valida el ToolOrchestrator
-- Verifica manejo de errores
-- Muestra estadísticas
-
----
-
-## 🔍 Verificar que Funciona
-
-### Indicadores de éxito:
-
-✅ **En los logs del bot:**
-```
-INFO - Sistema de Tools inicializado correctamente
-INFO - Tool registrado: query (comandos: ['/ia', '/query'])
-```
-
-✅ **En Telegram:**
-- Bot responde a `/ia` con queries
-- Mensajes de estado aparecen (`🔍 Analizando...`)
-- Respuestas bien formateadas
-- Sin errores visibles
-
-✅ **En tests:**
-- 63/63 tests pasando
-- Sin errores ni warnings
-- Tiempo de ejecución <1 segundo
-
----
-
-## 🐛 Problemas Comunes
-
-### Error: "Comando no encontrado: /ia"
-
-**Causa:** Tools no inicializados
-
-**Solución:**
 ```python
-# Verificar que telegram_bot.py tiene:
-from src.tools import initialize_builtin_tools
-initialize_builtin_tools()
+# src/agents/tools/mi_tool.py
+from src.agents.tools.base import BaseTool, ToolParameter, ToolResult, ToolCategory
+
+class MiTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "mi_tool"
+
+    @property
+    def description(self) -> str:
+        return "Descripción que verá el LLM — sé específico sobre cuándo usarla"
+
+    def get_parameters(self) -> list[ToolParameter]:
+        return [
+            ToolParameter(
+                name="param1",
+                param_type="string",
+                description="Descripción del parámetro",
+                required=True,
+            )
+        ]
+
+    async def execute(self, param1: str, **kwargs) -> ToolResult:
+        try:
+            resultado = await self._hacer_algo(param1)
+            return ToolResult(success=True, observation=str(resultado))
+        except Exception as e:
+            return ToolResult(success=False, observation="Error al ejecutar", error=str(e))
 ```
 
-### Error: "LLMAgent no disponible"
+Registrar en `src/pipeline/factory.py`:
 
-**Causa:** ExecutionContext sin LLMAgent
+```python
+def create_tool_registry(db_manager=None, knowledge_manager=None) -> ToolRegistry:
+    registry = ToolRegistry()
+    # ... tools existentes ...
+    registry.register(MiTool())  # ← agregar aquí
+    return registry
+```
 
-**Solución:** Ya está integrado en telegram_bot.py ✅
+---
 
-### Error: API key inválida
+## Ejecutar tests de tools
 
-**Causa:** .env no configurado
-
-**Solución:**
 ```bash
-# Verificar .env
-cat .env | grep API_KEY
+# Tests del sistema de tools
+python -m pytest tests/agents/test_tools.py -v
 
-# Debe tener:
-OPENAI_API_KEY=sk-...
-# O
-ANTHROPIC_API_KEY=sk-ant-...
+# Tests del ReActAgent completo
+python -m pytest tests/agents/test_react_agent.py -v
+
+# Todos los tests
+python -m pytest tests/ -v
 ```
 
 ---
 
-## 📈 Siguiente Paso
+## Estructura del código
 
-Una vez que el bot funcione correctamente:
-
-### FASE 3: Implementar más Tools
-
-```bash
-# Crear nueva feature branch
-git checkout -b feature/tools-fase3
-
-# Implementar:
-# - HelpTool (/help con sistema de Tools)
-# - StatsTool (/stats con métricas)
-# - RegistrationTool (/register refactorizado)
+```
+src/agents/tools/
+├── base.py           ← BaseTool, ToolResult, ToolParameter, ToolCategory
+├── registry.py       ← ToolRegistry (singleton, thread-safe)
+├── database_tool.py  ← database_query
+├── knowledge_tool.py ← knowledge_search
+├── calculate_tool.py ← calculate
+├── datetime_tool.py  ← get_datetime
+└── preference_tool.py← save_preference
 ```
 
-### Migrar handlers existentes
-
-Reemplazar handlers tradicionales con Tools:
-- command_handlers.py → HelpTool, StatsTool
-- registration_handlers.py → RegistrationTool
-- query_handlers.py → (Ya migrado a QueryTool) ✅
-
----
-
-## 📚 Documentación Completa
-
-- [TESTING_TOOLS.md](TESTING_TOOLS.md) - Guía completa de testing
-- [PLAN_ORQUESTADOR_TOOLS.md](PLAN_ORQUESTADOR_TOOLS.md) - Plan de implementación
-- [ROADMAP.md](ROADMAP.md) - Roadmap del proyecto
-
----
-
-## 🎯 Estado Actual
-
-**Versión:** 0.2.0
-**FASE 1:** ✅ Completada - Fundamentos
-**FASE 2:** ✅ Completada - QueryTool
-**FASE 3:** ⏳ Pendiente - Más tools
-
-**Sistema:** ✅ Funcional y testeado
-**Integración:** ✅ Bot de Telegram integrado
-**Tests:** ✅ 63/63 pasando
-
----
-
-**¡Sistema listo para usar!** 🎉
-
-Ejecuta `python main.py` y prueba el comando `/ia` en tu bot de Telegram.
+Ver documentación completa en `.claude/context/TOOLS.md`.

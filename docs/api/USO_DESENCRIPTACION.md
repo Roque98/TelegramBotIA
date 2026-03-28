@@ -306,7 +306,7 @@ python scripts/desencriptar_string.py -e "$PASSWORD"
 
 ## Troubleshooting
 
-### No encuentra el módulo src.auth.encryption
+### No encuentra el módulo src.utils.encryption_util
 
 **Error:**
 ```
@@ -316,7 +316,7 @@ ModuleNotFoundError: No module named 'src'
 **Solución:**
 ```bash
 # Asegurarse de ejecutar desde el directorio raíz del proyecto
-cd D:\proyectos\gs\GPT5
+cd TelegramBotIA/
 python scripts/desencriptar_string.py "..."
 ```
 

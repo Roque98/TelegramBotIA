@@ -1,337 +1,159 @@
-# 🧪 Guía de Pruebas - Sistema de Tools
+# Guía de Testing
 
-Esta guía explica cómo probar el sistema de orquestación de Tools implementado en las FASES 1 y 2.
+> **Última actualización:** 2026-03-28
+> **Framework:** pytest + pytest-asyncio
+> **Estructura de tests:** `tests/`
 
-## 📋 Tipos de Pruebas
+---
 
-### 1. Tests Unitarios (Pytest)
+## Estructura de tests
 
-Tests automatizados que verifican componentes individuales.
-
-**Ubicación:** `tests/tools/`
-
-**Tests disponibles:**
-- `test_tool_base.py` - Clases base, parámetros, validación
-- `test_tool_registry.py` - Registry singleton, búsquedas, filtrado
-- `test_query_tool.py` - QueryTool, validación, ejecución
-- `test_integration.py` - Flujos end-to-end completos
-
-**Ejecutar todos los tests:**
-```bash
-# Instalar pytest si no está instalado
-pip install pytest pytest-asyncio
-
-# Ejecutar todos los tests
-pytest tests/tools/ -v
-
-# Ejecutar con coverage
-pytest tests/tools/ -v --cov=src/tools --cov-report=html
-
-# Ejecutar un archivo específico
-pytest tests/tools/test_query_tool.py -v
-
-# Ejecutar un test específico
-pytest tests/tools/test_query_tool.py::TestQueryTool::test_execute_success -v
 ```
-
-**Resultados esperados:**
-```
-tests/tools/test_tool_base.py ............... (15 tests) ✅
-tests/tools/test_tool_registry.py ........... (20 tests) ✅
-tests/tools/test_query_tool.py .............. (12 tests) ✅
-tests/tools/test_integration.py ............. (10 tests) ✅
-
-Total: 57 tests passed
-Coverage: >90%
+tests/
+├── agents/
+│   ├── test_react_agent.py     ← ReActAgent, loop, scratchpad
+│   └── test_tools.py           ← BaseTool, ToolRegistry, tools individuales
+├── auth/
+│   └── test_auth_middleware.py ← AuthMiddleware, TokenMiddleware
+├── gateway/
+│   └── test_gateway.py         ← MessageGateway, MainHandler, factory
+├── handlers/
+│   └── test_tools_handlers.py  ← Handlers de Telegram
+├── memory/                     ← MemoryService, MemoryRepository
+├── observability/              ← Tracer, MetricsCollector
+└── utils/
+    └── test_retry.py           ← Decorador retry
 ```
 
 ---
 
-### 2. Pruebas Manuales (Script Interactivo)
-
-Script que ejecuta el sistema completo con queries reales al LLM y base de datos.
-
-**Ubicación:** `test_tools_manual.py`
-
-**Pre-requisitos:**
-1. Archivo `.env` configurado con API keys válidas
-2. Base de datos accesible
-3. Conexión a internet (para LLM)
-
-**Ejecutar:**
-```bash
-python test_tools_manual.py
-```
-
-**Tests incluidos:**
-
-**Test 1: Inicialización de Tools**
-- ✅ Verifica registro de QueryTool
-- ✅ Confirma comandos disponibles (/ia, /query)
-- ✅ Muestra resumen de tools
-
-**Test 2: QueryTool Directo**
-- ✅ Ejecuta query directamente sin orquestador
-- ✅ Verifica integración con LLMAgent
-- ✅ Muestra tiempo de ejecución
-
-**Test 3: Flujo con Orquestador**
-- ✅ Ejecuta múltiples queries
-- ✅ Verifica autenticación y validación
-- ✅ Muestra estadísticas de ejecución
-
-**Test 4: Validación de Parámetros**
-- ✅ Query muy corta (debe fallar)
-- ✅ Query válida (debe pasar)
-- ✅ Query muy larga (debe fallar)
-
-**Test 5: Manejo de Errores**
-- ✅ Context sin LLMAgent
-- ✅ Comando inexistente
-- ✅ Errores de LLM
-
-**Salida esperada:**
-```
-🧪 SUITE DE PRUEBAS MANUALES - SISTEMA DE TOOLS
-================================================================
-Provider LLM: gpt-4o-mini
-Base de datos: postgresql://...
-================================================================
-
-TEST 1: Inicialización de Tools
-================================================================
-✅ Tools registrados: 1
-✅ Comandos disponibles: /ia, /query
-
-TEST 2: QueryTool - Ejecución Directa
-================================================================
-🔍 Ejecutando query: ¿Cuántos usuarios hay registrados?
-✅ Query ejecutada exitosamente
-⏱️  Tiempo de ejecución: 1234.56ms
-📊 Respuesta:
-------------------------------------------------------------
-Hay 5 usuarios registrados en el sistema.
-------------------------------------------------------------
-
-... (más tests) ...
-
-📊 RESUMEN DE PRUEBAS
-================================================================
-✅ PASÓ - Inicialización de Tools
-✅ PASÓ - QueryTool Directo
-✅ PASÓ - Flujo con Orquestador
-✅ PASÓ - Validación de Parámetros
-✅ PASÓ - Manejo de Errores
-================================================================
-
-Resultado final: 5/5 tests pasaron
-Tasa de éxito: 100.0%
-
-🎉 ¡Todos los tests pasaron exitosamente!
-```
-
----
-
-### 3. Pruebas con Bot de Telegram (En Vivo)
-
-Probar el sistema integrado en el bot de Telegram real.
-
-**Pre-requisitos:**
-1. Bot de Telegram configurado
-2. Sistema de Tools integrado en `telegram_bot.py`
-3. Usuario registrado y con permisos
-
-**Pasos:**
-
-**1. Integrar Tools en el bot:**
-
-Editar `src/bot/telegram_bot.py` para inicializar tools:
-
-```python
-from src.tools import initialize_builtin_tools
-
-class TelegramBot:
-    def __init__(self):
-        # ... código existente ...
-
-        # Inicializar sistema de Tools
-        initialize_builtin_tools()
-        logger.info("Sistema de Tools inicializado")
-```
-
-**2. Ejecutar el bot:**
-```bash
-python main.py
-```
-
-**3. Probar comandos:**
-
-En Telegram, enviar:
-```
-/ia ¿Cuántos usuarios hay registrados?
-```
-
-**Respuesta esperada:**
-```
-🔍 Analizando tu consulta...
-🤖 Procesando con IA...
-
-Hay 5 usuarios registrados en el sistema.
-```
-
-**Comandos para probar:**
-- `/ia ¿Cuántos usuarios hay?` - Query de base de datos
-- `/ia ¿Qué es Python?` - Query general (sin BD)
-- `/query Dame un resumen del sistema` - Comando alternativo
-- `¿Qué tablas tiene la BD?` - Query implícita (sin comando)
-
----
-
-## 🔍 Debugging
-
-### Ver logs detallados
+## Ejecutar tests
 
 ```bash
-# Configurar nivel de log en .env
-LOG_LEVEL=DEBUG
+# Todos los tests
+python -m pytest tests/ -v
 
-# Ejecutar con logs
-python test_tools_manual.py 2>&1 | tee test_output.log
-```
+# Por módulo
+python -m pytest tests/agents/ -v
+python -m pytest tests/agents/test_tools.py -v
 
-### Componentes a verificar
+# Con coverage
+python -m pytest tests/ --cov=src --cov-report=html
+# Ver reporte en htmlcov/index.html
 
-**1. ToolRegistry:**
-```python
-from src.tools import get_registry, get_tool_summary
+# Un test específico
+python -m pytest tests/agents/test_tools.py::TestToolRegistry::test_register -v
 
-registry = get_registry()
-print(f"Tools registrados: {registry.get_tools_count()}")
-print(f"Comandos: {registry.get_commands_list()}")
-
-summary = get_tool_summary()
-print(summary)
-```
-
-**2. QueryTool:**
-```python
-from src.tools import get_registry
-
-tool = get_registry().get_tool_by_name("query")
-print(f"Tool: {tool.name}")
-print(f"Comandos: {tool.commands}")
-print(f"Parámetros: {tool.get_parameters()}")
-```
-
-**3. LLMAgent:**
-```python
-from src.agent.llm_agent import LLMAgent
-
-agent = LLMAgent()
-response = await agent.process_query("¿Cuántos usuarios hay?")
-print(response)
+# Solo tests rápidos (sin BD)
+python -m pytest tests/ -v -m "not integration"
 ```
 
 ---
 
-## ⚠️ Problemas Comunes
+## Escribir tests para una nueva tool
 
-### Error: "Tool 'query' no encontrado"
-
-**Causa:** Tools no inicializados
-
-**Solución:**
 ```python
-from src.tools import initialize_builtin_tools
-initialize_builtin_tools()
+# tests/agents/test_tools.py (agregar en este archivo)
+import pytest
+from src.agents.tools.mi_tool import MiTool
+
+class TestMiTool:
+    def setup_method(self):
+        self.tool = MiTool()
+
+    def test_name(self):
+        assert self.tool.name == "mi_tool"
+
+    def test_parameters(self):
+        params = self.tool.get_parameters()
+        assert len(params) == 1
+        assert params[0].name == "param1"
+        assert params[0].required is True
+
+    @pytest.mark.asyncio
+    async def test_execute_success(self):
+        result = await self.tool.execute(param1="valor_valido")
+        assert result.success is True
+        assert result.observation != ""
+
+    @pytest.mark.asyncio
+    async def test_execute_error(self):
+        result = await self.tool.execute(param1="")
+        assert result.success is False
+        assert result.error is not None
 ```
 
-### Error: "LLMAgent no disponible"
+---
 
-**Causa:** ExecutionContext sin LLMAgent
+## Mocks recomendados
 
-**Solución:**
+### Mockear DatabaseManager
 ```python
-from src.tools import ExecutionContextBuilder
+from unittest.mock import AsyncMock, MagicMock
 
-context = (
-    ExecutionContextBuilder()
-    .with_llm_agent(llm_agent)
-    .build()
-)
+@pytest.fixture
+def mock_db():
+    db = MagicMock()
+    db.execute_query = AsyncMock(return_value=[{"count": 42}])
+    return db
 ```
 
-### Error: API key no válida
+### Mockear OpenAIProvider
+```python
+from unittest.mock import AsyncMock
+from src.agents.react.schemas import ReActResponse
 
-**Causa:** Variables de entorno no configuradas
-
-**Solución:**
-```bash
-# Verificar .env
-cat .env | grep API_KEY
-
-# Configurar keys
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
+@pytest.fixture
+def mock_provider():
+    provider = AsyncMock()
+    provider.generate_structured.return_value = ReActResponse(
+        thought="Tengo la respuesta",
+        action="finish",
+        action_input={},
+        final_answer="La respuesta es 42",
+    )
+    return provider
 ```
 
-### Tests fallan con "Connection refused"
+### Mockear ToolRegistry limpio (para tests aislados)
+```python
+from src.agents.tools.registry import ToolRegistry
 
-**Causa:** Base de datos no accesible
-
-**Solución:**
-```bash
-# Verificar conexión
-python test_db_connection.py
-
-# Verificar URL en .env
-DATABASE_URL=postgresql://user:pass@localhost:5432/db
+@pytest.fixture(autouse=True)
+def reset_registry():
+    ToolRegistry.reset()
+    yield
+    ToolRegistry.reset()
 ```
 
 ---
 
-## 📊 Métricas de Éxito
+## Tests de integración con BD
 
-### Tests Unitarios
-- ✅ >90% de tests pasan
-- ✅ Coverage >90%
-- ✅ Sin warnings de pytest
-- ✅ Tiempo de ejecución <30 segundos
+Los tests que necesitan BD real deben marcarse con `@pytest.mark.integration` y configurarse para saltar si no hay conexión:
 
-### Pruebas Manuales
-- ✅ 5/5 tests pasan
-- ✅ Queries se ejecutan en <5 segundos
-- ✅ Errores manejados correctamente
-- ✅ Sin excepciones no capturadas
+```python
+import pytest
+from src.infra.database.connection import DatabaseManager
 
-### Pruebas con Bot
-- ✅ Comandos responden en <10 segundos
-- ✅ Mensajes de estado funcionan
-- ✅ Respuestas bien formateadas
-- ✅ Validación de permisos funciona
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_database_tool_real():
+    db = DatabaseManager()
+    if not await db.health_check():
+        pytest.skip("Base de datos no disponible")
 
----
-
-## 🚀 Próximos Pasos
-
-Una vez que todas las pruebas pasen:
-
-1. **FASE 3:** Implementar HelpTool, StatsTool, RegistrationTool
-2. **Migración:** Reemplazar handlers tradicionales con Tools
-3. **Auto-selección:** Implementar selección automática de tools con LLM
-4. **Chaining:** Permitir encadenar múltiples tools
+    tool = DatabaseTool(db_manager=db)
+    result = await tool.execute(query="cuántos registros hay")
+    assert result.success is True
+```
 
 ---
 
-## 📚 Referencias
+## Convenciones
 
-- [PLAN_ORQUESTADOR_TOOLS.md](PLAN_ORQUESTADOR_TOOLS.md) - Plan completo
-- [src/tools/](src/tools/) - Código fuente
-- [tests/tools/](tests/tools/) - Tests unitarios
-- [ROADMAP.md](ROADMAP.md) - Roadmap general del proyecto
-
----
-
-**Última actualización:** 2025-11-27
-**Versión:** 0.2.0
-**Estado:** FASE 1 y FASE 2 completadas ✅
+- Un archivo de test por módulo de producción
+- Clases de test agrupan por componente: `TestReActAgent`, `TestToolRegistry`, etc.
+- Fixtures en `conftest.py` para mocks reutilizables
+- Tests unitarios no deben tocar BD, red ni filesystem
+- Nombres descriptivos: `test_<qué>_cuando_<condición>_devuelve_<resultado>`

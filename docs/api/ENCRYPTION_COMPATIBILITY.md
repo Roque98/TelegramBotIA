@@ -1,6 +1,6 @@
 # Módulo de Encriptación - Compatibilidad Python ↔ C#
 
-**Ubicación:** `src/auth/encryption.py`
+**Ubicación:** `src/utils/encryption_util.py`
 
 **Propósito:** Proveer encriptación/desencriptación compatible con el sistema C# existente (clase `Encrypt` de `Consola_Monitoreo`).
 
@@ -66,7 +66,7 @@ IV (Hex):   62 00 68 00 61 00 52 00 69 00 0D 00 0A 00
 ### Ejemplo Básico
 
 ```python
-from src.auth.encryption import Encrypt
+from src.utils.encryption_util import Encrypt
 
 # Crear instancia
 encrypt = Encrypt()
@@ -84,7 +84,7 @@ print(texto_recuperado)  # Output: "MiPasswordSecreto"
 ### Funciones de Conveniencia
 
 ```python
-from src.auth.encryption import encriptar, desencriptar
+from src.utils.encryption_util import encriptar, desencriptar
 
 # Más simple
 encrypted = encriptar("password123")
@@ -94,7 +94,7 @@ decrypted = desencriptar(encrypted)
 ### Uso en Autenticación
 
 ```python
-from src.auth.encryption import encriptar, desencriptar
+from src.utils.encryption_util import encriptar, desencriptar
 
 # Almacenar password encriptado
 def guardar_usuario(username, password):
@@ -118,7 +118,7 @@ def verificar_usuario(username, password):
 1. **Generar valores en Python:**
 
 ```python
-from src.auth.encryption import Encrypt
+from src.utils.encryption_util import Encrypt
 
 encrypt = Encrypt()
 encrypted = encrypt.encriptar("test123")
@@ -164,7 +164,7 @@ pytest tests/auth/test_encryption.py -v
 pytest tests/auth/test_encryption.py::TestCompatibilidadC -v
 
 # Con cobertura
-pytest tests/auth/test_encryption.py --cov=src.auth.encryption
+pytest tests/auth/test_encryption.py --cov=src.utils.encryption_util
 ```
 
 ### Tests Incluidos
@@ -264,7 +264,7 @@ ModernEncrypt(
 def decrypt_password(encrypted_password: str, version: str = "legacy") -> str:
     """Desencriptar password con soporte dual."""
     if version == "legacy":
-        from src.auth.encryption import desencriptar
+        from src.utils.encryption_util import desencriptar
         return desencriptar(encrypted_password)
     elif version == "modern":
         from src.auth.modern_encryption import decrypt
