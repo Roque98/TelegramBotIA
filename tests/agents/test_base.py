@@ -22,7 +22,7 @@ from src.agents.base.exceptions import (
     MaxIterationsException,
     LLMException,
 )
-from src.events.bus import EventBus
+from src.infra.events.bus import EventBus
 
 
 class TestAgentResponse:

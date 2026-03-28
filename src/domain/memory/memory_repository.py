@@ -8,7 +8,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any, Optional
 
-from src.memory.memory_entity import DatabaseManager, UserProfile
+from src.domain.memory.memory_entity import DatabaseManager, UserProfile
 
 logger = logging.getLogger(__name__)
 

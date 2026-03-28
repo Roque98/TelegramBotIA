@@ -12,7 +12,7 @@ from pathlib import Path
 # Agregar directorio raíz al path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.auth.encryption import encriptar, desencriptar
+from src.domain.auth.encryption import encriptar, desencriptar
 import argparse
 
 

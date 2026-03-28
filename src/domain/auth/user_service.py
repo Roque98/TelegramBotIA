@@ -13,8 +13,8 @@ from typing import Optional, Dict, Any, List, Tuple
 
 from sqlalchemy.orm import Session
 
-from src.auth.user_entity import TelegramUser, PermissionResult, Operation, RegistrationError
-from src.auth.user_repository import UserRepository
+from src.domain.auth.user_entity import TelegramUser, PermissionResult, Operation, RegistrationError
+from src.domain.auth.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 

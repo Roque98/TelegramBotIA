@@ -18,7 +18,7 @@ from telegram.ext import ContextTypes
 from src.agents.base.agent import AgentResponse
 from src.agents.base.events import ConversationEvent, UserContext
 from src.agents.react.agent import ReActAgent
-from src.memory.memory_service import MemoryService
+from src.domain.memory.memory_service import MemoryService
 
 from .message_gateway import MessageGateway
 

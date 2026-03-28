@@ -3,7 +3,7 @@ Test simple de conexion - sin caracteres especiales Unicode
 """
 import sys
 from src.config.settings import settings
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 
 print("="*80)
 print("TEST SIMPLE DE CONEXION")

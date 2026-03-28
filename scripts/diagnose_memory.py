@@ -7,7 +7,7 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.agent.memory import MemoryRepository
 from sqlalchemy import text
 

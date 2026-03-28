@@ -7,7 +7,7 @@ con fallback automático al código si hay errores de conexión.
 import json
 import logging
 from typing import List, Optional, Dict, Any
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from .knowledge_entity import KnowledgeCategory, KnowledgeEntry
 
 logger = logging.getLogger(__name__)

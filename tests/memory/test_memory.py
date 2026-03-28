@@ -14,9 +14,9 @@ import pytest
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.memory.memory_repository import MemoryRepository
-from src.memory.memory_entity import UserProfile, Interaction, CacheEntry
-from src.memory.memory_service import MemoryService
+from src.domain.memory.memory_repository import MemoryRepository
+from src.domain.memory.memory_entity import UserProfile, Interaction, CacheEntry
+from src.domain.memory.memory_service import MemoryService
 from src.agents.base.events import UserContext
 
 
@@ -671,7 +671,7 @@ class TestMemoryServiceCacheEviction:
         """_evict_if_needed debe eliminar entradas expiradas inmediatamente."""
         from collections import OrderedDict
         from datetime import timedelta
-        from src.memory.memory_entity import CacheEntry
+        from src.domain.memory.memory_entity import CacheEntry
         from src.agents.base.events import UserContext
 
         service = MemoryService(repository=mock_repository, max_cache_size=10)

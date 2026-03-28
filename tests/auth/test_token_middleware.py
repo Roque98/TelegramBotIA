@@ -4,8 +4,8 @@ Tests para el middleware de autenticación con tokens.
 import pytest
 import json
 from datetime import datetime, timedelta
-from src.auth.token_middleware import TokenMiddleware, validar_token, generar_token
-from src.auth.encryption import encriptar
+from src.domain.auth.token_middleware import TokenMiddleware, validar_token, generar_token
+from src.domain.auth.encryption import encriptar
 
 
 class TestTokenMiddleware:

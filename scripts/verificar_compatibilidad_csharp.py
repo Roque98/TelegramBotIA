@@ -10,7 +10,7 @@ from pathlib import Path
 # Agregar directorio raíz al path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.auth.encryption import Encrypt
+from src.domain.auth.encryption import Encrypt
 
 
 def generar_valores_para_csharp():

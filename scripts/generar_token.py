@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import argparse
 from datetime import datetime, timedelta
-from src.auth.token_middleware import generar_token, validar_token
+from src.domain.auth.token_middleware import generar_token, validar_token
 
 
 def main():

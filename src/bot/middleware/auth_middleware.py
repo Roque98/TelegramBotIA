@@ -12,8 +12,8 @@ import logging
 from typing import Callable, Awaitable
 from telegram import Update
 from telegram.ext import Application, ContextTypes
-from src.database.connection import DatabaseManager
-from src.auth import UserService
+from src.infra.database.connection import DatabaseManager
+from src.domain.auth import UserService
 
 logger = logging.getLogger(__name__)
 

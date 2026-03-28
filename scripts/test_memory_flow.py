@@ -16,7 +16,7 @@ import os
 # Agregar el directorio raíz al path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.agent.memory import MemoryRepository, MemoryManager
 from src.agent.providers.openai_provider import OpenAIProvider
 from src.config.settings import settings

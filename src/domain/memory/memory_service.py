@@ -12,8 +12,8 @@ from datetime import UTC, datetime
 from typing import Any, Optional
 
 from src.agents.base.events import UserContext
-from src.memory.memory_entity import CacheEntry, UserProfile
-from src.memory.memory_repository import MemoryRepository
+from src.domain.memory.memory_entity import CacheEntry, UserProfile
+from src.domain.memory.memory_repository import MemoryRepository
 
 logger = logging.getLogger(__name__)
 

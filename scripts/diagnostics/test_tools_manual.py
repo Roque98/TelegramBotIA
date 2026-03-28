@@ -10,7 +10,7 @@ Uso:
 import asyncio
 import logging
 from src.config.settings import settings
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
 from src.agent.llm_agent import LLMAgent
 from src.tools import (
     initialize_builtin_tools,

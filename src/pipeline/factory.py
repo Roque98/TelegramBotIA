@@ -18,15 +18,15 @@ from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agents.providers.openai_provider import OpenAIProvider
-from src.knowledge import KnowledgeService
+from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
-from src.memory.memory_service import MemoryService
-from src.memory.memory_repository import MemoryRepository
+from src.domain.memory.memory_service import MemoryService
+from src.domain.memory.memory_repository import MemoryRepository
 
 from .handler import MainHandler
 
 if TYPE_CHECKING:
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ def create_main_handler(
     Returns:
         MainHandler configurado
     """
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
 
     llm_provider = create_llm_provider()

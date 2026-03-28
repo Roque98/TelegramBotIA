@@ -12,7 +12,7 @@ from flask_cors import CORS
 
 from src.bot.middleware.token_middleware import TokenMiddleware
 from src.config.settings import settings
-from src.gateway.factory import get_handler_manager
+from src.pipeline.factory import get_handler_manager
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     )
 
     # Inicializar handler antes de arrancar el servidor (evita race condition)
-    from src.database.connection import DatabaseManager
+    from src.infra.database.connection import DatabaseManager
     get_handler_manager().initialize(DatabaseManager())
     logger.info("HandlerManager inicializado correctamente")
 

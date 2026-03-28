@@ -1,8 +1,8 @@
 # BACKLOG — Iris Bot
 
 > **Última actualización**: 2026-03-25
-> **Completados**: 7 de 25
-> **Total de mejoras identificadas**: 25
+> **Completados**: 7 de 26
+> **Total de mejoras identificadas**: 26
 > **Fuente**: Análisis exhaustivo del código fuente
 
 ---
@@ -29,6 +29,7 @@
 | 9 | [Auth middleware bug fix](01-completados/PLAN_ARQ_09_AUTH_MIDDLEWARE.md) | `bot/middleware/auth_middleware.py` | ✅ Completado |
 | 24 | [Limpieza estructural](01-completados/PLAN_ARQ_24_STRUCT_CLEANUP.md) | `tests/`, `src/api/`, raíz | ✅ Completado |
 | 25 | [Reorganización de capas `src/`](02-activos/PLAN_ARQ_25_SRC_LAYOUT.md) | `src/gateway/`, `src/chat_endpoint.py` | Pendiente |
+| 26 | [Actualización de documentación](02-activos/PLAN_DOC_26_DOCS_UPDATE.md) | `.claude/context/`, `docs/estructura.md` | Pendiente |
 
 ---
 

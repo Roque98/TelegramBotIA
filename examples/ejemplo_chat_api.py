@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import requests
 from datetime import datetime
-from src.auth.token_middleware import generar_token, validar_token
+from src.domain.auth.token_middleware import generar_token, validar_token
 
 
 # URL base del API (cambiar según ambiente)
@@ -115,7 +115,7 @@ def ejemplo_3_token_expirado():
 
     # Crear token con timestamp antiguo (más de 3 minutos)
     import json
-    from src.auth.encryption import encriptar
+    from src.domain.auth.encryption import encriptar
     from datetime import timedelta
 
     # Timestamp de hace 5 minutos
@@ -316,7 +316,7 @@ def main():
     print("+" + "=" * 68 + "+")
     print()
     print("[NOTA] Asegúrate de que el servidor esté corriendo:")
-    print("       python src/chat_endpoint.py")
+    print("       python src/api/chat_endpoint.py")
     print()
 
     try:
@@ -339,7 +339,7 @@ def main():
         print()
         print("[ERROR] No se pudo conectar al servidor")
         print("Asegúrate de ejecutar primero:")
-        print("  python src/chat_endpoint.py")
+        print("  python src/api/chat_endpoint.py")
         print()
 
 
