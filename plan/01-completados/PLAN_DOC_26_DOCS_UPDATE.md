@@ -3,7 +3,7 @@
 > **Objetivo**: Llevar toda la documentación del proyecto al estado actual del código — eliminando referencias obsoletas, reflejando la nueva estructura de `src/` (ARQ-25) y consolidando docs dispersos o redundantes
 > **Rama**: `feature/doc-26-docs-update`
 > **Prioridad**: 🟠 Alta
-> **Progreso**: ░░░░░░░░░░ 0% (0/22 tareas)
+> **Progreso**: ██████████ 100% (22/22 tareas)
 
 ---
 
@@ -50,9 +50,9 @@ El proyecto tiene ~57 archivos de documentación (~24,600 líneas). Tras las reo
 
 | Fase | Tareas | Progreso | Estado |
 |------|--------|----------|--------|
-| Fase 1: Actualizar `.claude/context/` | 6 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Actualizar docs técnicos clave | 7 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Limpiar docs obsoletos/redundantes | 9 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Actualizar `.claude/context/` | 6 | ██████████ 100% | ✅ Completada |
+| Fase 2: Actualizar docs técnicos clave | 7 | ██████████ 100% | ✅ Completada |
+| Fase 3: Limpiar docs obsoletos/redundantes | 9 | ██████████ 100% | ✅ Completada |
 
 ---
 
@@ -72,12 +72,12 @@ El proyecto tiene ~57 archivos de documentación (~24,600 líneas). Tras las reo
 
 ### Tareas
 
-- [ ] **26.1** Actualizar `INDEX.md` — fecha, rama actual, estado del proyecto, lista de archivos de contexto disponibles
-- [ ] **26.2** Reescribir `ARCHITECTURE.md` — reflejar la nueva estructura de 9 carpetas (`api/`, `bot/`, `gateway/`, `pipeline/`, `agents/`, `domain/`, `infra/`, `config/`, `utils/`) con descripción de responsabilidad de cada capa
-- [ ] **26.3** Actualizar `AGENTS.md` — corregir todas las rutas `src/agent/` → `src/agents/`, verificar que los patrones documentados siguen vigentes
-- [ ] **26.4** Actualizar `MEMORY.md` — corregir rutas `src/agent/memory/` → `src/domain/memory/`
-- [ ] **26.5** Actualizar `PROMPTS.md` — corregir rutas, verificar si los templates descritos siguen existiendo
-- [ ] **26.6** Verificar `HANDLERS.md`, `TOOLS.md`, `DATABASE.md` — si hay referencias obsoletas, corregirlas (probablemente menores)
+- [x] **26.1** Actualizar `INDEX.md` — fecha, rama actual, estado del proyecto, lista de archivos de contexto disponibles
+- [x] **26.2** Reescribir `ARCHITECTURE.md` — reflejar la nueva estructura de 9 carpetas (`api/`, `bot/`, `gateway/`, `pipeline/`, `agents/`, `domain/`, `infra/`, `config/`, `utils/`) con descripción de responsabilidad de cada capa
+- [x] **26.3** Actualizar `AGENTS.md` — corregir todas las rutas `src/agent/` → `src/agents/`, verificar que los patrones documentados siguen vigentes
+- [x] **26.4** Actualizar `MEMORY.md` — corregir rutas `src/agent/memory/` → `src/domain/memory/`
+- [x] **26.5** Actualizar `PROMPTS.md` — corregir rutas, verificar si los templates descritos siguen existiendo
+- [x] **26.6** Verificar `HANDLERS.md`, `TOOLS.md`, `DATABASE.md` — si hay referencias obsoletas, corregirlas (probablemente menores)
 
 ### Entregables
 - [ ] Todos los archivos `.claude/context/` referencian rutas reales del código
@@ -93,13 +93,13 @@ El proyecto tiene ~57 archivos de documentación (~24,600 líneas). Tras las reo
 
 ### Tareas
 
-- [ ] **26.7** Actualizar `docs/estructura.md` — reescribir la sección de estructura `src/` con las nuevas carpetas, eliminar referencias a rutas antiguas (`database/`, `auth/`, etc.)
-- [ ] **26.8** Actualizar `README.md` raíz — corregir 2 referencias con rutas incorrectas a `COMMIT_GUIDELINES.md` y `GITFLOW.md`
-- [ ] **26.9** Revisar `docs/SISTEMA_AUTENTICACION.md` — actualizar rutas de `src/auth/` → `src/domain/auth/` en las secciones de código
-- [ ] **26.10** Revisar `docs/CHAT_API_GUIDE.md` y `docs/API_ENDPOINTS.md` — verificar que las rutas de arranque (`python src/api/chat_endpoint.py`) sean correctas
-- [ ] **26.11** Revisar `docs/desarrollador/GUIA_DESARROLLADOR.md` (1,896 ln) — actualizar estructura de carpetas y referencias de paths
-- [ ] **26.12** Actualizar `docs/desarrollador/DIAGRAMA_FLUJO_ACTUAL.md` — reflejar el flujo real con `pipeline/`, `gateway/`, `domain/`
-- [ ] **26.13** Mover `resumen.md` de la raíz → `docs/resumen.md` o incorporarlo al README
+- [x] **26.7** Actualizar `docs/estructura.md` — reescribir la sección de estructura `src/` con las nuevas carpetas, eliminar referencias a rutas antiguas (`database/`, `auth/`, etc.)
+- [x] **26.8** Actualizar `README.md` raíz — corregir 2 referencias con rutas incorrectas a `COMMIT_GUIDELINES.md` y `GITFLOW.md`
+- [x] **26.9** Revisar `docs/SISTEMA_AUTENTICACION.md` — actualizar rutas de `src/auth/` → `src/domain/auth/` en las secciones de código
+- [x] **26.10** Revisar `docs/CHAT_API_GUIDE.md` y `docs/API_ENDPOINTS.md` — verificar que las rutas de arranque (`python src/api/chat_endpoint.py`) sean correctas
+- [x] **26.11** Revisar `docs/desarrollador/GUIA_DESARROLLADOR.md` (1,896 ln) — actualizar estructura de carpetas y referencias de paths
+- [x] **26.12** Actualizar `docs/desarrollador/DIAGRAMA_FLUJO_ACTUAL.md` — reflejar el flujo real con `pipeline/`, `gateway/`, `domain/`
+- [x] **26.13** Mover `resumen.md` de la raíz → `docs/resumen.md` o incorporarlo al README
 
 ### Entregables
 - [ ] `docs/estructura.md` refleja la estructura real de `src/`
@@ -116,15 +116,15 @@ El proyecto tiene ~57 archivos de documentación (~24,600 líneas). Tras las reo
 
 ### Tareas
 
-- [ ] **26.14** Evaluar `docs/ANALISIS_CODIGO_ARQUITECTURA.md` (2,540 ln) — decidir si archivarlo en `docs/archivo/` o actualizarlo; tiene valor histórico pero 50+ rutas obsoletas lo hacen confuso como referencia activa
-- [ ] **26.15** Evaluar `docs/futuros-features/` (6 archivos, 3,907 ln) — este material fue creado antes del sistema `plan/`. Decisión: ¿archivar en `docs/archivo/futuros-features/` o mantener como referencia de roadmap de alto nivel?
-- [ ] **26.16** Evaluar `docs/todos/` (2 archivos, 1,213 ln) — probable duplicado del `plan/BACKLOG.md`. Decidir si archivar o eliminar
-- [ ] **26.17** Limpiar `docs/todos.md` (9 ln, placeholder vacío) — eliminar o completar
-- [ ] **26.18** Revisar `docs/onenote/` — verificar si los snapshots siguen siendo útiles o se pueden mover a `docs/archivo/`
-- [ ] **26.19** Crear `docs/archivo/` si se decide archivar material (en lugar de eliminar — conserva historial)
-- [ ] **26.20** Actualizar `docs/index.md` — reflejar la nueva organización de `docs/`
-- [ ] **26.21** Actualizar `CLAUDE.md` raíz — la sección "Plan Activo" sigue apuntando al PLAN_REACT_MIGRATION completado
-- [ ] **26.22** Actualizar `plan/README.md` y `plan/BACKLOG.md` — mover ARQ-25 a completados, actualizar contadores
+- [x] **26.14** Evaluar `docs/ANALISIS_CODIGO_ARQUITECTURA.md` (2,540 ln) — decidir si archivarlo en `docs/archivo/` o actualizarlo; tiene valor histórico pero 50+ rutas obsoletas lo hacen confuso como referencia activa
+- [x] **26.15** Evaluar `docs/futuros-features/` (6 archivos, 3,907 ln) — este material fue creado antes del sistema `plan/`. Decisión: ¿archivar en `docs/archivo/futuros-features/` o mantener como referencia de roadmap de alto nivel?
+- [x] **26.16** Evaluar `docs/todos/` (2 archivos, 1,213 ln) — probable duplicado del `plan/BACKLOG.md`. Decidir si archivar o eliminar
+- [x] **26.17** Limpiar `docs/todos.md` (9 ln, placeholder vacío) — eliminar o completar
+- [x] **26.18** Revisar `docs/onenote/` — verificar si los snapshots siguen siendo útiles o se pueden mover a `docs/archivo/`
+- [x] **26.19** Crear `docs/archivo/` si se decide archivar material (en lugar de eliminar — conserva historial)
+- [x] **26.20** Actualizar `docs/index.md` — reflejar la nueva organización de `docs/`
+- [x] **26.21** Actualizar `CLAUDE.md` raíz — la sección "Plan Activo" sigue apuntando al PLAN_REACT_MIGRATION completado
+- [x] **26.22** Actualizar `plan/README.md` y `plan/BACKLOG.md` — mover ARQ-25 a completados, actualizar contadores
 
 ### Entregables
 - [ ] `docs/` sin archivos placeholder vacíos
@@ -159,3 +159,4 @@ El proyecto tiene ~57 archivos de documentación (~24,600 líneas). Tras las reo
 | Fecha | Cambio |
 |-------|--------|
 | 2026-03-28 | Creación del plan |
+| 2026-03-28 | Plan completado — todas las fases ejecutadas |
