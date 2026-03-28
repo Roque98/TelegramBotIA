@@ -3,7 +3,7 @@
 > **Objetivo**: Dar coherencia a la estructura de `src/` separando canales de entrada, lógica de orquestación, dominios de negocio e infraestructura en carpetas con responsabilidad única y nombres inequívocos
 > **Rama**: `feature/arq-25-src-layout`
 > **Prioridad**: 🟠 Alta
-> **Progreso**: ░░░░░░░░░░ 0% (0/20 tareas)
+> **Progreso**: ██████████ 100% (20/20 tareas)
 
 ---
 
@@ -53,10 +53,10 @@ Las fases están ordenadas de menor a mayor impacto en imports:
 
 | Fase | Tareas | Progreso | Estado |
 |------|--------|----------|--------|
-| Fase 1: Crear `api/` | 4 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Separar `gateway/` → `pipeline/` | 5 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Agrupar dominios en `domain/` | 6 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 4: Agrupar infraestructura en `infra/` | 5 | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Crear `api/` | 4 | ██████████ 100% | ✅ Completada |
+| Fase 2: Separar `gateway/` → `pipeline/` | 5 | ██████████ 100% | ✅ Completada |
+| Fase 3: Agrupar dominios en `domain/` | 6 | ██████████ 100% | ✅ Completada |
+| Fase 4: Agrupar infraestructura en `infra/` | 5 | ██████████ 100% | ✅ Completada |
 
 ---
 
