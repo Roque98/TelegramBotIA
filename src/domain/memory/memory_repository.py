@@ -91,15 +91,15 @@ class MemoryRepository:
         try:
             query = """
                 MERGE INTO abcmasplus..UserMemoryProfiles AS target
-                USING (SELECT :user_id AS id_usuario) AS source
-                ON target.id_usuario = source.id_usuario
+                USING (SELECT :user_id AS idUsuario) AS source
+                ON target.idUsuario = source.idUsuario
                 WHEN MATCHED THEN
                     UPDATE SET
-                        resumen_historial_breve = :summary,
-                        num_interacciones = :count,
-                        ultima_actualizacion = GETDATE()
+                        resumenHistorialBreve = :summary,
+                        numInteracciones = :count,
+                        ultimaActualizacion = GETDATE()
                 WHEN NOT MATCHED THEN
-                    INSERT (id_usuario, resumen_historial_breve, num_interacciones, fecha_creacion, ultima_actualizacion)
+                    INSERT (idUsuario, resumenHistorialBreve, numInteracciones, fechaCreacion, ultimaActualizacion)
                     VALUES (:user_id, :summary, :count, GETDATE(), GETDATE());
             """
             await self.db_manager.execute_non_query_async(query, {
