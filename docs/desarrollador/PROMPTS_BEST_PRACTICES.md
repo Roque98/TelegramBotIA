@@ -20,6 +20,16 @@ El `REACT_USER_PROMPT` se rellena en cada iteración del loop con `{user_context
 
 ## Principios del System Prompt
 
+| # | Principio | Por qué importa |
+|---|-----------|-----------------|
+| 1 | Identidad antes que instrucciones | El LLM ancla su comportamiento a la identidad definida |
+| 2 | Nunca revelar el proceso interno | El usuario no debe ver el JSON de razonamiento |
+| 3 | Instrucciones de tools con ejemplos | Reduce el uso incorrecto de tools |
+| 4 | Reglas SQL explícitas | Previene generación de queries destructivas |
+| 5 | Formato para Telegram | Evita HTML o LaTeX que Telegram no renderiza |
+
+---
+
 ### 1. Identidad antes que instrucciones
 Define quién es el bot (nombre, tono, empresa) en el primer párrafo. El LLM ancla su comportamiento a esta identidad.
 

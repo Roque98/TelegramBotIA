@@ -1,6 +1,6 @@
-# 🔐 Sistema de Autenticación y Autorización
+# Sistema de Autenticación y Autorización
 
-## 📋 Índice
+## Índice
 
 1. [Descripción General](#descripción-general)
 2. [Arquitectura](#arquitectura)
@@ -19,15 +19,13 @@
 
 El sistema de autenticación y autorización garantiza que solo usuarios autorizados puedan usar el bot de Telegram y que tengan acceso únicamente a las operaciones permitidas según su rol.
 
-### Características Principales
+### Características
 
-- ✅ **Registro por número de empleado**: Los usuarios se registran usando su ID de empleado
-- ✅ **Verificación con código**: Sistema de códigos de 6 dígitos almacenados en BD
-- ✅ **Portal de administración**: Códigos consultables desde portal web
-- ✅ **Sistema de permisos basado en roles**: Control granular de operaciones
-- ✅ **Permisos específicos por usuario**: Excepciones a los permisos del rol
-- ✅ **Auditoría completa**: Registro de todas las operaciones
-- ✅ **Soporte para múltiples cuentas**: Un usuario puede tener varias cuentas de Telegram
+- Registro por número de empleado con verificación por código de 6 dígitos
+- Códigos consultables desde portal web (sin envío por Telegram)
+- Permisos basados en roles con excepciones por usuario
+- Auditoría completa de operaciones
+- Soporte para múltiples cuentas de Telegram por empleado
 
 ---
 
@@ -188,59 +186,6 @@ Intercepta todas las actualizaciones de Telegram antes de los handlers. Usa `Use
 │  Usuario puede usar bot  │
 └──────────────────────────┘
 ```
-
-### Pasos Detallados
-
-1. **Usuario inicia registro**
-   ```
-   /register
-   ```
-
-2. **Bot solicita ID de empleado**
-   ```
-   Por favor, envía tu número de empleado:
-   ```
-
-3. **Usuario envía ID**
-   ```
-   12345
-   ```
-
-4. **Sistema busca usuario en BD**
-   - Busca en tabla `Usuarios` por `idEmpleado = 12345`
-   - Si no existe: Error "Usuario no encontrado"
-   - Si existe: Continúa
-
-5. **Genera código y guarda en BD**
-   ```sql
-   INSERT INTO UsuariosTelegram (
-       idUsuario, telegramChatId, codigoVerificacion, ...
-   ) VALUES (
-       @idUsuario, @chatId, '123456', ...
-   )
-   ```
-
-6. **Informa al usuario**
-   ```
-   ✅ Registro iniciado.
-   Consulta tu código en el Portal de Consola de Monitoreo.
-   ```
-
-7. **Usuario consulta portal web**
-   - Portal muestra: Código de verificación: `123456`
-
-8. **Usuario verifica en Telegram**
-   ```
-   /verify 123456
-   ```
-
-9. **Sistema valida y activa cuenta**
-   ```sql
-   UPDATE UsuariosTelegram
-   SET verificado = 1, fechaVerificacion = GETDATE()
-   WHERE telegramChatId = @chatId
-   AND codigoVerificacion = '123456'
-   ```
 
 ---
 
@@ -434,19 +379,13 @@ EXEC sp_RegistrarLogOperacion
 
 ### 1. Ejecutar Scripts SQL
 
-En orden:
-```sql
--- 1. Estructura de usuarios y roles
-docs/sql/01 EstructuraUsuarios.sql
+En orden (desde `database/migrations/`):
 
--- 2. Estructura de permisos y operaciones
-docs/sql/02 EstructuraPermisos.sql
-
--- 3. Gestión de cuentas de Telegram
-docs/sql/03 EstructuraVerificacion.sql
-
--- 4. Stored Procedures
-docs/sql/04 StoredProcedures.sql
+```bash
+01_EstructuraUsuarios.sql     # tablas de usuarios y roles
+02_EstructuraPermisos.sql     # operaciones y permisos
+03_EstructuraVerificacion.sql # cuentas de Telegram
+04_StoredProcedures.sql       # stored procedures
 ```
 
 ### 2. Configurar Variables de Entorno
