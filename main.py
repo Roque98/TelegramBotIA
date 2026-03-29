@@ -18,7 +18,11 @@ def setup_logging():
         level=getattr(logging, settings.log_level.upper())
     )
 
-    
+    # Silenciar librerías externas verbosas
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+
 
 
 async def main():
