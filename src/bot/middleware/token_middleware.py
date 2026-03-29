@@ -125,7 +125,7 @@ class TokenMiddleware:
                 return False, None, f"Token expirado: han pasado {minutos_transcurridos} minutos (máximo {cls.MAX_TOKEN_AGE_MINUTES})"
 
             # 7. Token válido
-            logger.info(f"Token válido para empleado {numero_empleado}")
+            logger.debug(f"Token válido para empleado {numero_empleado}")
             return True, datos, None
 
         except Exception as e:
@@ -167,7 +167,7 @@ class TokenMiddleware:
         # Encriptar
         token_encriptado = encriptar(token_json)
 
-        logger.info(f"Token generado para empleado {numero_empleado}")
+        logger.debug(f"Token generado para empleado {numero_empleado}")
 
         return token_encriptado
 
