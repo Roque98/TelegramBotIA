@@ -122,19 +122,6 @@ class QueryHandler:
                 await status.complete(response)
 
                 duration_ms = int((time.time() - start_time) * 1000)
-
-                with db_manager.get_session() as session:
-                    user_service = UserService(session)
-                    user_service.log_operation(
-                        user_id=telegram_user.id_usuario,
-                        comando='/ia',
-                        telegram_chat_id=chat_id,
-                        telegram_username=user.username,
-                        parametros={'query': user_message[:200]},
-                        resultado='EXITOSO',
-                        duracion_ms=duration_ms
-                    )
-
                 logger.info(
                     f"Respuesta enviada exitosamente a usuario {telegram_user.id_usuario} "
                     f"({duration_ms}ms)"
