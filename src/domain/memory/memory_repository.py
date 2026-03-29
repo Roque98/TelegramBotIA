@@ -171,21 +171,24 @@ class MemoryRepository:
             params_json = json.dumps({"query": query, **(metadata or {})})
             duration_ms = (metadata or {}).get("execution_time_ms", 0)
 
+            username = (metadata or {}).get("username")
+
             query_sql = """
                 INSERT INTO abcmasplus..LogOperaciones (
-                    idUsuario, idOperacion, telegramChatId,
+                    idUsuario, idOperacion, telegramChatId, telegramUsername,
                     parametros, resultado, duracionMs, fechaEjecucion
                 )
                 SELECT
                     ut.idUsuario,
                     (SELECT idOperacion FROM abcmasplus..Operaciones WHERE comando = :operation AND activo = 1),
-                    :chat_id, :params, :result, :duration_ms, GETDATE()
+                    :chat_id, :username, :params, :result, :duration_ms, GETDATE()
                 FROM abcmasplus..UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup AND ut.activo = 1
             """
             await self.db_manager.execute_non_query_async(query_sql, {
                 "operation": "/ia",
                 "chat_id": str(user_id),
+                "username": username,
                 "params": params_json,
                 "result": response[:4000],
                 "duration_ms": int(duration_ms),
