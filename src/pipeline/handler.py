@@ -272,6 +272,7 @@ class MainHandler:
                     "steps_taken": response.steps_taken,
                     "execution_time_ms": response.execution_time_ms,
                     "correlation_id": event.correlation_id,
+                    "username": event.metadata.get("username"),
                 },
             )
         except Exception as e:
