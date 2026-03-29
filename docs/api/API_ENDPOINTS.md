@@ -1,6 +1,9 @@
 # Especificación de API REST para IRIS Bot
 
-> Endpoints propuestos para exponer las funcionalidades del bot IRIS mediante API REST
+> **Estado:** Propuesta de diseño — no implementada aún.
+> La API actualmente disponible es Flask-based. Ver [CHAT_API_GUIDE.md](CHAT_API_GUIDE.md) para la integración real.
+
+Este documento especifica los endpoints que se implementarán en la próxima versión de la API REST.
 
 ## Tabla de Contenidos
 
@@ -1046,177 +1049,17 @@ Obtener logs del sistema para debugging.
 
 ## Consideraciones de Implementación
 
-### 1. Seguridad
-
-- **Rate Limiting:**
-  - Usuarios: 100 requests/min
-  - Admins: 500 requests/min
-- **CORS:** Configurar origins permitidos
-- **API Keys:** Para integraciones de servicios
-- **Validación de Input:** Sanitizar todas las entradas
-- **SQL Injection:** Usar prepared statements siempre
-- **Audit Logging:** Registrar todas las operaciones administrativas
-
-### 2. Performance
-
-- **Caché:**
-  - Knowledge base entries: 1 hora
-  - Categorías: 24 horas
-  - Esquema de BD: 6 horas
-- **Paginación:** Implementar en todos los listados
-- **Compresión:** GZIP para responses grandes
-- **Async Processing:** Para consultas pesadas
-
-### 3. Versionado
-
-- **Semantic Versioning:** Major.Minor.Patch
-- **URL Versioning:** `/v1/`, `/v2/`
-- **Deprecation Policy:** Aviso 6 meses antes
-- **Backward Compatibility:** Mantener al menos 2 versiones
-
-### 4. Documentación
-
-- **OpenAPI/Swagger:** Especificación completa
-- **Ejemplos:** Request/Response para cada endpoint
-- **SDKs:** Generar para Python, JavaScript, etc.
-- **Changelog:** Documentar todos los cambios
-
-### 5. Monitoring
-
-- **Métricas:**
-  - Requests por segundo
-  - Latencia promedio (p50, p95, p99)
-  - Tasa de errores
-  - Uso de tokens LLM
-- **Alertas:**
-  - Tasa de error > 5%
-  - Latencia > 2s
-  - BD no disponible
-  - LLM provider down
-
-### 6. Testing
-
-- **Unit Tests:** Cobertura > 80%
-- **Integration Tests:** Todos los endpoints
-- **Load Testing:** 1000 requests/s
-- **Security Testing:** OWASP Top 10
-
-### 7. Framework Recomendado
-
-```python
-# Stack sugerido para implementación
-- Framework: FastAPI (async, OpenAPI integrado, validación con Pydantic)
-- Auth: FastAPI-JWT-Auth
-- ORM: SQLAlchemy 2.0 (async)
-- Validación: Pydantic v2
-- Docs: Swagger UI / ReDoc (auto-generado por FastAPI)
-- Testing: pytest + httpx
-- Rate Limiting: slowapi
-- Cache: Redis
-```
-
-### 8. Estructura de Proyecto Sugerida
-
-```
-api/
-├── main.py                    # Punto de entrada
-├── config/
-│   └── settings.py           # Configuración
-├── routes/
-│   ├── auth.py               # Endpoints de autenticación
-│   ├── queries.py            # Endpoints de consultas
-│   ├── knowledge.py          # Endpoints de knowledge base
-│   ├── database.py           # Endpoints de BD
-│   ├── tools.py              # Endpoints de tools
-│   └── admin.py              # Endpoints de admin
-├── models/
-│   └── schemas.py            # Modelos Pydantic
-├── services/
-│   ├── auth_service.py       # Lógica de autenticación
-│   ├── query_service.py      # Lógica de consultas
-│   └── knowledge_service.py  # Lógica de knowledge base
-├── middleware/
-│   ├── auth.py               # Middleware de autenticación
-│   ├── rate_limit.py         # Rate limiting
-│   └── logging.py            # Logging
-└── utils/
-    └── validators.py          # Validadores personalizados
-```
+| Área | Recomendación |
+|------|---------------|
+| Framework | FastAPI (async, OpenAPI integrado, Pydantic v2) |
+| Auth | JWT Bearer — FastAPI-JWT-Auth |
+| Rate Limiting | 100 req/min usuarios, 500 req/min admins |
+| Caché | Knowledge base: 1h, esquema BD: 6h |
+| CORS | Configurar origins permitidos explícitamente |
+| SQL | Prepared statements siempre, nunca f-strings |
+| Logging | Registrar todas las operaciones administrativas |
+| Versioning | URL versioning (`/v1/`, `/v2/`), aviso de deprecación 6 meses antes |
 
 ---
 
-## Ejemplo de Implementación (FastAPI)
-
-```python
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import HTTPBearer
-from pydantic import BaseModel
-
-app = FastAPI(title="IRIS API", version="1.0.0")
-security = HTTPBearer()
-
-class QueryRequest(BaseModel):
-    query: str
-    context: dict = {}
-
-class QueryResponse(BaseModel):
-    id: str
-    type: str
-    query: str
-    response: str
-    metadata: dict
-
-@app.post("/v1/queries", response_model=QueryResponse)
-async def process_query(
-    request: QueryRequest,
-    token: str = Depends(security)
-):
-    """
-    Procesar consulta en lenguaje natural.
-
-    El sistema clasificará automáticamente la consulta y
-    aplicará el procesamiento correspondiente.
-    """
-    # Implementación aquí
-    pass
-
-@app.get("/v1/health")
-async def health_check():
-    """Health check del sistema."""
-    return {
-        "status": "healthy",
-        "version": "1.0.0"
-    }
-```
-
----
-
-## Próximos Pasos
-
-1. **Priorización de Endpoints:**
-   - Fase 1: Auth + Queries + Knowledge (endpoints core)
-   - Fase 2: Database + Tools
-   - Fase 3: Admin + Stats
-
-2. **Desarrollo:**
-   - Crear especificación OpenAPI completa
-   - Implementar autenticación JWT
-   - Migrar lógica del bot a servicios reutilizables
-   - Implementar endpoints progresivamente
-
-3. **Testing:**
-   - Crear suite de tests de integración
-   - Implementar CI/CD pipeline
-   - Load testing antes de producción
-
-4. **Documentación:**
-   - Generar docs interactivas con Swagger
-   - Crear guías de integración
-   - Ejemplos de uso para cada endpoint
-
----
-
-**Versión del documento:** 1.0.0
-**Fecha:** 2025-12-22
-**Autor:** Claude Code
-**Estado:** Propuesta inicial
+**Estado:** Propuesta — 2025-12-22
