@@ -72,7 +72,7 @@ class LoggingMiddleware:
 
         # Loggear
         log_message = " | ".join(log_parts)
-        logger.info(f"📥 {log_message}")
+        logger.debug(f"📥 {log_message}")
 
     async def log_error(self, update: Update, context) -> None:
         """

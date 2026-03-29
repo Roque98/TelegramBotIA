@@ -126,7 +126,7 @@ class ReActAgent(BaseAgent):
                 metadata={"query_length": len(query)},
             )
 
-        logger.info(f"Ejecutando ReAct para: '{query[:50]}...'")
+        logger.debug(f"Ejecutando ReAct para: '{query[:50]}...'")
 
         try:
             # Construir prompts base
@@ -324,7 +324,7 @@ class ReActAgent(BaseAgent):
         # Construir prompt de usuario
         if scratchpad.is_empty():
             prompt_context = context.to_prompt_context()
-            logger.debug(f"[DEBUG] User context for prompt:\n{prompt_context}")
+            logger.debug(f"User context for prompt:\n{prompt_context}")
             user_prompt = build_user_prompt(
                 query=query,
                 user_context=prompt_context,
