@@ -1,49 +1,61 @@
 # PLAN: Aumentar cobertura de tests al 80%
 
-> **Objetivo**: Llevar la cobertura de tests del ~46% actual a un mínimo del 80%
+> **Objetivo**: Llevar la cobertura de tests a un mínimo del 80%
 > **Rama**: `feature/cal-11-tests`
 > **Prioridad**: 🟡 Media
-> **Progreso**: 0% (0/9)
+> **Progreso**: 45% (5/11) — rutas actualizadas post migración ARQ-25
 
 ---
 
 ## Contexto
 
-El proyecto tiene ~2,432 líneas de tests para ~5,244 líneas de código fuente (~46% de cobertura). Los módulos sin cobertura son:
+Tras la migración ARQ-25, la estructura `src/` cambió a capas:
+`gateway/` · `pipeline/` · `domain/` · `infra/` · `api/` · `bot/` · `agents/` · `utils/`
 
-- `src/api/` — endpoint REST sin ningún test
-- `src/gateway/` — factory y handler sin tests
-- `src/observability/` — sin tests
-- Tests existentes: no cubren concurrencia, error handling extremo, ni timeouts
+Varios tests ya existen. Las tareas pendientes cubren los módulos sin tests o con cobertura baja.
 
 ---
 
-## Módulos a cubrir
+## Estado actual de cobertura por módulo
 
-| Módulo | Cobertura actual | Meta |
-|--------|-----------------|------|
-| `api/` | 0% | 70% |
-| `gateway/` | 0% | 70% |
-| `observability/` | 0% | 60% |
-| `agents/react/` | ~40% | 85% |
-| `memory/` | ~50% | 80% |
-| `knowledge/` | ~50% | 80% |
-| `auth/` | ~60% | 85% |
-| `database/` | ~40% | 75% |
+| Módulo (ruta actual) | Tests existentes | Estado |
+|----------------------|-----------------|--------|
+| `src/agents/base/` | `tests/agents/test_base.py` | ✅ Cubierto |
+| `src/agents/react/` | `tests/agents/test_react_agent.py` | ✅ Cubierto |
+| `src/agents/tools/` | `tests/agents/test_tools.py` | ✅ Cubierto |
+| `src/gateway/` | `tests/gateway/test_gateway.py` | ✅ Cubierto |
+| `src/pipeline/` | `tests/gateway/test_gateway.py` (parcial) | ⚠️ Parcial |
+| `src/domain/memory/` | `tests/memory/test_memory.py` | ✅ Cubierto |
+| `src/domain/knowledge/` | — | ❌ Sin tests |
+| `src/domain/auth/` | `tests/auth/test_auth_middleware.py` (parcial) | ⚠️ Parcial |
+| `src/infra/observability/` | `tests/observability/test_observability.py` | ✅ Cubierto |
+| `src/infra/database/` | — | ❌ Sin tests |
+| `src/infra/events/` | — | ❌ Sin tests |
+| `src/api/` | — | ❌ Sin tests |
+| `src/bot/handlers/` | `tests/handlers/test_tools_handlers.py` (parcial) | ⚠️ Parcial |
+| `src/utils/` | `tests/utils/test_retry.py` (parcial) | ⚠️ Parcial |
 
 ---
 
 ## Tareas
 
-- [ ] **11.1** Configurar `pytest-cov` para generar reporte HTML de cobertura
-- [ ] **11.2** Escribir tests para `src/api/chat_endpoint.py` (con Flask test client)
-- [ ] **11.3** Escribir tests para `src/gateway/factory.py` y `handler.py`
-- [ ] **11.4** Agregar tests de concurrencia para `ToolRegistry` y `MemoryService`
-- [ ] **11.5** Agregar tests de timeout para llamadas a LLM y BD (con mocks)
-- [ ] **11.6** Agregar tests para `src/observability/`
-- [ ] **11.7** Completar tests faltantes en `agents/react/agent.py` (error paths)
-- [ ] **11.8** Agregar tests de integración para `KnowledgeService` con BD mock
-- [ ] **11.9** Configurar CI (GitHub Actions) para ejecutar tests y reportar cobertura en cada PR
+### ✅ Completadas
+- [x] **11.1** Tests para `src/agents/base/` (AgentResponse, BaseAgent, events, exceptions)
+- [x] **11.2** Tests para `src/agents/react/` (schemas, scratchpad, ReActAgent loop)
+- [x] **11.3** Tests para `src/agents/tools/` (registry, tools individuales)
+- [x] **11.4** Tests para `src/domain/memory/` (MemoryRepository, MemoryService, cache TTL)
+- [x] **11.5** Tests para `src/infra/observability/` (Tracer, MetricsCollector)
+
+### 🔲 Pendientes
+- [ ] **11.6** Escribir tests para `src/api/chat_endpoint.py` (con Flask/httpx test client)
+- [ ] **11.7** Completar tests para `src/pipeline/` — `factory.py` y `handler.py` (MainHandler paths: error, timeout)
+- [ ] **11.8** Escribir tests para `src/domain/knowledge/` (KnowledgeService, KnowledgeRepository con BD mock)
+- [ ] **11.9** Completar tests para `src/domain/auth/` (UserService, UserRepository, UserEntity)
+- [ ] **11.10** Escribir tests para `src/infra/database/` (connection pool, sql_validator) y `src/infra/events/bus.py`
+- [ ] **11.11** Completar tests para `src/utils/` — `input_validator.py`, `rate_limiter.py`, `encryption_util.py`
+- [ ] **11.12** Completar tests para `src/bot/handlers/` — `command_handlers.py`, `query_handlers.py`, `registration_handlers.py`
+- [ ] **11.13** Agregar tests de concurrencia para `ToolRegistry` y `MemoryService`
+- [ ] **11.14** Configurar `pytest-cov` y CI (GitHub Actions) para reportar cobertura en cada PR
 
 ---
 
@@ -51,5 +63,4 @@ El proyecto tiene ~2,432 líneas de tests para ~5,244 líneas de código fuente 
 
 - `pytest --cov=src --cov-report=html` reporta ≥80% de cobertura global
 - Todos los módulos principales tienen al menos 70% de cobertura
-- Tests de concurrencia incluidos
 - CI falla si la cobertura baja del 80%
