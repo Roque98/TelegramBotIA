@@ -341,8 +341,6 @@ class ReActAgent(BaseAgent):
             # Generar respuesta pasando mensajes estructurados directamente
             response_text = await self.llm.generate_messages(messages)
 
-            logger.debug(f"LLM raw response ({len(response_text)} chars): {response_text[:300]!r}")
-
             # Parsear JSON
             react_response = self._parse_response(response_text)
 
@@ -352,10 +350,9 @@ class ReActAgent(BaseAgent):
             return react_response
 
         except json.JSONDecodeError as e:
-            preview = repr(response_text[:200]) if response_text else "''"
-            logger.error(f"Failed to parse LLM response as JSON: {e} | raw: {preview}")
+            logger.error(f"Failed to parse LLM response as JSON: {e}")
             raise LLMException(
-                message=f"Invalid JSON response from LLM: {e} | raw: {preview}",
+                message=f"Invalid JSON response from LLM: {e}",
                 provider="unknown",
             )
         except Exception as e:
