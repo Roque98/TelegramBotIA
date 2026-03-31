@@ -204,58 +204,53 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Manejar el comando /stats.
 
-    Muestra métricas de la sesión actual del bot (desde el último reinicio).
+    Muestra estadísticas históricas del usuario desde LogOperaciones.
 
     Args:
         update: Objeto de actualización de Telegram
         context: Contexto de la conversación
     """
-    user_id = update.effective_user.id
+    user_id = str(update.effective_user.id)
     logger.info(f"Usuario {user_id} ejecutó /stats")
 
     try:
-        from src.infra.observability import get_metrics
-        s = get_metrics().get_stats()
+        from src.domain.memory.memory_repository import MemoryRepository
+        from src.infra.database.connection import DatabaseManager
+        from src.config.settings import settings
 
-        req = s["requests"]
-        lat = s["latency"].get("_total", {})
-        uptime_min = int(s["uptime_seconds"] // 60)
+        db = DatabaseManager(connection_string=settings.database_url)
+        repo = MemoryRepository(db_manager=db)
+        s = await repo.get_user_stats(user_id)
 
-        def esc(value: str) -> str:
-            """Escapa caracteres que rompen Telegram Markdown v1."""
-            return str(value).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
+        if not s or not s.get("total"):
+            stats_message = "Aún no tenés interacciones registradas. ¡Empezá chateando conmigo! 😊"
+        else:
+            total = s.get("total") or 0
+            exitosos = s.get("exitosos") or 0
+            errores = s.get("errores") or 0
+            avg_ms = s.get("avg_ms") or 0
+            max_ms = s.get("max_ms") or 0
+            tasa = (exitosos / total * 100) if total else 0
 
-        tools_section = ""
-        if s["tools_usage"]:
-            top = sorted(s["tools_usage"].items(), key=lambda x: -x[1])[:5]
-            tools_section = "\n*Tools más usadas:*\n" + "\n".join(
-                f"  {esc(name)}: {count}x" for name, count in top
+            primera = s.get("primera")
+            ultima = s.get("ultima")
+            primera_str = primera.strftime("%d/%m/%Y") if primera else "—"
+            ultima_str = ultima.strftime("%d/%m/%Y %H:%M") if ultima else "—"
+
+            stats_message = (
+                "*Tus estadísticas* 📊\n\n"
+                f"*Consultas totales:* {total}\n"
+                f"*Exitosas:* {exitosos} ({tasa:.0f}%)\n"
+                f"*Errores:* {errores}\n\n"
+                f"*Tiempo de respuesta:*\n"
+                f"  Promedio: {avg_ms:.0f}ms\n"
+                f"  Máximo: {max_ms}ms\n\n"
+                f"*Primera consulta:* {primera_str}\n"
+                f"*Última consulta:* {ultima_str}"
             )
 
-        errors_section = ""
-        if s["errors_by_type"]:
-            errors_section = "\n*Errores por tipo:*\n" + "\n".join(
-                f"  {esc(t)}: {c}" for t, c in s["errors_by_type"].items()
-            )
-
-        stats_message = (
-            "*Estadísticas — sesión actual*\n"
-            f"_Uptime: {uptime_min} min_\n\n"
-            f"*Requests:*\n"
-            f"  Total: {req['total']}\n"
-            f"  Exitosos: {req['success']} ({req['success_rate_percent']:.0f}%)\n"
-            f"  Errores: {req['error']}\n"
-            f"  Fallbacks: {req['fallbacks_used']}\n\n"
-            f"*Latencia (total):*\n"
-            f"  Promedio: {lat.get('avg_ms', 0):.0f}ms\n"
-            f"  Máximo: {lat.get('max_ms', 0):.0f}ms\n"
-            f"  Último: {lat.get('last_ms', 0):.0f}ms\n\n"
-            f"*Pasos promedio por request:* {s['steps']['average']:.1f}\n"
-            f"{tools_section}"
-            f"{errors_section}"
-        )
     except Exception as e:
-        logger.error(f"Error obteniendo métricas: {e}")
+        logger.error(f"Error obteniendo estadísticas del usuario {user_id}: {e}")
         stats_message = "Error obteniendo estadísticas. Intenta de nuevo."
 
     try:

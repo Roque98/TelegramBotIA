@@ -209,6 +209,31 @@ class MemoryRepository:
             logger.error(f"Error saving interaction for {user_id}: {e}")
             return False
 
+    async def get_user_stats(self, user_id: str) -> dict:
+        """Retorna estadísticas de uso del usuario desde LogOperaciones."""
+        if not self.db_manager:
+            return {}
+
+        try:
+            query = """
+                SELECT
+                    COUNT(*)                                            AS total,
+                    SUM(CASE WHEN lo.mensajeError IS NULL THEN 1 ELSE 0 END) AS exitosos,
+                    SUM(CASE WHEN lo.mensajeError IS NOT NULL THEN 1 ELSE 0 END) AS errores,
+                    AVG(CAST(lo.duracionMs AS FLOAT))                   AS avg_ms,
+                    MAX(lo.duracionMs)                                  AS max_ms,
+                    MIN(lo.fechaEjecucion)                              AS primera,
+                    MAX(lo.fechaEjecucion)                              AS ultima
+                FROM abcmasplus..LogOperaciones lo
+                INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                WHERE ut.telegramChatId = :user_id AND ut.activo = 1
+            """
+            results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
+            return results[0] if results else {}
+        except Exception as e:
+            logger.error(f"Error getting stats for {user_id}: {e}")
+            return {}
+
     async def get_interaction_count(self, user_id: str) -> int:
         profile = await self.get_profile(user_id)
         return profile.interaction_count if profile else 0
