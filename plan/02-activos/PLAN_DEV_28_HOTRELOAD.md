@@ -8,11 +8,11 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Script de desarrollo | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Configuración de watcher | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Script de desarrollo | ██████████ 100% | ✅ Completada |
+| Fase 2: Configuración de watcher | ██████████ 100% | ✅ Completada |
 | Fase 3: Integración y documentación | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/9 tareas)
+**Progreso Total**: ████░░░░░░ 33% (3/9 tareas)
 
 ---
 
@@ -39,17 +39,17 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
 
 ### Tareas
 
-- [ ] **Agregar `watchfiles` a Pipfile** como dev dependency
+- [x] **Agregar `watchfiles` a Pipfile** como dev dependency
   - Archivo: `Pipfile`
-  - Comando: `pipenv install watchfiles --dev`
+  - Completado: 2026-03-31
 
-- [ ] **Crear `run_dev.py`** en la raíz del proyecto
+- [x] **Crear `run_dev.py`** en la raíz del proyecto
   - Archivo: `run_dev.py`
-  - Responsabilidad: lanzar `main.py` como subproceso y relanzarlo cuando watchfiles detecte cambios en `src/`
+  - Completado: 2026-03-31
 
-- [ ] **Manejar señales de cierre** (Ctrl+C) correctamente
-  - Terminar el subproceso del bot antes de salir
-  - Evitar procesos zombie o puertos ocupados
+- [x] **Manejar señales de cierre** (Ctrl+C) correctamente
+  - `signal.SIGINT` / `signal.SIGTERM` con graceful terminate + kill fallback
+  - Completado: 2026-03-31
 
 ### Entregables
 - [ ] `run_dev.py` funcional que reinicia el bot al guardar cualquier `.py` en `src/`
@@ -63,15 +63,16 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
 
 ### Tareas
 
-- [ ] **Definir patrones a observar**: solo `src/**/*.py` y `main.py`
-  - Ignorar: `__pycache__/`, `*.pyc`, `.env`, `tests/`, `plan/`, `docs/`
+- [x] **Definir patrones a observar**: solo `src/` y `main.py`
+  - Ignorar: `__pycache__/`, `*.pyc`, `*.pyo`, `*.log`
+  - Completado: 2026-03-31
 
-- [ ] **Agregar debounce / cooldown** para evitar reinicios múltiples
-  al guardar varios archivos rápido (ej. refactor con IDE)
-  - `watchfiles` tiene debounce nativo configurable
+- [x] **Agregar debounce / cooldown** — `RESTART_COOLDOWN = 1.5s`
+  - Completado: 2026-03-31
 
-- [ ] **Log claro del reinicio**: mostrar qué archivo cambió y timestamp
-  - Ej: `[hot-reload] src/agents/react/agent.py modificado — reiniciando...`
+- [x] **Log claro del reinicio**: muestra archivo modificado y hora
+  - Ej: `10:32:15 [hot-reload] src/agents/react/agent.py modificado — reiniciando...`
+  - Completado: 2026-03-31
 
 ### Entregables
 - [ ] Watcher configurado con patrones, ignore y log
