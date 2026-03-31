@@ -368,6 +368,12 @@ class ReActAgent(BaseAgent):
         """
         Parsea la respuesta del LLM a ReActResponse.
 
+        Estrategia:
+        1. Intentar json.loads directo — funciona cuando el modelo responde
+           con JSON válido que puede contener code blocks en sus valores.
+        2. Si falla y el texto empieza con triple backtick, extraer el
+           contenido del code fence (el modelo envolvió su JSON en ```json).
+
         Args:
             response_text: Texto de respuesta del LLM
 
@@ -375,30 +381,31 @@ class ReActAgent(BaseAgent):
             ReActResponse parseado
 
         Raises:
-            ValueError: Si el formato es inválido
+            json.JSONDecodeError: Si no se puede parsear
         """
-        # Intentar extraer JSON del texto
         text = response_text.strip()
 
-        # Si está envuelto en ```json ... ```
-        if "```json" in text:
-            start = text.find("```json") + 7
-            end = text.find("```", start)
+        # Intento 1: parsear directamente (caso más común y correcto)
+        try:
+            return self._build_react_response(json.loads(text))
+        except json.JSONDecodeError:
+            pass
+
+        # Intento 2: el modelo envolvió su respuesta en ```json ... ```
+        if text.startswith("```"):
+            start = 7 if text.startswith("```json") else 3
+            end = text.rfind("```")  # último cierre, no el primero dentro de valores
             if end > start:
-                text = text[start:end].strip()
-        elif "```" in text:
-            start = text.find("```") + 3
-            end = text.find("```", start)
-            if end > start:
-                text = text[start:end].strip()
+                try:
+                    return self._build_react_response(json.loads(text[start:end].strip()))
+                except json.JSONDecodeError:
+                    pass
 
-        # Parsear JSON
-        data = json.loads(text)
+        raise json.JSONDecodeError("Cannot parse LLM response as JSON", text, 0)
 
-        # Convertir action a ActionType
-        action_str = data.get("action", "finish")
-        action = ActionType.from_string(action_str)
-
+    def _build_react_response(self, data: dict) -> ReActResponse:
+        """Construye ReActResponse desde un dict ya parseado."""
+        action = ActionType.from_string(data.get("action", "finish"))
         return ReActResponse(
             thought=data.get("thought", ""),
             action=action,
