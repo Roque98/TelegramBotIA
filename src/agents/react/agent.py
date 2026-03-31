@@ -338,11 +338,8 @@ class ReActAgent(BaseAgent):
         messages.append({"role": "user", "content": user_prompt})
 
         try:
-            # Convertir mensajes a prompt string para el provider
-            prompt = self._messages_to_prompt(messages)
-
-            # Generar respuesta
-            response_text = await self.llm.generate(prompt=prompt)
+            # Generar respuesta pasando mensajes estructurados directamente
+            response_text = await self.llm.generate_messages(messages)
 
             # Parsear JSON
             react_response = self._parse_response(response_text)
@@ -503,8 +500,7 @@ class ReActAgent(BaseAgent):
                 {"role": "user", "content": synthesis_prompt},
             ]
 
-            prompt = self._messages_to_prompt(messages)
-            response_text = await self.llm.generate(prompt=prompt)
+            response_text = await self.llm.generate_messages(messages)
 
             # Intentar parsear como JSON
             try:

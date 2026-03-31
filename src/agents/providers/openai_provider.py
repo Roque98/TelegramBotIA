@@ -29,11 +29,34 @@ class OpenAIProvider:
         max_wait=settings.retry_llm_max_wait,
     )
     async def generate(self, prompt: str, max_tokens: Optional[int] = None) -> str:
-        """Generar texto usando OpenAI Responses API."""
+        """Generar texto usando OpenAI Responses API (input como string)."""
+        return await self._call_responses_api(prompt)
+
+    @llm_retry(
+        max_attempts=settings.retry_llm_max_attempts,
+        min_wait=settings.retry_llm_min_wait,
+        max_wait=settings.retry_llm_max_wait,
+    )
+    async def generate_messages(
+        self,
+        messages: list[dict],
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """
+        Generar texto pasando la lista de mensajes estructurada directamente.
+
+        Usar en lugar de generate() cuando se tiene system+user separados,
+        para que el modelo reciba el system prompt como rol de sistema real
+        y no como texto de usuario.
+        """
+        return await self._call_responses_api(messages)
+
+    async def _call_responses_api(self, input) -> str:
+        """Llama a responses.create y extrae el texto de la respuesta."""
         try:
             response = await self.client.responses.create(
                 model=self.model,
-                input=prompt
+                input=input,
             )
 
             text = response.output_text.strip() if response.output_text else ""
@@ -62,14 +85,12 @@ class OpenAIProvider:
         dentro de ResponseOutputMessage en vez de como output_text directo.
         """
         for item in output:
-            # ResponseOutputMessage: item.content es lista de content parts
             content = getattr(item, "content", None)
             if content:
                 for part in content:
                     text = getattr(part, "text", None)
                     if text:
                         return text.strip()
-            # Fallback: propiedad text directa
             text = getattr(item, "text", None)
             if text:
                 return text.strip()
