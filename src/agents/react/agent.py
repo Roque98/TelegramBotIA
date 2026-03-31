@@ -352,9 +352,10 @@ class ReActAgent(BaseAgent):
             return react_response
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            preview = repr(response_text[:200]) if response_text else "''"
+            logger.error(f"Failed to parse LLM response as JSON: {e} | raw: {preview}")
             raise LLMException(
-                message=f"Invalid JSON response from LLM: {e}",
+                message=f"Invalid JSON response from LLM: {e} | raw: {preview}",
                 provider="unknown",
             )
         except Exception as e:
