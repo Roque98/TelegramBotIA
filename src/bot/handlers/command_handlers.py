@@ -204,7 +204,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Manejar el comando /stats.
 
-    Muestra estadísticas de uso del bot (placeholder por ahora).
+    Muestra métricas de la sesión actual del bot (desde el último reinicio).
 
     Args:
         update: Objeto de actualización de Telegram
@@ -213,22 +213,48 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     logger.info(f"Usuario {user_id} ejecutó /stats")
 
-    # TODO: Implementar estadísticas reales cuando se tenga el sistema de logging
-    stats_message = (
-        "**📊 Estadísticas de Uso**\n\n"
-        "Aquí van tus métricas ✨\n\n"
-        "🔄 Consultas realizadas: N/A\n"
-        "✅ Consultas exitosas: N/A\n"
-        "❌ Consultas con error: N/A\n"
-        "⏱️ Tiempo promedio: N/A\n\n"
-        "🚧 _Estoy trabajando en el sistema de estadísticas completo_\n"
-        "_Pronto tendrás métricas detalladas!_ 💪"
-    )
+    try:
+        from src.infra.observability import get_metrics
+        s = get_metrics().get_stats()
 
-    await update.message.reply_text(
-        stats_message,
-        parse_mode='Markdown'
-    )
+        req = s["requests"]
+        lat = s["latency"].get("_total", {})
+        uptime_min = int(s["uptime_seconds"] // 60)
+
+        tools_section = ""
+        if s["tools_usage"]:
+            top = sorted(s["tools_usage"].items(), key=lambda x: -x[1])[:5]
+            tools_section = "\n*Tools más usadas:*\n" + "\n".join(
+                f"  {name}: {count}x" for name, count in top
+            )
+
+        errors_section = ""
+        if s["errors_by_type"]:
+            errors_section = "\n*Errores por tipo:*\n" + "\n".join(
+                f"  {t}: {c}" for t, c in s["errors_by_type"].items()
+            )
+
+        stats_message = (
+            "*Estadísticas — sesión actual*\n"
+            f"_Uptime: {uptime_min} min_\n\n"
+            f"*Requests:*\n"
+            f"  Total: {req['total']}\n"
+            f"  Exitosos: {req['success']} ({req['success_rate_percent']:.0f}%)\n"
+            f"  Errores: {req['error']}\n"
+            f"  Fallbacks: {req['fallbacks_used']}\n\n"
+            f"*Latencia (total):*\n"
+            f"  Promedio: {lat.get('avg_ms', 0):.0f}ms\n"
+            f"  Máximo: {lat.get('max_ms', 0):.0f}ms\n"
+            f"  Último: {lat.get('last_ms', 0):.0f}ms\n\n"
+            f"*Pasos promedio por request:* {s['steps']['average']:.1f}\n"
+            f"{tools_section}"
+            f"{errors_section}"
+        )
+    except Exception as e:
+        logger.error(f"Error obteniendo métricas: {e}")
+        stats_message = "Error obteniendo estadísticas. Intenta de nuevo."
+
+    await update.message.reply_text(stats_message, parse_mode='Markdown')
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
