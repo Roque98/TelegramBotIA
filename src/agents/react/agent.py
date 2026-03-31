@@ -341,6 +341,8 @@ class ReActAgent(BaseAgent):
             # Generar respuesta pasando mensajes estructurados directamente
             response_text = await self.llm.generate_messages(messages)
 
+            logger.debug(f"LLM raw response ({len(response_text)} chars): {response_text[:300]!r}")
+
             # Parsear JSON
             react_response = self._parse_response(response_text)
 
