@@ -197,12 +197,15 @@ class MainHandler:
         except Exception as e:
             logger.error(f"ReActAgent error: {e}", exc_info=True)
 
-            # Usar fallback si está configurado
             if self.use_fallback_on_error and self.fallback_agent:
                 logger.info("Using fallback agent")
                 response = await self._use_fallback(event.text, user_context)
             else:
-                raise
+                response = AgentResponse.error_response(
+                    agent_name="main_handler",
+                    error=str(e),
+                    execution_time_ms=0,
+                )
 
         # 3. Registrar interacción siempre (async, no bloqueante)
         asyncio.create_task(
