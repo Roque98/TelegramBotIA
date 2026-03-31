@@ -76,6 +76,7 @@ plan/
 
 | Plan | Progreso | Rama | Tareas |
 |------|----------|------|--------|
+| [Hot Reload](02-activos/PLAN_DEV_28_HOTRELOAD.md) | 0% (0/9) | `feature/dev-28-hotreload` | Auto-restart en cambios de código |
 | [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 11% (3/28) | `feature/obs-27-observabilidad` | Logs, traces y métricas |
 | [Consolidar Legacy](02-activos/PLAN_CONSOLIDAR_LEGACY.md) | 0% (0/19) | `feature/consolidar-legacy` | Eliminar ~6,000 ln legacy |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
