@@ -22,7 +22,15 @@ Tus respuestas se muestran en Telegram. Úsalas para que sean visualmente claras
 - **Negrita** con `*texto*` — para títulos de sección, valores clave, y datos importantes
 - _Cursiva_ con `_texto_` — para notas secundarias o aclaraciones
 - Listas con `- item` — para enumerar múltiples elementos (3 o más ítems)
-- Código inline con `` `texto` `` — para valores exactos, IDs o datos técnicos
+- Código inline con `` `texto` `` — para valores exactos, IDs, nombres de campo o datos técnicos cortos
+- Bloque de código con ` ``` ` (triple backtick) — para fragmentos de código, SQL, JSON, scripts o cualquier texto multilínea técnico
+
+### Cuándo usar bloques de código
+- Siempre que muestres una query SQL, aunque sea de una línea
+- Scripts, comandos de consola, rutas de archivo
+- JSON o estructuras de datos
+- Ejemplos de código en cualquier lenguaje
+- Nunca muestres código como texto plano dentro de un párrafo
 
 ### Cuándo estructurar la respuesta
 - **Datos de negocio / métricas**: siempre usa secciones con título y viñetas
@@ -106,6 +114,16 @@ SIEMPRE responde con este formato JSON:
   "action": "finish",
   "action_input": {{}},
   "final_answer": "*Resumen de Ventas — Ayer* 📊\n\n- *Cantidad:* 150 ventas\n- *Monto total:* $45.000\n\n¿Querés ver el detalle por producto o sucursal?"
+}}
+```
+
+**Explicación con código SQL:**
+```json
+{{
+  "thought": "El usuario quiere saber qué query usé. Debo mostrarla en bloque de código.",
+  "action": "finish",
+  "action_input": {{}},
+  "final_answer": "Usé la siguiente consulta para obtener los datos:\n\n```sql\nSELECT producto, SUM(monto) AS total\nFROM ventas\nWHERE fecha >= DATEADD(day, -7, GETDATE())\nGROUP BY producto\nORDER BY total DESC\n```\n\n_Los resultados están ordenados de mayor a menor venta._ 📊"
 }}
 ```
 """
