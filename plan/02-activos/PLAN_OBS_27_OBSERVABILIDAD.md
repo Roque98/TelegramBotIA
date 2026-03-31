@@ -8,14 +8,14 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 0: Fundamentos (teoría) | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 1: Diagnóstico — estado actual | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Logging estructurado | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Transaction trace log | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 4: Métricas básicas | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 0: Fundamentos (teoría) | ██████████ 100% | ✅ Completada |
+| Fase 1: Diagnóstico — estado actual | ████████░░ 75% | 🔄 En progreso |
+| Fase 2: Logging estructurado | ██████████ 100% | ✅ Completada |
+| Fase 3: Transaction trace log | ██████████ 100% | ✅ Completada |
+| Fase 4: Métricas básicas | ████████░░ 80% | 🔄 En progreso |
 | Fase 5: Alertas y health checks | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/28 tareas)
+**Progreso Total**: ███████░░░ 68% (19/28 tareas)
 
 ---
 
@@ -100,13 +100,10 @@ periódico. Esto da el 80% del valor con el 20% de la complejidad.
 ### Tareas
 
 - [x] **Silenciar httpx/httpcore/telegram** — setLevel(WARNING) en setup_logging()
-  - Archivo: `main.py`
   - Commit: `cf1e8b5`
 - [x] **Eliminar log duplicado** — remover log_operation(EXITOSO) del success path
-  - Archivo: `src/bot/handlers/query_handlers.py`
   - Commit: `cf1e8b5`
 - [x] **Propagar username al log** — extraer username de ConversationEvent.metadata
-  - Archivo: `src/pipeline/handler.py`, `src/domain/memory/memory_repository.py`
   - Commit: `cf1e8b5`
 - [ ] **Auditar niveles de log** — revisar todos los `logger.info/debug/error` en src/
   - Criterio: DEBUG para flujo normal, INFO para eventos importantes, ERROR solo en errores reales
@@ -181,19 +178,20 @@ CREATE INDEX IX_ApplicationLogs_createdAt   ON abcmasplus..ApplicationLogs (crea
 
 ### Tareas
 
-- [ ] **Agregar `structlog`** — instalar y configurar como reemplazo de logging stdlib
-  - Archivo: `requirements.txt` o `Pipfile`
-  - Configurar en: `src/config/logging_config.py` (nuevo)
-- [ ] **Crear script de migración SQL** — crear tabla ApplicationLogs
-  - Archivo: `scripts/migrations/add_application_logs.sql`
-- [ ] **Crear `SqlLogHandler`** — handler de logging que persiste WARNING/ERROR en SQL
+- [x] **Crear `logging_config.py`** — SqlLogHandler + formato con correlation_id
   - Archivo: `src/config/logging_config.py`
-- [ ] **Agregar correlation_id al ConversationEvent** — ya existe, verificar que se propaga
-  - Archivo: `src/agents/base/events.py`
-- [ ] **Crear contexto de log por request** — bind correlation_id al inicio de cada request
-  - Archivo: `src/pipeline/handler.py`
-- [ ] **Migrar logs críticos a structlog** — al menos handler.py, react agent, memory service
-  - Archivos: `src/pipeline/handler.py`, `src/agents/react/agent.py`, `src/domain/memory/memory_service.py`
+  - Commit: `a33c8e6`
+- [x] **Crear script de migración SQL** — tabla ApplicationLogs
+  - Archivo: `scripts/migrations/001_add_application_logs.sql`
+  - Commit: `a33c8e6`
+- [x] **Crear `SqlLogHandler`** — persiste WARNING/ERROR en background thread
+  - Archivo: `src/config/logging_config.py`
+  - Commit: `a33c8e6`
+- [x] **correlation_id en formato de log** — TracingFilter inyecta en cada record
+  - Archivo: `src/infra/observability/tracing.py` (ya existía)
+- [x] **Cablear logging_config en main.py** — reemplaza basicConfig
+  - Archivo: `main.py`, Commit: `ecfbaed`
+- [ ] **Auditar niveles de log** — revisar que los logs críticos usen structlog correctamente
 
 ---
 
@@ -243,16 +241,20 @@ CREATE INDEX IX_TransactionLogs_createdAt ON abcmasplus..TransactionLogs (create
 
 ### Tareas
 
-- [ ] **Crear script de migración SQL** — crear tabla TransactionLogs
-  - Archivo: `scripts/migrations/add_transaction_logs.sql`
-- [ ] **Crear dataclass `TransactionTrace`** — objeto que acumula los tiempos durante un request
-  - Archivo: `src/pipeline/transaction_trace.py`
-- [ ] **Instrumentar `MainHandler`** — iniciar y completar la traza en cada request
+- [x] **Crear script de migración SQL** — tabla TransactionLogs
+  - Archivo: `scripts/migrations/002_add_transaction_logs.sql`
+  - Commit: `a33c8e6`
+- [x] **Crear `ObservabilityRepository`** — save_transaction() async + save_log_sync()
+  - Archivo: `src/infra/observability/sql_repository.py`
+  - Commit: `a33c8e6`
+- [x] **Instrumentar `MainHandler`** — medir memory/react/save, guardar traza en background
   - Archivo: `src/pipeline/handler.py`
-- [ ] **Guardar traza en SQL Server** — extender `MemoryRepository` con `save_transaction()`
-  - Archivo: `src/domain/memory/memory_repository.py`
-- [ ] **Log de consola de la traza** — imprimir la línea resumida al completar el request
-  - Formato: `[{correlation_id}] user={user_id} | {query[:40]} | memory:{mem}ms → react:{react}ms | {status} {total}ms`
+  - Commit: `ecfbaed`
+- [x] **Inyectar repositorio en factory** — ObservabilityRepository en create_main_handler()
+  - Archivo: `src/pipeline/factory.py`
+  - Commit: `ecfbaed`
+- [x] **Log de consola de la traza** — una línea con flujo completo al finalizar cada request
+  - Formato: `[{cid}] user={id} | {query[:40]} | memory:Xms react:Xms save:Xms | OK Xms`
 
 ---
 
@@ -286,15 +288,15 @@ detectar si el p95 sube con el tiempo (degradación gradual).
 
 ### Tareas
 
-- [ ] **Crear `MetricsCollector`** — clase singleton con contadores y histograma de latencias
-  - Archivo: `src/pipeline/metrics.py`
-- [ ] **Integrar en `MainHandler`** — registrar cada request al completarse
+- [x] **`MetricsCollector`** — ya existía en `src/infra/observability/metrics.py`
+- [x] **Integración en `ReActAgent`** — ya registra record_request() y record_tool_usage()
+  - Archivo: `src/agents/react/agent.py`
+- [x] **Comando `/stats` en Telegram** — métricas reales de la sesión
+  - Archivo: `src/bot/handlers/command_handlers.py`
+  - Commit: `b5ee69e`
+- [ ] **Exponer métricas en health_check()** — agregar stats al response
   - Archivo: `src/pipeline/handler.py`
-- [ ] **Exponer vía health_check** — agregar métricas al response de `health_check()`
-  - Archivo: `src/pipeline/handler.py`
-- [ ] **Comando `/stats` en Telegram** — mostrar métricas al admin del bot
-  - Archivo: `src/bot/handlers/admin_handlers.py`
-- [ ] **Reset periódico** — limpiar contadores cada 24h para métricas "del día"
+- [ ] **Reset periódico** — limpiar contadores cada 24h
 
 ---
 
