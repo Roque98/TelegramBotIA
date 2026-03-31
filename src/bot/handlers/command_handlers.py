@@ -221,17 +221,21 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lat = s["latency"].get("_total", {})
         uptime_min = int(s["uptime_seconds"] // 60)
 
+        def esc(value: str) -> str:
+            """Escapa caracteres que rompen Telegram Markdown v1."""
+            return str(value).replace("_", "\\_").replace("*", "\\*").replace("`", "\\`")
+
         tools_section = ""
         if s["tools_usage"]:
             top = sorted(s["tools_usage"].items(), key=lambda x: -x[1])[:5]
             tools_section = "\n*Tools más usadas:*\n" + "\n".join(
-                f"  {name}: {count}x" for name, count in top
+                f"  {esc(name)}: {count}x" for name, count in top
             )
 
         errors_section = ""
         if s["errors_by_type"]:
             errors_section = "\n*Errores por tipo:*\n" + "\n".join(
-                f"  {t}: {c}" for t, c in s["errors_by_type"].items()
+                f"  {esc(t)}: {c}" for t, c in s["errors_by_type"].items()
             )
 
         stats_message = (
@@ -254,7 +258,10 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error obteniendo métricas: {e}")
         stats_message = "Error obteniendo estadísticas. Intenta de nuevo."
 
-    await update.message.reply_text(stats_message, parse_mode='Markdown')
+    try:
+        await update.message.reply_text(stats_message, parse_mode='Markdown')
+    except Exception:
+        await update.message.reply_text(stats_message)
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
