@@ -215,10 +215,8 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         from src.domain.memory.memory_repository import MemoryRepository
-        from src.infra.database.connection import DatabaseManager
-        from src.config.settings import settings
 
-        db = DatabaseManager(connection_string=settings.database_url)
+        db = context.bot_data.get("db_manager")
         repo = MemoryRepository(db_manager=db)
         s = await repo.get_user_stats(user_id)
 
