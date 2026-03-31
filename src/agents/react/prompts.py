@@ -117,15 +117,17 @@ SIEMPRE responde con este formato JSON:
 }}
 ```
 
-**Explicación con código SQL:**
+**Explicación con código SQL (usa triple backtick para bloques de código):**
 ```json
 {{
-  "thought": "El usuario quiere saber qué query usé. Debo mostrarla en bloque de código.",
+  "thought": "El usuario quiere saber qué query usé. Debo mostrarla en bloque de código SQL.",
   "action": "finish",
   "action_input": {{}},
-  "final_answer": "Usé la siguiente consulta para obtener los datos:\n\n```sql\nSELECT producto, SUM(monto) AS total\nFROM ventas\nWHERE fecha >= DATEADD(day, -7, GETDATE())\nGROUP BY producto\nORDER BY total DESC\n```\n\n_Los resultados están ordenados de mayor a menor venta._ 📊"
+  "final_answer": "Usé esta consulta:\n\n[bloque-sql]\nSELECT producto, SUM(monto) AS total\nFROM ventas\nGROUP BY producto\n[/bloque-sql]\n\n_Resultados ordenados de mayor a menor._ 📊"
 }}
 ```
+
+Nota: en el `final_answer` real, reemplaza `[bloque-sql]` por triple backtick + sql y `[/bloque-sql]` por triple backtick. Aplica igual para otros lenguajes (python, json, bash, etc.).
 """
 
 REACT_USER_PROMPT = """## Contexto del Usuario
