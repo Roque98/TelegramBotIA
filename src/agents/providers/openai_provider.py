@@ -35,10 +35,45 @@ class OpenAIProvider:
                 model=self.model,
                 input=prompt
             )
-            return response.output_text.strip()
+
+            text = response.output_text.strip() if response.output_text else ""
+
+            if not text:
+                text = self._extract_text_from_output(response.output)
+
+            if not text:
+                logger.error(
+                    f"LLM returned empty text. "
+                    f"Output items: {[type(item).__name__ for item in response.output]}"
+                )
+                raise ValueError("LLM returned empty response")
+
+            return text
+
         except Exception as e:
             logger.error(f"Error generando con OpenAI: {e}")
             raise
+
+    def _extract_text_from_output(self, output: list) -> str:
+        """
+        Extracción de texto de fallback para modelos que no populan output_text.
+
+        Algunos modelos (razonamiento, streaming) pueden devolver el texto
+        dentro de ResponseOutputMessage en vez de como output_text directo.
+        """
+        for item in output:
+            # ResponseOutputMessage: item.content es lista de content parts
+            content = getattr(item, "content", None)
+            if content:
+                for part in content:
+                    text = getattr(part, "text", None)
+                    if text:
+                        return text.strip()
+            # Fallback: propiedad text directa
+            text = getattr(item, "text", None)
+            if text:
+                return text.strip()
+        return ""
 
     @llm_retry(
         max_attempts=settings.retry_llm_max_attempts,
