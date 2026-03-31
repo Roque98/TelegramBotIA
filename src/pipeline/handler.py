@@ -204,11 +204,10 @@ class MainHandler:
             else:
                 raise
 
-        # 3. Registrar interacción (async, no bloqueante)
-        if response.success:
-            asyncio.create_task(
-                self._record_interaction(event, response)
-            )
+        # 3. Registrar interacción siempre (async, no bloqueante)
+        asyncio.create_task(
+            self._record_interaction(event, response)
+        )
 
         return response
 
@@ -266,6 +265,7 @@ class MainHandler:
                 user_id=event.user_id,
                 query=event.text,
                 response=response.message or "",
+                error=response.error if not response.success else None,
                 metadata={
                     "channel": event.channel,
                     "agent": response.agent_name,
@@ -276,7 +276,6 @@ class MainHandler:
                 },
             )
         except Exception as e:
-            # No fallar si no se puede registrar
             logger.error(f"Error recording interaction: {e}")
 
     def _format_error(self, response: AgentResponse) -> str:

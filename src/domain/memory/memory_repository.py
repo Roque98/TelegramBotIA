@@ -128,6 +128,7 @@ class MemoryRepository:
                 FROM abcmasplus..LogOperaciones lo
                 INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
+                  AND lo.mensajeError IS NULL
                 ORDER BY lo.fechaEjecucion DESC
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id), "limit": limit})
@@ -163,25 +164,32 @@ class MemoryRepository:
             logger.error(f"Error getting messages for {user_id}: {e}")
             return []
 
-    async def save_interaction(self, user_id: str, query: str, response: str, metadata: Optional[dict[str, Any]] = None) -> bool:
+    async def save_interaction(
+        self,
+        user_id: str,
+        query: str,
+        response: str,
+        error: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> bool:
         if not self.db_manager:
             return True
 
         try:
             params_json = json.dumps({"query": query, **(metadata or {})})
             duration_ms = (metadata or {}).get("execution_time_ms", 0)
-
             username = (metadata or {}).get("username")
+            resultado = response[:4000] if not error else "ERROR"
 
             query_sql = """
                 INSERT INTO abcmasplus..LogOperaciones (
                     idUsuario, idOperacion, telegramChatId, telegramUsername,
-                    parametros, resultado, duracionMs, fechaEjecucion
+                    parametros, resultado, mensajeError, duracionMs, fechaEjecucion
                 )
                 SELECT
                     ut.idUsuario,
                     (SELECT idOperacion FROM abcmasplus..Operaciones WHERE comando = :operation AND activo = 1),
-                    :chat_id, :username, :params, :result, :duration_ms, GETDATE()
+                    :chat_id, :username, :params, :result, :error, :duration_ms, GETDATE()
                 FROM abcmasplus..UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup AND ut.activo = 1
             """
@@ -190,7 +198,8 @@ class MemoryRepository:
                 "chat_id": str(user_id),
                 "username": username,
                 "params": params_json,
-                "result": response[:4000],
+                "result": resultado,
+                "error": error[:2000] if error else None,
                 "duration_ms": int(duration_ms),
                 "chat_id_lookup": str(user_id),
             })
