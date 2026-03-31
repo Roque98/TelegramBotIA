@@ -78,7 +78,7 @@ periódico. Esto da el 80% del valor con el 20% de la complejidad.
 
 ### Tareas
 
-- [ ] **Leer y entender este documento** — base conceptual antes de tocar código
+- [x] **Leer y entender este documento** — base conceptual antes de tocar código
 
 ---
 
@@ -126,28 +126,68 @@ Un log de texto libre como:
 INFO - MainHandler - Telegram message processed: user=12345, success=True, time=4200ms
 ```
 
-No se puede filtrar ni agregar. Un log estructurado:
-```json
-{"level": "info", "event": "request_complete", "user_id": "12345", "success": true, "duration_ms": 4200, "correlation_id": "a8f3b2c1"}
+No se puede guardar en SQL de forma útil — es un string opaco. Un log estructurado
+tiene campos fijos que se mapean directamente a columnas:
+
+```python
+logger.info("request_complete", user_id="12345", success=True, duration_ms=4200, correlation_id="a8f3b2c1")
 ```
 
-Permite consultas como: `WHERE duration_ms > 5000 AND success = false`.
+Permite guardar cada campo en su columna y luego consultar:
+```sql
+SELECT * FROM ApplicationLogs WHERE level = 'ERROR' AND correlationId = 'a8f3b2c1'
+SELECT * FROM ApplicationLogs WHERE userId = '12345' ORDER BY createdAt DESC
+```
+
+### Destino de los logs
+
+| Nivel | Consola | SQL Server |
+|-------|---------|------------|
+| DEBUG | Si | No — demasiado voluminoso |
+| INFO | Si | No — flujo normal, no accionable |
+| WARNING | Si | **Si** — situaciones anómalas pero no errores |
+| ERROR | Si | **Si** — siempre persistir errores |
+
+### Schema de la tabla `ApplicationLogs` en SQL Server
+
+```sql
+CREATE TABLE abcmasplus..ApplicationLogs (
+    id            BIGINT IDENTITY PRIMARY KEY,
+    correlationId NVARCHAR(8),
+    userId        NVARCHAR(50),
+    level         NVARCHAR(10)   NOT NULL,   -- WARNING, ERROR
+    event         NVARCHAR(100)  NOT NULL,   -- nombre del evento: llm_timeout, tool_error, etc.
+    message       NVARCHAR(2000),            -- descripcion legible
+    module        NVARCHAR(100),             -- src.pipeline.handler, src.agents.react.agent, etc.
+    durationMs    INT,
+    extra         NVARCHAR(2000),            -- JSON con campos adicionales variables
+    createdAt     DATETIME       DEFAULT GETDATE()
+);
+
+CREATE INDEX IX_ApplicationLogs_level       ON abcmasplus..ApplicationLogs (level);
+CREATE INDEX IX_ApplicationLogs_correlationId ON abcmasplus..ApplicationLogs (correlationId);
+CREATE INDEX IX_ApplicationLogs_createdAt   ON abcmasplus..ApplicationLogs (createdAt DESC);
+```
 
 ### Campos mínimos requeridos en cada log
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `correlation_id` | str (8 chars) | ID único del request — une todos los logs de una operación |
-| `user_id` | str | ID del usuario |
-| `event` | str | Nombre del evento: `request_start`, `llm_call`, `tool_use`, `request_complete` |
+| `user_id` | str | ID del usuario (si aplica) |
+| `event` | str | Nombre del evento: `llm_timeout`, `tool_error`, `db_connection_failed` |
+| `level` | str | warning / error |
 | `duration_ms` | int | Tiempo de la operación (donde aplique) |
-| `level` | str | debug / info / warning / error |
 
 ### Tareas
 
 - [ ] **Agregar `structlog`** — instalar y configurar como reemplazo de logging stdlib
   - Archivo: `requirements.txt` o `Pipfile`
   - Configurar en: `src/config/logging_config.py` (nuevo)
+- [ ] **Crear script de migración SQL** — crear tabla ApplicationLogs
+  - Archivo: `scripts/migrations/add_application_logs.sql`
+- [ ] **Crear `SqlLogHandler`** — handler de logging que persiste WARNING/ERROR en SQL
+  - Archivo: `src/config/logging_config.py`
 - [ ] **Agregar correlation_id al ConversationEvent** — ya existe, verificar que se propaga
   - Archivo: `src/agents/base/events.py`
 - [ ] **Crear contexto de log por request** — bind correlation_id al inicio de cada request
@@ -298,22 +338,22 @@ Request de usuario
        │
    ┌───┴────────┐
    │            │
-MemoryService  ReActAgent ── logs estructurados por paso
-   │            │             (Thought, Action, Observation)
+MemoryService  ReActAgent ── structlog por paso (Thought, Action, Observation)
+   │            │
    └───┬────────┘
        │
        ▼
   TransactionTrace completada
        │
-  ┌────┴──────────────────┐
-  │                       │
-Log de consola      TransactionLogs (SQL Server)
-(1 línea, legible)  (persistente, consultable)
-                           │
-                    MetricsCollector
-                    (en memoria, p50/p95)
-                           │
-                     /stats en Telegram
+  ┌────┴───────────────────────────┐
+  │                                │
+Log de consola              SQL Server (abcmasplus)
+(DEBUG/INFO/WARNING/ERROR)  ├── ApplicationLogs  ← WARNING + ERROR con correlationId
+                            └── TransactionLogs  ← 1 fila por request (tiempos, tools, resultado)
+                                       │
+                                MetricsCollector (en memoria, p50/p95)
+                                       │
+                                 /stats en Telegram
 ```
 
 ---
