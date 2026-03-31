@@ -2,6 +2,7 @@
 Punto de entrada principal del bot de Telegram con agente de base de datos.
 """
 import asyncio
+import logging
 import nest_asyncio
 from src.config.settings import settings
 from src.config.logging_config import configure_logging
