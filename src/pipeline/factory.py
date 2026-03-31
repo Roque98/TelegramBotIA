@@ -22,6 +22,8 @@ from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
+from src.infra.observability.sql_repository import ObservabilityRepository
+from src.config.logging_config import get_sql_handler
 
 from .handler import MainHandler
 
@@ -171,12 +173,21 @@ def create_main_handler(
 
     memory_service = create_memory_service(db_manager=db)
 
+    obs_repo = ObservabilityRepository(db_manager=db)
+
+    # Cablear SQL log handler con el repositorio (a partir de aquí WARNING/ERROR van a SQL)
+    sql_handler = get_sql_handler()
+    if sql_handler:
+        sql_handler.set_repository(obs_repo)
+        logger.info("SqlLogHandler wired to ObservabilityRepository")
+
     handler = MainHandler(
         react_agent=react_agent,
         memory_service=memory_service,
+        observability_repo=obs_repo,
     )
 
-    logger.info("MainHandler created with ReActAgent")
+    logger.info("MainHandler created with ReActAgent + ObservabilityRepository")
 
     return handler
 
