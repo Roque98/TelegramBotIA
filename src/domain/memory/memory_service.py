@@ -99,8 +99,13 @@ class MemoryService:
             return "Sin conversaciones recientes."
         formatted = []
         for msg in messages[-5:]:
-            role = "Usuario" if msg.get("role") == "user" else "Asistente"
-            content = msg.get("content", "")[:200]
+            role_key = msg.get("role", "user")
+            role = "Usuario" if role_key == "user" else "Asistente"
+            content = msg.get("content", "")
+            limit = 120 if role_key == "user" else 600
+            if len(content) > limit:
+                cutoff = content.rfind("\n", 0, limit)
+                content = content[: cutoff if cutoff > 0 else limit] + "…"
             formatted.append(f"{role}: {content}")
         return "\n".join(formatted)
 

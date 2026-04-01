@@ -189,9 +189,15 @@ class UserContext(BaseModel):
 
         if self.working_memory:
             lines.append("\nMensajes recientes de esta conversación:")
-            for msg in self.working_memory[-5:]:  # Últimos 5 mensajes
+            for msg in self.working_memory[-5:]:
                 role = msg.get("role", "user")
-                content = msg.get("content", "")[:200]  # Truncar si muy largo
+                content = msg.get("content", "")
+                # Queries del usuario son cortas; respuestas del asistente pueden ser largas.
+                # Truncar en límite de párrafo para no cortar a mitad de oración.
+                limit = 120 if role == "user" else 600
+                if len(content) > limit:
+                    cutoff = content.rfind("\n", 0, limit)
+                    content = content[: cutoff if cutoff > 0 else limit] + "…"
                 lines.append(f"  [{role}]: {content}")
 
         return "\n".join(lines)
