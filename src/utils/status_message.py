@@ -147,6 +147,38 @@ class StatusMessage:
                 if "message is not modified" not in str(e).lower():
                     logger.debug(f"Auto-update falló: {e}")
 
+    async def set_phase(self, text: str) -> None:
+        """
+        Actualizar el mensaje de estado con texto específico.
+
+        Llamado por el event_callback del agente para mostrar
+        la fase real en lugar de mensajes aleatorios.
+
+        Args:
+            text: Texto a mostrar (ej. "🗄️ Consultando base de datos...")
+        """
+        if not self._is_started or not self._status_message:
+            return
+
+        # Cancelar loop aleatorio ya que tenemos fases reales
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
+            self._auto_update_task = None
+
+        elapsed = time.time() - self._start_time
+        if elapsed > 5:
+            text += f"\n_({elapsed:.0f}s)_"
+
+        try:
+            await self._status_message.edit_text(text)
+        except TelegramError as e:
+            if "message is not modified" not in str(e).lower():
+                logger.debug(f"set_phase falló: {e}")
+
     async def update_progress(self) -> None:
         """
         Actualizar mensaje al siguiente estado genérico.

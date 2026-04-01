@@ -48,8 +48,11 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Reemplazar el texto para que el gateway reciba solo la query (sin /ia)
     update.message.text = query_text
 
-    async with StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...") as status:
-        response = await main_handler.handle_telegram(update, context)
+    async with StatusMessage(update, initial_message="🔍 Analizando tu consulta...") as status:
+        async def on_agent_event(event):
+            await status.set_phase(event.status_text)
+
+        response = await main_handler.handle_telegram(update, context, event_callback=on_agent_event)
         await status.complete(response)
 
 

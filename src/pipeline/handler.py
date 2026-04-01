@@ -10,12 +10,13 @@ Coordina:
 import asyncio
 import logging
 import time
-from typing import Any, Optional, Protocol
+from typing import Any, Awaitable, Callable, Optional, Protocol
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.agents.base.agent import AgentResponse
+from src.agents.base.agent_events import AgentEvent
 from src.agents.base.events import ConversationEvent, UserContext
 from src.agents.react.agent import ReActAgent
 from src.domain.memory.memory_service import MemoryService
@@ -89,6 +90,7 @@ class MainHandler:
         self,
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
+        event_callback: Optional[Callable[[AgentEvent], Awaitable[None]]] = None,
     ) -> str:
         """
         Procesa un mensaje de Telegram.
@@ -107,7 +109,7 @@ class MainHandler:
             event = self.gateway.from_telegram(update)
 
             # 2. Procesar
-            response = await self._process_event(event)
+            response = await self._process_event(event, event_callback=event_callback)
 
             elapsed = (time.perf_counter() - start_time) * 1000
             logger.info(
@@ -178,7 +180,11 @@ class MainHandler:
                 execution_time_ms=elapsed,
             )
 
-    async def _process_event(self, event: ConversationEvent) -> AgentResponse:
+    async def _process_event(
+        self,
+        event: ConversationEvent,
+        event_callback: Optional[Callable[[AgentEvent], Awaitable[None]]] = None,
+    ) -> AgentResponse:
         """
         Procesa un evento normalizado midiendo cada etapa del pipeline.
 
@@ -200,6 +206,7 @@ class MainHandler:
             response = await self.react_agent.execute(
                 query=event.text,
                 context=user_context,
+                event_callback=event_callback,
             )
         except Exception as e:
             logger.error(f"ReActAgent error: {e}", exc_info=True)

@@ -10,9 +10,19 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Optional, Protocol
+import uuid
+from typing import Any, Awaitable, Callable, Optional, Protocol
 
 from ..base.agent import AgentResponse, BaseAgent
+from ..base.agent_events import (
+    AgentEvent,
+    agent_error_event,
+    final_answer_event,
+    observation_received_event,
+    session_started_event,
+    thought_generated_event,
+    tool_called_event,
+)
 from ..base.events import UserContext
 from ..base.exceptions import LLMException, MaxIterationsException, ToolException
 from ..tools.base import ToolResult
@@ -101,6 +111,7 @@ class ReActAgent(BaseAgent):
         self,
         query: str,
         context: UserContext,
+        event_callback: Optional[Callable[[AgentEvent], Awaitable[None]]] = None,
         **kwargs: Any,
     ) -> AgentResponse:
         """
@@ -116,6 +127,14 @@ class ReActAgent(BaseAgent):
         """
         start_time = time.perf_counter()
         scratchpad = Scratchpad(max_steps=self.max_iterations)
+        session_id = str(uuid.uuid4())
+
+        async def emit(event: AgentEvent) -> None:
+            if event_callback:
+                try:
+                    await event_callback(event)
+                except Exception as cb_err:
+                    logger.debug(f"Event callback error (ignored): {cb_err}")
 
         # Iniciar tracing si está disponible
         tracer = get_tracer() if _OBSERVABILITY_AVAILABLE else None
@@ -129,6 +148,8 @@ class ReActAgent(BaseAgent):
         logger.debug(f"Ejecutando ReAct para: '{query[:50]}...'")
 
         try:
+            await emit(session_started_event(session_id, context.user_id, len(self.tools)))
+
             # Construir prompts base
             system_prompt = build_system_prompt(self.tools.get_tools_prompt())
             messages = [{"role": "system", "content": system_prompt}]
@@ -142,8 +163,11 @@ class ReActAgent(BaseAgent):
                     messages=messages,
                 )
 
+                await emit(thought_generated_event(session_id, react_response.thought))
+
                 # 2. Si es FINISH, retornar respuesta final
                 if react_response.is_final():
+                    await emit(final_answer_event(session_id, len(scratchpad) + 1))
                     elapsed_ms = (time.perf_counter() - start_time) * 1000
                     steps = len(scratchpad) + 1
                     logger.info(
@@ -171,11 +195,13 @@ class ReActAgent(BaseAgent):
                     )
 
                 # 3. Ejecutar tool
+                await emit(tool_called_event(session_id, react_response.action.value, len(scratchpad) + 1))
                 observation = await self._execute_tool(
                     action=react_response.action,
                     action_input=react_response.action_input,
                     context=context,
                 )
+                await emit(observation_received_event(session_id, react_response.action.value, not observation.startswith("Error")))
 
                 # Registrar uso de tool
                 if _OBSERVABILITY_AVAILABLE:
