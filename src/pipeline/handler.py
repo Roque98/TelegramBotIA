@@ -356,6 +356,39 @@ class MainHandler:
                 execution_time_ms=elapsed,
             )
 
+    async def _record_cost(
+        self,
+        user_id: str,
+        cost: dict,
+        steps_taken: int,
+    ) -> None:
+        """Persiste el costo de la sesión en CostSesiones."""
+        try:
+            db_manager = getattr(self.memory.repository, "db_manager", None)
+            if not db_manager:
+                return
+            query = """
+                INSERT INTO abcmasplus..CostSesiones (
+                    telegramChatId, modelo, inputTokens, outputTokens,
+                    cacheReadTokens, llamadasLLM, costoUSD, pasos, fechaSesion
+                ) VALUES (
+                    :chat_id, :modelo, :input_tokens, :output_tokens,
+                    :cache_read_tokens, :llm_calls, :cost_usd, :pasos, GETDATE()
+                )
+            """
+            await db_manager.execute_non_query_async(query, {
+                "chat_id": str(user_id),
+                "modelo": "mixed",
+                "input_tokens": cost.get("input_tokens", 0),
+                "output_tokens": cost.get("output_tokens", 0),
+                "cache_read_tokens": cost.get("cache_read_tokens", 0),
+                "llm_calls": cost.get("llm_calls", 1),
+                "cost_usd": cost.get("cost_usd", 0.0),
+                "pasos": steps_taken,
+            })
+        except Exception as e:
+            logger.error(f"Error guardando costo de sesión: {e}")
+
     async def _record_interaction(
         self,
         event: ConversationEvent,
@@ -382,9 +415,10 @@ class MainHandler:
                     "execution_time_ms": response.execution_time_ms,
                     "correlation_id": event.correlation_id,
                     "username": event.metadata.get("username"),
-                    **({"cost": cost} if cost else {}),
                 },
             )
+            if cost:
+                asyncio.create_task(self._record_cost(event.user_id, cost, response.steps_taken))
         except Exception as e:
             logger.error(f"Error recording interaction: {e}")
 

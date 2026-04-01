@@ -298,24 +298,18 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         query = """
             SELECT
-                ut.telegramChatId                                   AS chat_id,
+                cs.telegramChatId                                       AS chat_id,
                 COALESCE(u.Nombre, ut.telegramUsername, 'Desconocido') AS nombre,
-                COUNT(*)                                             AS llamadas,
-                SUM(CAST(
-                    JSON_VALUE(lo.parametros, '$.cost.input_tokens') AS INT
-                ))                                                   AS input_tokens,
-                SUM(CAST(
-                    JSON_VALUE(lo.parametros, '$.cost.output_tokens') AS INT
-                ))                                                   AS output_tokens,
-                SUM(CAST(
-                    JSON_VALUE(lo.parametros, '$.cost.cost_usd') AS FLOAT
-                ))                                                   AS costo_usd
-            FROM abcmasplus..LogOperaciones lo
-            INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.telegramChatId = ut.telegramChatId
+                COUNT(*)                                                AS sesiones,
+                SUM(cs.llamadasLLM)                                    AS llamadas,
+                SUM(cs.inputTokens)                                    AS input_tokens,
+                SUM(cs.outputTokens)                                   AS output_tokens,
+                SUM(cs.costoUSD)                                       AS costo_usd
+            FROM abcmasplus..CostSesiones cs
+            LEFT JOIN abcmasplus..UsuariosTelegram ut ON cs.telegramChatId = ut.telegramChatId
             LEFT JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE lo.fechaEjecucion >= CAST(GETDATE() AS DATE)
-              AND JSON_VALUE(lo.parametros, '$.cost.cost_usd') IS NOT NULL
-            GROUP BY ut.telegramChatId, u.Nombre, ut.telegramUsername
+            WHERE cs.fechaSesion >= CAST(GETDATE() AS DATE)
+            GROUP BY cs.telegramChatId, u.Nombre, ut.telegramUsername
             ORDER BY costo_usd DESC
         """
         rows = await db_manager.execute_query_async(query)
@@ -328,14 +322,15 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_usd = 0.0
         for row in rows:
             nombre = row.get("nombre", "?")
-            llamadas = row.get("llamadas", 0)
+            sesiones = row.get("sesiones", 0)
+            llamadas = row.get("llamadas") or 0
             inp = row.get("input_tokens") or 0
             out = row.get("output_tokens") or 0
             usd = row.get("costo_usd") or 0.0
             total_usd += usd
             lines.append(
-                f"• *{nombre}*: {llamadas} llamadas | "
-                f"{inp+out:,} tokens | ${usd:.4f}"
+                f"• *{nombre}*: {sesiones} sesiones | {llamadas} llamadas LLM | "
+                f"{inp+out:,} tokens | `${usd:.4f}`"
             )
 
         lines.append(f"\n*Total: ${total_usd:.4f}*")
