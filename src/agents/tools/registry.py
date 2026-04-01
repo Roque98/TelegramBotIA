@@ -109,9 +109,17 @@ class ToolRegistry:
         """
         return [tool for tool in self._tools.values() if tool.category == category]
 
-    def get_tools_prompt(self) -> str:
+    def get_tools_prompt(self, context_budget_used: float = 0.0) -> str:
         """
         Genera la descripción de herramientas para el prompt del LLM.
+
+        Adapta el nivel de detalle según el presupuesto de contexto disponible:
+        - < 90% usado: descripción completa con parámetros y ejemplos
+        - 90–95% usado: descripción truncada a 250 chars por tool
+        - > 95% usado: solo nombres de tools
+
+        Args:
+            context_budget_used: Fracción del contexto usada (0.0 – 1.0)
 
         Returns:
             String formateado con todas las herramientas disponibles
@@ -119,7 +127,14 @@ class ToolRegistry:
         if not self._tools:
             return "No tools available."
 
+        # Modo solo nombres si el contexto está casi lleno
+        if context_budget_used >= 0.95:
+            names = ", ".join(self._tools.keys())
+            return f"## Available Tools\n{names}"
+
         lines = ["## Available Tools\n"]
+        MAX_DESC_CHARS = 250
+        compact = context_budget_used >= 0.90
 
         # Agrupar por categoría
         by_category: dict[ToolCategory, list[BaseTool]] = {}
@@ -134,7 +149,13 @@ class ToolRegistry:
             if tools:
                 lines.append(f"### {category.value.title()}\n")
                 for tool in tools:
-                    lines.append(tool.definition.to_prompt_format())
+                    if compact:
+                        desc = tool.definition.description
+                        if len(desc) > MAX_DESC_CHARS:
+                            desc = desc[:MAX_DESC_CHARS] + "..."
+                        lines.append(f"- **{tool.name}**: {desc}")
+                    else:
+                        lines.append(tool.definition.to_prompt_format())
                     lines.append("")
 
         return "\n".join(lines)

@@ -223,7 +223,30 @@ class BaseTool(ABC):
     Todas las herramientas deben heredar de esta clase e implementar:
     - definition: Property que retorna ToolDefinition
     - execute: Método async para ejecutar la herramienta
+
+    Atributos de clase sobreescribibles:
+    - is_read_only: True si la tool solo lee datos (no modifica estado)
+    - is_destructive: True si puede eliminar o modificar datos irreversiblemente
+    - is_concurrency_safe: True si puede ejecutarse en paralelo de forma segura
     """
+
+    is_read_only: bool = True
+    is_destructive: bool = False
+    is_concurrency_safe: bool = True
+
+    def check_permissions(self, user_role: str) -> bool:
+        """
+        Verifica si el rol de usuario tiene permiso para ejecutar esta tool.
+
+        Override en subclases para restringir por rol.
+
+        Args:
+            user_role: Rol del usuario (ej: "admin", "viewer", "user")
+
+        Returns:
+            True si tiene permiso, False si no
+        """
+        return True
 
     @property
     @abstractmethod
