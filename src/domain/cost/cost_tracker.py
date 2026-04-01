@@ -119,9 +119,18 @@ class CostTracker:
     def llm_calls(self) -> int:
         return len(self.turns)
 
+    @property
+    def primary_model(self) -> str:
+        """Modelo usado. Si todos los turns usan el mismo, lo retorna. Si no, 'mixed'."""
+        models = {t.model for t in self.turns}
+        if len(models) == 1:
+            return models.pop()
+        return "mixed"
+
     def get_summary(self) -> dict[str, Any]:
         """Retorna resumen serializable para guardar en metadata."""
         return {
+            "model": self.primary_model,
             "llm_calls": self.llm_calls,
             "input_tokens": self.total_input_tokens,
             "output_tokens": self.total_output_tokens,

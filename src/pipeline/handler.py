@@ -378,7 +378,7 @@ class MainHandler:
             """
             await db_manager.execute_non_query_async(query, {
                 "chat_id": str(user_id),
-                "modelo": "mixed",
+                "modelo": cost.get("model", "unknown"),
                 "input_tokens": cost.get("input_tokens", 0),
                 "output_tokens": cost.get("output_tokens", 0),
                 "cache_read_tokens": cost.get("cache_read_tokens", 0),
