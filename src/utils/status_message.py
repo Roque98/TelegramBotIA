@@ -65,7 +65,7 @@ class StatusMessage:
         update: Update,
         initial_message: str = "🔄 Procesando tu solicitud...",
         show_elapsed_time: bool = True,
-        auto_update_interval: float = 3.0
+        auto_update_interval: float = 6.0
     ):
         """
         Inicializar gestor de mensajes de estado.
