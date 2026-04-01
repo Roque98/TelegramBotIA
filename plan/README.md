@@ -11,22 +11,13 @@
 plan/
 ├── README.md                              # Este indice
 ├── BACKLOG.md                             # Lista completa de mejoras identificadas (23)
-├── 01-completados/                        # Planes finalizados
-│   ├── PLAN_REACT_MIGRATION.md            # Migracion a ReAct (100%)
-│   ├── PLAN_REFACTOR_REPOSITORY_PATTERN.md # Refactor Repository+Service (100%)
-│   ├── PLAN_ARQ_05_ASYNC_SYNC.md          # Consolidar async/sync (100%)
-│   ├── PLAN_ARQ_06_CACHE_EVICCION.md      # Cache con eviccion LRU (100%)
-│   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado (100%)
-│   └── PLAN_ARQ_25_SRC_LAYOUT.md         # Reorganizacion capas src/ (100%)
+├── 01-completados/                        # Planes finalizados (13)
 ├── 02-activos/                            # Planes en progreso
-│   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
+│   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity
 │   ├── PLAN_SEC_01_ENCRIPTACION.md        # Encriptacion segura
-│   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting verificacion
+│   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting
 │   ├── PLAN_SEC_03_SQL_VALIDATOR.md       # SQL Validator robusto
 │   ├── PLAN_SEC_04_CORS.md                # CORS con restricciones
-│   ├── PLAN_ARQ_08_THREAD_SAFETY.md       # ToolRegistry thread-safe
-│   ├── PLAN_ARQ_09_AUTH_MIDDLEWARE.md     # Auth middleware bug fix
-│   ├── PLAN_CAL_10_ERROR_HANDLING.md      # Error handling ReActAgent
 │   ├── PLAN_CAL_11_TESTS.md               # Cobertura tests al 80%
 │   ├── PLAN_CAL_12_ESTADISTICAS.md        # Estadisticas reales
 │   ├── PLAN_CAL_13_NOTIFICACIONES.md      # Notificaciones al admin
@@ -40,7 +31,8 @@ plan/
 │   ├── PLAN_FUN_21_RETRY.md               # Retry con Tenacity
 │   ├── PLAN_FUN_22_DASHBOARD.md           # Dashboard de monitoreo
 │   ├── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
-│   └── PLAN_DOC_26_DOCS_UPDATE.md        # Actualización y organización de docs
+│   ├── PLAN_OBS_27_OBSERVABILIDAD.md      # Observabilidad (82%)
+│   └── PLAN_MIGRACION_TABLAS_IABOT.md     # Migración tablas
 └── 03-ideas/                              # Ideas y propuestas
     └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
 ```
@@ -51,8 +43,8 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 6 |
-| Planes activos | 21 |
+| Planes completados | 13 |
+| Planes activos | 20 |
 | Ideas documentadas | 10 |
 | Backlog total | 26 mejoras |
 
@@ -69,6 +61,11 @@ plan/
 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | 100% (4/4) | `feature/arq-07-global-state` | 2026-03-24 |
 | [Reorganización capas src/](01-completados/PLAN_ARQ_25_SRC_LAYOUT.md) | 100% (20/20) | `feature/arq-25-src-layout` | 2026-03-28 |
 | [Consolidar Legacy](01-completados/PLAN_CONSOLIDAR_LEGACY.md) | 100% | `feature/consolidar-legacy` | 2026-03-21 |
+| [Error Handling ReActAgent](01-completados/PLAN_CAL_10_ERROR_HANDLING.md) | 100% (5/5) | `feature/cal-10-error-handling` | 2026-03-25 |
+| [Thread Safety ToolRegistry](01-completados/PLAN_ARQ_08_THREAD_SAFETY.md) | 100% | `feature/arq-08-thread-safety` | — |
+| [Auth Middleware bug fix](01-completados/PLAN_ARQ_09_AUTH_MIDDLEWARE.md) | 100% | `feature/arq-09-auth-middleware` | — |
+| [Struct Cleanup](01-completados/PLAN_ARQ_24_STRUCT_CLEANUP.md) | 100% | `feature/arq-24-struct-cleanup` | — |
+| [Docs Update](01-completados/PLAN_DOC_26_DOCS_UPDATE.md) | 100% | `develop` | — |
 | [Hot Reload dev](01-completados/PLAN_DEV_28_HOTRELOAD.md) | 100% (9/9) | `develop` | 2026-03-31 |
 
 ---
