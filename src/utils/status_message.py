@@ -48,12 +48,16 @@ class StatusMessage:
         "⚙️ Procesando los datos...",
         "📊 Consultando las fuentes...",
         "🧠 Razonando sobre tu pregunta...",
-        "✍️ Preparando la respuesta...",
-        "⏳ Un momento, casi termino...",
         "💡 Organizando las ideas...",
         "🔎 Verificando los detalles...",
-        "✨ Ya casi está listo...",
-        "📝 Redactando la respuesta...",
+        "📝 Trabajando en la respuesta...",
+        "⏳ Esto puede tomar un momento...",
+        "🤔 Procesando tu solicitud...",
+        "🔬 Evaluando la información...",
+        "📌 Considerando los detalles...",
+        "🧩 Juntando las piezas...",
+        "💬 Formulando una respuesta...",
+        "🔁 Procesando, un momento...",
     ]
 
     def __init__(
