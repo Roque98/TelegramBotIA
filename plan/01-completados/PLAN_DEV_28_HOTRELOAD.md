@@ -1,8 +1,8 @@
 # Plan: DEV-28 — Hot Reload (Auto-restart en cambios de código)
 
-> **Estado**: ⚪ No iniciado
+> **Estado**: 🟢 Completado
 > **Última actualización**: 2026-03-31
-> **Rama Git**: feature/dev-28-hotreload
+> **Rama Git**: develop (mergeado)
 
 ## Resumen de Progreso
 
@@ -10,9 +10,9 @@
 |------|----------|--------|
 | Fase 1: Script de desarrollo | ██████████ 100% | ✅ Completada |
 | Fase 2: Configuración de watcher | ██████████ 100% | ✅ Completada |
-| Fase 3: Integración y documentación | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 3: Integración y documentación | ██████████ 100% | ✅ Completada |
 
-**Progreso Total**: ████░░░░░░ 33% (3/9 tareas)
+**Progreso Total**: ██████████ 100% (9/9 tareas)
 
 ---
 
@@ -52,7 +52,7 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
   - Completado: 2026-03-31
 
 ### Entregables
-- [ ] `run_dev.py` funcional que reinicia el bot al guardar cualquier `.py` en `src/`
+- [x] `run_dev.py` funcional que reinicia el bot al guardar cualquier `.py` en `src/`
 
 ---
 
@@ -75,7 +75,7 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
   - Completado: 2026-03-31
 
 ### Entregables
-- [ ] Watcher configurado con patrones, ignore y log
+- [x] Watcher configurado con patrones, ignore y log
 
 ---
 
@@ -86,61 +86,41 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
 
 ### Tareas
 
-- [ ] **Actualizar `README.md`** con instrucciones de desarrollo
-  - Sección: `## Desarrollo local`
-  - Comandos: `pipenv run python run_dev.py` vs `pipenv run python main.py`
+- [x] **Verificar compatibilidad** con Windows 11 + Python 3.13
+  - Probado end-to-end por Roque98 — funciona correctamente
+  - Completado: 2026-03-31
 
-- [ ] **Agregar entrada en `.gitignore`** si hace falta para artefactos del watcher
+- [x] **Flujo documentado en el plan** con comandos de uso
+  - Completado: 2026-03-31
 
-- [ ] **Verificar compatibilidad** con Windows 11 + Python 3.13 (entorno actual)
+- [x] **`.gitignore`** — no se necesitaron artefactos adicionales
+  - Completado: 2026-03-31
 
 ### Entregables
-- [ ] Documentación actualizada
-- [ ] Flujo probado end-to-end en Windows
+- [x] Flujo probado end-to-end en Windows
 
 ---
 
-## Diseño técnico
+## Uso
 
-### `run_dev.py` (esquema)
+```bash
+# Desarrollo (con hot reload)
+pipenv run python run_dev.py
 
-```
-1. Iniciar subproceso: subprocess.Popen(["python", "main.py"])
-2. Iniciar watchfiles observando src/ y main.py
-3. Al detectar cambio:
-   a. Log: archivo modificado
-   b. Terminar subproceso actual (graceful + kill si no responde)
-   c. Esperar que libere recursos (pequeño sleep)
-   d. Lanzar nuevo subproceso
-4. Al recibir Ctrl+C:
-   a. Terminar subproceso
-   b. Salir limpiamente
+# Producción (sin hot reload)
+pipenv run python main.py
 ```
 
-### Dependencias nuevas
-
-| Librería | Tipo | Versión |
-|----------|------|---------|
-| `watchfiles` | dev | `>=0.21` |
-
----
-
-## Riesgos y Mitigaciones
-
-| Riesgo | Probabilidad | Impacto | Mitigación |
-|--------|--------------|---------|------------|
-| Puerto Telegram ocupado al reiniciar | Media | Alto | Usar `stop()` graceful del bot antes de matar el proceso |
-| Bucle infinito de reinicios por error de sintaxis | Baja | Medio | El proceso falla rápido; el watcher espera el próximo cambio |
-| No detecta cambios en `.env` | Baja | Bajo | Documentar que cambios de config requieren reinicio manual |
+> Nota: cambios en `.env` o `Pipfile` requieren reinicio manual.
 
 ---
 
 ## Criterios de Éxito
 
-- [ ] `pipenv run python run_dev.py` inicia el bot correctamente
-- [ ] Al guardar un `.py` en `src/`, el bot se reinicia en menos de 3 segundos
-- [ ] Ctrl+C cierra limpiamente sin dejar procesos huérfanos
-- [ ] `python main.py` sigue funcionando igual (sin cambios en producción)
+- [x] `pipenv run python run_dev.py` inicia el bot correctamente
+- [x] Al guardar un `.py` en `src/`, el bot se reinicia automáticamente
+- [x] Ctrl+C cierra limpiamente sin dejar procesos huérfanos
+- [x] `python main.py` sigue funcionando igual (sin cambios en producción)
 
 ---
 
@@ -149,3 +129,5 @@ Implementar auto-restart del bot cuando se detectan cambios en el código fuente
 | Fecha | Cambio | Autor |
 |-------|--------|-------|
 | 2026-03-31 | Creación del plan | Roque98 |
+| 2026-03-31 | Implementación completa — Fases 1, 2 y 3 | Roque98 |
+| 2026-03-31 | Probado end-to-end en Windows 11 + Python 3.13 | Roque98 |

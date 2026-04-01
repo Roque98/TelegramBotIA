@@ -69,6 +69,7 @@ plan/
 | [Cache con evicción LRU](01-completados/PLAN_ARQ_06_CACHE_EVICCION.md) | 100% (5/5) | `feature/arq-06-cache-eviccion` | 2026-03-24 |
 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | 100% (4/4) | `feature/arq-07-global-state` | 2026-03-24 |
 | [Reorganización capas src/](01-completados/PLAN_ARQ_25_SRC_LAYOUT.md) | 100% (20/20) | `feature/arq-25-src-layout` | 2026-03-28 |
+| [Hot Reload dev](01-completados/PLAN_DEV_28_HOTRELOAD.md) | 100% (9/9) | `develop` | 2026-03-31 |
 
 ---
 
@@ -76,7 +77,6 @@ plan/
 
 | Plan | Progreso | Rama | Tareas |
 |------|----------|------|--------|
-| [Hot Reload](02-activos/PLAN_DEV_28_HOTRELOAD.md) | 0% (0/9) | `feature/dev-28-hotreload` | Auto-restart en cambios de código |
 | [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 11% (3/28) | `feature/obs-27-observabilidad` | Logs, traces y métricas |
 | [Consolidar Legacy](02-activos/PLAN_CONSOLIDAR_LEGACY.md) | 0% (0/19) | `feature/consolidar-legacy` | Eliminar ~6,000 ln legacy |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |

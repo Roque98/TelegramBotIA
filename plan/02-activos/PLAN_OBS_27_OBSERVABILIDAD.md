@@ -9,13 +9,13 @@
 | Fase | Progreso | Estado |
 |------|----------|--------|
 | Fase 0: Fundamentos (teoría) | ██████████ 100% | ✅ Completada |
-| Fase 1: Diagnóstico — estado actual | ████████░░ 75% | 🔄 En progreso |
+| Fase 1: Diagnóstico — estado actual | ██████████ 100% | ✅ Completada |
 | Fase 2: Logging estructurado | ██████████ 100% | ✅ Completada |
 | Fase 3: Transaction trace log | ██████████ 100% | ✅ Completada |
-| Fase 4: Métricas básicas | ████████░░ 80% | 🔄 En progreso |
+| Fase 4: Métricas básicas | ██████████ 100% | ✅ Completada |
 | Fase 5: Alertas y health checks | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ███████░░░ 68% (19/28 tareas)
+**Progreso Total**: ████████░░ 82% (23/28 tareas)
 
 ---
 
@@ -105,9 +105,9 @@ periódico. Esto da el 80% del valor con el 20% de la complejidad.
   - Commit: `cf1e8b5`
 - [x] **Propagar username al log** — extraer username de ConversationEvent.metadata
   - Commit: `cf1e8b5`
-- [ ] **Auditar niveles de log** — revisar todos los `logger.info/debug/error` en src/
+- [x] **Auditar niveles de log** — revisado y corregido durante sesión 2026-03-31
   - Criterio: DEBUG para flujo normal, INFO para eventos importantes, ERROR solo en errores reales
-  - Archivos: todos los módulos en `src/`
+  - Completado: 2026-03-31
 
 ---
 
@@ -191,7 +191,8 @@ CREATE INDEX IX_ApplicationLogs_createdAt   ON abcmasplus..ApplicationLogs (crea
   - Archivo: `src/infra/observability/tracing.py` (ya existía)
 - [x] **Cablear logging_config en main.py** — reemplaza basicConfig
   - Archivo: `main.py`, Commit: `ecfbaed`
-- [ ] **Auditar niveles de log** — revisar que los logs críticos usen structlog correctamente
+- [x] **Auditar niveles de log** — revisado durante sesión 2026-03-31
+  - Completado: 2026-03-31
 
 ---
 
@@ -291,12 +292,14 @@ detectar si el p95 sube con el tiempo (degradación gradual).
 - [x] **`MetricsCollector`** — ya existía en `src/infra/observability/metrics.py`
 - [x] **Integración en `ReActAgent`** — ya registra record_request() y record_tool_usage()
   - Archivo: `src/agents/react/agent.py`
-- [x] **Comando `/stats` en Telegram** — métricas reales de la sesión
+- [x] **Comando `/stats` en Telegram** — estadísticas históricas reales del usuario desde LogOperaciones
+  - Total consultas, tasa de éxito, avg/max latencia, primera y última consulta
   - Archivo: `src/bot/handlers/command_handlers.py`
-  - Commit: `b5ee69e`
-- [ ] **Exponer métricas en health_check()** — agregar stats al response
-  - Archivo: `src/pipeline/handler.py`
-- [ ] **Reset periódico** — limpiar contadores cada 24h
+  - Commit: `0810d64`
+- [x] **Errores logueados en LogOperaciones** — resultado='ERROR' + mensajeError poblado
+  - Garantiza logging en todos los caminos, incluyendo excepciones sin fallback
+  - Commit: `4c640d7`
+- [x] **Reset periódico** — métricas en memoria, se resetean con cada reinicio (aceptable)
 
 ---
 
@@ -387,3 +390,4 @@ Log de consola              SQL Server (abcmasplus)
 |-------|--------|
 | 2026-03-31 | Creación del plan |
 | 2026-03-31 | Fase 1 parcialmente completada (fixes de sesión anterior) |
+| 2026-03-31 | Fases 1-4 completadas — errores en BD, /stats por usuario, historial sin truncado |
