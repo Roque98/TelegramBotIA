@@ -10,6 +10,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from src.config.settings import settings
+from src.domain.cost.cost_tracker import get_current_tracker
 from src.utils.retry import llm_retry
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ class OpenAIProvider:
 
             if not text:
                 text = self._extract_text_from_output(response.output)
+
+            # Registrar uso en el tracker activo (si existe)
+            tracker = get_current_tracker()
+            if tracker and hasattr(response, "usage"):
+                tracker.add_turn(self.model, response.usage)
 
             if not text:
                 logger.error(

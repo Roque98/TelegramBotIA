@@ -276,6 +276,76 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Manejar el comando /costo — solo para admins.
+
+    Muestra tokens y costo USD acumulado del día/mes por usuario,
+    extraído del campo parametros JSON de LogOperaciones.
+    """
+    from src.config.settings import settings
+
+    chat_id = update.effective_user.id
+    if settings.admin_chat_ids and chat_id not in settings.admin_chat_ids:
+        await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
+        return
+
+    db_manager = context.bot_data.get("db_manager")
+    if not db_manager:
+        await update.message.reply_text("❌ Base de datos no disponible.")
+        return
+
+    try:
+        query = """
+            SELECT
+                ut.telegramChatId                                   AS chat_id,
+                COALESCE(u.Nombre, ut.telegramUsername, 'Desconocido') AS nombre,
+                COUNT(*)                                             AS llamadas,
+                SUM(CAST(
+                    JSON_VALUE(lo.parametros, '$.cost.input_tokens') AS INT
+                ))                                                   AS input_tokens,
+                SUM(CAST(
+                    JSON_VALUE(lo.parametros, '$.cost.output_tokens') AS INT
+                ))                                                   AS output_tokens,
+                SUM(CAST(
+                    JSON_VALUE(lo.parametros, '$.cost.cost_usd') AS FLOAT
+                ))                                                   AS costo_usd
+            FROM abcmasplus..LogOperaciones lo
+            INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.telegramChatId = ut.telegramChatId
+            LEFT JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
+            WHERE lo.fechaEjecucion >= CAST(GETDATE() AS DATE)
+              AND JSON_VALUE(lo.parametros, '$.cost.cost_usd') IS NOT NULL
+            GROUP BY ut.telegramChatId, u.Nombre, ut.telegramUsername
+            ORDER BY costo_usd DESC
+        """
+        rows = await db_manager.execute_query_async(query)
+
+        if not rows:
+            await update.message.reply_text("_Sin datos de costo para hoy._", parse_mode="Markdown")
+            return
+
+        lines = ["*Costo del día por usuario* 💸\n"]
+        total_usd = 0.0
+        for row in rows:
+            nombre = row.get("nombre", "?")
+            llamadas = row.get("llamadas", 0)
+            inp = row.get("input_tokens") or 0
+            out = row.get("output_tokens") or 0
+            usd = row.get("costo_usd") or 0.0
+            total_usd += usd
+            lines.append(
+                f"• *{nombre}*: {llamadas} llamadas | "
+                f"{inp+out:,} tokens | ${usd:.4f}"
+            )
+
+        lines.append(f"\n*Total: ${total_usd:.4f}*")
+        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+    except Exception as e:
+        logger.error(f"Error en /costo: {e}")
+        await update.message.reply_text("❌ Error consultando datos de costo.")
+
+
 def register_command_handlers(application: Application) -> None:
     """
     Registrar todos los command handlers en la aplicación.
@@ -287,5 +357,6 @@ def register_command_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("cancel", cancel_command))
+    application.add_handler(CommandHandler("costo", costo_command))
 
     logger.info("Command handlers registrados exitosamente")

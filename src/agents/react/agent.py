@@ -27,6 +27,7 @@ from ..base.events import UserContext
 from ..base.exceptions import LLMException, MaxIterationsException, ToolException
 from ..tools.base import ToolResult
 from ..tools.registry import ToolRegistry
+from src.domain.cost.cost_tracker import CostTracker, reset_current_tracker, set_current_tracker
 from .prompts import (
     build_continue_prompt,
     build_synthesis_prompt,
@@ -129,6 +130,10 @@ class ReActAgent(BaseAgent):
         scratchpad = Scratchpad(max_steps=self.max_iterations)
         session_id = str(uuid.uuid4())
 
+        # Activar cost tracker para este request
+        cost_tracker = CostTracker()
+        _tracker_token = set_current_tracker(cost_tracker)
+
         async def emit(event: AgentEvent) -> None:
             if event_callback:
                 try:
@@ -196,7 +201,10 @@ class ReActAgent(BaseAgent):
                         message=react_response.final_answer or "",
                         execution_time_ms=elapsed_ms,
                         steps_taken=steps,
-                        data={"scratchpad": scratchpad.to_dict()},
+                        data={
+                            "scratchpad": scratchpad.to_dict(),
+                            "cost": cost_tracker.get_summary(),
+                        },
                     )
 
                 # 3. Ejecutar tool
@@ -249,7 +257,10 @@ class ReActAgent(BaseAgent):
                     "partial": True,
                     "reason": "max_iterations_reached",
                 },
-                data={"scratchpad": scratchpad.to_dict()},
+                data={
+                    "scratchpad": scratchpad.to_dict(),
+                    "cost": cost_tracker.get_summary(),
+                },
             )
 
         except asyncio.CancelledError:
@@ -260,6 +271,9 @@ class ReActAgent(BaseAgent):
 
         except (MaxIterationsException, LLMException, ToolException, Exception) as e:
             return self._handle_agent_error(e, start_time, scratchpad, kwargs, tracer)
+
+        finally:
+            reset_current_tracker(_tracker_token)
 
     def _handle_agent_error(
         self,

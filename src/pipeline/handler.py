@@ -369,6 +369,7 @@ class MainHandler:
             response: Respuesta del agente
         """
         try:
+            cost = (response.data or {}).get("cost") if response.data else None
             await self.memory.record_interaction(
                 user_id=event.user_id,
                 query=event.text,
@@ -381,6 +382,7 @@ class MainHandler:
                     "execution_time_ms": response.execution_time_ms,
                     "correlation_id": event.correlation_id,
                     "username": event.metadata.get("username"),
+                    **({"cost": cost} if cost else {}),
                 },
             )
         except Exception as e:
