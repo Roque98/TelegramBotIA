@@ -136,14 +136,19 @@ class ReActAgent(BaseAgent):
                 except Exception as cb_err:
                     logger.debug(f"Event callback error (ignored): {cb_err}")
 
-        # Iniciar tracing si está disponible
+        # Usar trace existente si lo hay (iniciado por el pipeline),
+        # o iniciar uno nuevo si el agente se usa directamente.
         tracer = get_tracer() if _OBSERVABILITY_AVAILABLE else None
+        _trace_owner = False
         if tracer:
-            tracer.start_trace(
-                user_id=context.user_id,
-                channel=kwargs.get("channel", "unknown"),
-                metadata={"query_length": len(query)},
-            )
+            existing = tracer.get_current_trace()
+            if not existing:
+                tracer.start_trace(
+                    user_id=context.user_id,
+                    channel=kwargs.get("channel", "unknown"),
+                    metadata={"query_length": len(query)},
+                )
+                _trace_owner = True
 
         logger.debug(f"Ejecutando ReAct para: '{query[:50]}...'")
 
@@ -184,7 +189,7 @@ class ReActAgent(BaseAgent):
                             success=True,
                         )
                         if tracer:
-                            tracer.end_trace()
+                            if _trace_owner: tracer.end_trace()
 
                     return AgentResponse.success_response(
                         agent_name=self.name,
@@ -233,7 +238,7 @@ class ReActAgent(BaseAgent):
                     success=True,
                 )
                 if tracer:
-                    tracer.end_trace()
+                    if _trace_owner: tracer.end_trace()
 
             return AgentResponse.success_response(
                 agent_name=self.name,
@@ -323,7 +328,7 @@ class ReActAgent(BaseAgent):
                 error_type=error_type,
             )
             if tracer:
-                tracer.end_trace()
+                if _trace_owner: tracer.end_trace()
 
     async def _generate_step(
         self,

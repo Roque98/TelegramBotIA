@@ -23,6 +23,12 @@ from src.domain.memory.memory_service import MemoryService
 from src.gateway.message_gateway import MessageGateway
 from src.infra.observability.sql_repository import ObservabilityRepository
 
+try:
+    from src.infra.observability import get_tracer
+    _OBSERVABILITY_AVAILABLE = True
+except ImportError:
+    _OBSERVABILITY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +114,20 @@ class MainHandler:
             # 1. Normalizar input
             event = self.gateway.from_telegram(update)
 
-            # 2. Procesar
+            # 2. Iniciar trace aquí para que abarque StatusMessage y todo el pipeline
+            tracer = None
+            if _OBSERVABILITY_AVAILABLE:
+                try:
+                    tracer = get_tracer()
+                    tracer.start_trace(
+                        user_id=event.user_id,
+                        channel=event.channel,
+                        correlation_id=event.correlation_id,
+                    )
+                except Exception:
+                    tracer = None
+
+            # 3. Procesar
             response = await self._process_event(event, event_callback=event_callback)
 
             elapsed = (time.perf_counter() - start_time) * 1000
@@ -126,6 +145,13 @@ class MainHandler:
                 exc_info=True,
             )
             return self._get_error_message()
+
+        finally:
+            if _OBSERVABILITY_AVAILABLE and tracer:
+                try:
+                    tracer.end_trace()
+                except Exception:
+                    pass
 
     async def handle_api(
         self,

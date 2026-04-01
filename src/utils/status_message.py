@@ -268,7 +268,7 @@ class StatusMessage:
         except TelegramError as e:
             # Si falla el parseo de Markdown, intentar sin parse_mode
             if "can't parse entities" in str(e).lower():
-                logger.warning(f"Error parseando Markdown, reintentando sin formato: {e}")
+                logger.debug(f"Error parseando Markdown, reintentando sin formato: {e}")
                 try:
                     # Intentar editar sin Markdown
                     await self._status_message.edit_text(final_text + footer)
