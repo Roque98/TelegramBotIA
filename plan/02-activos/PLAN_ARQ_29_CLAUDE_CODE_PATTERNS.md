@@ -1,22 +1,22 @@
 # Plan: ARQ-29 — Mejoras de Arquitectura inspiradas en Claude Code
 
-> **Estado**: ⚪ No iniciado
+> **Estado**: 🟡 En progreso
 > **Última actualización**: 2026-04-01
-> **Rama Git**: `feature/arq-29-claude-code-patterns`
+> **Rama Git**: `develop`
 
 ## Resumen de Progreso
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Tool Layer | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Agent Events | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Tool Layer | ██████████ 100% | ✅ Completada |
+| Fase 2: Agent Events | ██████████ 100% | ✅ Completada |
 | Fase 3: Cost Tracking | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Memory Scopes | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Agent Archetypes | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Hooks y Permisos | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 7: UX Avanzado | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/33 tareas)
+**Progreso Total**: ███░░░░░░░ 27% (9/33 tareas)
 
 ---
 
