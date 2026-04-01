@@ -19,7 +19,6 @@ plan/
 │   ├── PLAN_ARQ_07_GLOBAL_STATE.md        # Global state sincronizado (100%)
 │   └── PLAN_ARQ_25_SRC_LAYOUT.md         # Reorganizacion capas src/ (100%)
 ├── 02-activos/                            # Planes en progreso
-│   ├── PLAN_CONSOLIDAR_LEGACY.md          # Eliminar codigo legacy (19 tareas)
 │   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity (14 tareas)
 │   ├── PLAN_SEC_01_ENCRIPTACION.md        # Encriptacion segura
 │   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting verificacion
@@ -69,6 +68,7 @@ plan/
 | [Cache con evicción LRU](01-completados/PLAN_ARQ_06_CACHE_EVICCION.md) | 100% (5/5) | `feature/arq-06-cache-eviccion` | 2026-03-24 |
 | [Global state sincronizado](01-completados/PLAN_ARQ_07_GLOBAL_STATE.md) | 100% (4/4) | `feature/arq-07-global-state` | 2026-03-24 |
 | [Reorganización capas src/](01-completados/PLAN_ARQ_25_SRC_LAYOUT.md) | 100% (20/20) | `feature/arq-25-src-layout` | 2026-03-28 |
+| [Consolidar Legacy](01-completados/PLAN_CONSOLIDAR_LEGACY.md) | 100% | `feature/consolidar-legacy` | 2026-03-21 |
 | [Hot Reload dev](01-completados/PLAN_DEV_28_HOTRELOAD.md) | 100% (9/9) | `develop` | 2026-03-31 |
 
 ---
@@ -78,7 +78,6 @@ plan/
 | Plan | Progreso | Rama | Tareas |
 |------|----------|------|--------|
 | [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 11% (3/28) | `feature/obs-27-observabilidad` | Logs, traces y métricas |
-| [Consolidar Legacy](02-activos/PLAN_CONSOLIDAR_LEGACY.md) | 0% (0/19) | `feature/consolidar-legacy` | Eliminar ~6,000 ln legacy |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
 
 ---
