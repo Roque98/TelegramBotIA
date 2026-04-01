@@ -66,7 +66,7 @@ class ConversationEvent(BaseModel):
             user_id=str(user_id),
             channel="telegram",
             text=text,
-            correlation_id=str(chat_id),
+            # correlation_id = UUID único por request (no el chat_id, que es por usuario)
             metadata={
                 "chat_id": chat_id,
                 "username": username,

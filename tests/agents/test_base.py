@@ -147,7 +147,7 @@ class TestConversationEvent:
         assert event.user_id == "123456"
         assert event.channel == "telegram"
         assert event.text == "¿Cuántas ventas hubo ayer?"
-        assert event.correlation_id == "789"
+        assert len(event.correlation_id) == 36  # UUID v4 único por request
         assert event.metadata["username"] == "juanperez"
         assert event.metadata["first_name"] == "Juan"
 

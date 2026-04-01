@@ -53,7 +53,7 @@ class ObservabilityRepository:
                 )
             """
             await self.db_manager.execute_non_query_async(sql, {
-                "correlation_id": correlation_id[:8],
+                "correlation_id": correlation_id[:50] if correlation_id else None,
                 "user_id": str(user_id) if user_id else None,
                 "username": username,
                 "query": (query or "")[:500],
@@ -99,7 +99,7 @@ class ObservabilityRepository:
                 )
             """
             self.db_manager.execute_non_query(sql, {
-                "correlation_id": correlation_id[:8] if correlation_id else None,
+                "correlation_id": correlation_id[:50] if correlation_id else None,
                 "user_id": str(user_id) if user_id else None,
                 "level": level,
                 "event": event[:100],
