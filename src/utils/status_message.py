@@ -10,6 +10,8 @@ Ejemplo de uso:
     ...     result = await agent.process_query(query)
     ...     await status.complete(result)
 """
+import asyncio
+import random
 import time
 from typing import Optional
 from telegram import Update, Message
@@ -38,12 +40,20 @@ class StatusMessage:
         >>> await status.complete("¡Listo!")
     """
 
-    # Mensajes de estado genéricos (con personalidad de Amber)
+    # Mensajes de progreso con personalidad de Amber
     PROCESSING_MESSAGES = [
-        "🔄 Amber procesando tu solicitud...",
-        "💭 Analizando los datos...",
-        "⚙️ Trabajando en ello...",
-        "✨ Ya casi termino..."
+        "🔄 Analizando tu consulta...",
+        "💭 Pensando en la mejor respuesta...",
+        "🔍 Revisando la información disponible...",
+        "⚙️ Procesando los datos...",
+        "📊 Consultando las fuentes...",
+        "🧠 Razonando sobre tu pregunta...",
+        "✍️ Preparando la respuesta...",
+        "⏳ Un momento, casi termino...",
+        "💡 Organizando las ideas...",
+        "🔎 Verificando los detalles...",
+        "✨ Ya casi está listo...",
+        "📝 Redactando la respuesta...",
     ]
 
     def __init__(
@@ -71,6 +81,8 @@ class StatusMessage:
         self._start_time: float = 0
         self._is_started: bool = False
         self._message_index: int = 0
+        self._auto_update_task: Optional[asyncio.Task] = None
+        self._used_messages: set = set()
 
     async def __aenter__(self):
         """Iniciar context manager."""
@@ -108,6 +120,28 @@ class StatusMessage:
             logger.debug(f"Mensaje de estado iniciado: {self._status_message.message_id}")
         except TelegramError as e:
             logger.error(f"Error al enviar mensaje de estado inicial: {e}")
+
+        # Iniciar tarea de actualización automática en background
+        self._auto_update_task = asyncio.create_task(self._auto_update_loop())
+
+    async def _auto_update_loop(self) -> None:
+        """Loop de actualización automática en background."""
+        available = list(self.PROCESSING_MESSAGES)
+        random.shuffle(available)
+        for msg in available:
+            await asyncio.sleep(self.auto_update_interval)
+            if not self._status_message or not self._is_started:
+                break
+            elapsed = time.time() - self._start_time
+            text = msg
+            if elapsed > 5:
+                text += f"\n_({elapsed:.0f}s)_"
+            try:
+                await self._status_message.edit_text(text)
+                logger.debug(f"Auto-update: {msg}")
+            except TelegramError as e:
+                if "message is not modified" not in str(e).lower():
+                    logger.debug(f"Auto-update falló: {e}")
 
     async def update_progress(self) -> None:
         """
@@ -149,6 +183,14 @@ class StatusMessage:
         if not self._status_message:
             logger.error("No hay mensaje de estado para completar")
             return
+
+        # Cancelar loop de auto-update
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
 
         # Calcular duración total
         total_duration = time.time() - self._start_time
@@ -226,6 +268,14 @@ class StatusMessage:
         if not self._status_message:
             logger.error("No hay mensaje de estado para marcar como error")
             return
+
+        # Cancelar loop de auto-update
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
 
         total_duration = time.time() - self._start_time
 
