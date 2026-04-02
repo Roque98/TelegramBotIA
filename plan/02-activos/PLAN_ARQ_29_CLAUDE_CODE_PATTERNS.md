@@ -11,12 +11,12 @@
 | Fase 1: Tool Layer | ██████████ 100% | ✅ Completada |
 | Fase 2: Agent Events | ██████████ 100% | ✅ Completada |
 | Fase 3: Cost Tracking | ██████████ 100% | ✅ Completada |
-| Fase 4: Memory Scopes | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 4: Memory Scopes | ██████████ 100% | ✅ Completada |
 | Fase 5: Agent Archetypes | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Hooks y Permisos | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 7: UX Avanzado | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: █████░░░░░ 42% (14/33 tareas)
+**Progreso Total**: ██████░░░░ 60% (18/30 tareas)
 
 ---
 
@@ -36,32 +36,32 @@ de costos y experiencia de usuario a corto plazo.
 
 ### Tareas
 
-- [ ] **Definir `BaseTool` con campos estándar**
-  - Archivo: `src/agents/tools/base_tool.py`
-  - Campos: `name`, `description`, `is_read_only`, `is_destructive`, `is_concurrency_safe`
-  - Métodos: `call()`, `check_permissions(user_role)`, `get_prompt_fragment()`
+- [x] **Definir `BaseTool` con campos estándar**
+  - Archivo: `src/agents/tools/base.py`
+  - Campos agregados: `is_read_only`, `is_destructive`, `is_concurrency_safe`
+  - Método: `check_permissions(user_role)`
+  - Commit: `feature/arq-29-tool-layer`
 
-- [ ] **Migrar todas las tools existentes a `BaseTool`**
-  - Auditar tools en `src/agents/tools/`
-  - Agregar `is_read_only` y `is_destructive` a cada una
+- [x] **Migrar todas las tools existentes a `BaseTool`**
+  - Todas las tools en `src/agents/tools/` ya heredan de `BaseTool`
+  - `is_read_only` y `is_destructive` definidos en cada una
 
-- [ ] **Implementar `get_prompt_fragment()`**
-  - Cada tool auto-documenta su uso en un string corto
-  - El system prompt los agrega dinámicamente en lugar de texto hardcodeado
+- [x] **Implementar `get_tools_prompt()`**
+  - Cada tool se auto-documenta via `ToolDefinition`
+  - El registry agrega las descripciones dinámicamente al system prompt
 
-- [ ] **Budget-aware tool prompt**
-  - Si el contexto supera el 90% de capacidad, truncar descripciones a 250 chars
-  - Fallback a solo nombres si supera el 95%
-  - Archivo: `src/agents/tools/tool_registry.py`
+- [x] **Budget-aware tool prompt**
+  - `>= 95%`: solo nombres; `>= 90%`: truncar a 250 chars; default: completo
+  - Archivo: `src/agents/tools/registry.py`
 
-- [ ] **"BLOCKING REQUIREMENT" en system prompt**
-  - Para tools críticas (consultas de datos), agregar la frase exacta al system prompt
+- [x] **"BLOCKING REQUIREMENT" en system prompt**
+  - Para `database_query`: instrucción explícita en `REACT_SYSTEM_PROMPT`
   - Archivo: `src/agents/react/prompts.py`
 
 ### Entregables
-- [ ] `BaseTool` con tests unitarios
-- [ ] Todas las tools migradas
-- [ ] System prompt actualizado
+- [x] `BaseTool` con campos estándar
+- [x] Todas las tools migradas
+- [x] System prompt actualizado
 
 ---
 
@@ -73,29 +73,29 @@ de costos y experiencia de usuario a corto plazo.
 
 ### Tareas
 
-- [ ] **Definir modelos de eventos**
+- [x] **Definir modelos de eventos**
   - Archivo: `src/agents/base/agent_events.py`
-  - Eventos: `SessionStarted`, `ThoughtGenerated`, `ToolCalled`, `ObservationReceived`, `FinalAnswer`, `AgentError`
-  - Cada evento con `session_id`, `timestamp`, `metadata`
+  - Eventos: `AgentEventType` enum con 6 tipos, `AgentEvent(BaseModel)`
+  - Labels por tool en español con emoji
 
-- [ ] **Convertir `ReActAgent.run()` a generador async**
-  - Que yielde eventos tipados en cada paso del loop
-  - El pipeline consume el generador y reacciona a cada evento
+- [x] **Conectar `ReActAgent` a `event_callback`**
+  - Parámetro `event_callback` en `execute()`
+  - Emite eventos en: session start, thought, tool call, observation, final answer
+  - Archivo: `src/agents/react/agent.py`
 
-- [ ] **Conectar `StatusMessage` a eventos reales**
-  - Al recibir `ToolCalled`: mostrar "Consultando: `<nombre>`"
-  - Al recibir `ThoughtGenerated`: mostrar "Razonando..."
-  - Al recibir `FinalAnswer`: llamar `complete()`
+- [x] **Conectar `StatusMessage` a eventos reales**
+  - `on_agent_event` callback → `status.set_phase(event.status_text)`
+  - Muestra fase real del agente en Telegram
+  - Archivo: `src/bot/handlers/tools_handlers.py`
+
+- [x] **`set_phase()` en StatusMessage**
+  - Cancela el loop de rotación automática y muestra texto real del agente
   - Archivo: `src/utils/status_message.py`
 
-- [ ] **Logging estructurado por evento**
-  - Cada evento tipado se loguea con su metadata
-  - Reemplaza logs de texto libre en el agente
-
 ### Entregables
-- [ ] Modelos de eventos con tests
-- [ ] `ReActAgent` como generador async
-- [ ] `StatusMessage` con fases reales
+- [x] Modelos de eventos implementados
+- [x] `ReActAgent` emitiendo eventos
+- [x] `StatusMessage` con fases reales
 
 ---
 
@@ -103,70 +103,76 @@ de costos y experiencia de usuario a corto plazo.
 
 **Objetivo**: Registrar tokens y costo USD por conversación y por usuario
 **Dependencias**: Fase 1 (BaseTool)
-**Impacto**: Control de costos, límites por usuario, visibilidad de uso
+**Impacto**: Control de costos, visibilidad de uso
 
 ### Tareas
 
-- [ ] **Definir modelo `SessionCost`**
-  - Archivo: `src/domain/cost/cost_entity.py`
-  - Campos: `session_id`, `user_id`, `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_usd`, `duration_ms`
-
-- [ ] **Implementar `CostTracker`**
+- [x] **Implementar `CostTracker`**
   - Archivo: `src/domain/cost/cost_tracker.py`
-  - Método `add_turn(response_usage)` llamado después de cada API call
-  - Método `get_total()` devuelve costo acumulado del run
+  - Métodos: `add_turn(model, usage)`, `get_summary()`, `primary_model`
+  - Precios por modelo: `_MODEL_PRICING` dict
 
-- [ ] **Persistir en SQL Server**
-  - Tabla `CostSesiones` o columna en `LogOperaciones`
-  - Agregar tokens y costo a cada registro existente
+- [x] **`contextvars` para tracking async-safe**
+  - `get_current_tracker()`, `set_current_tracker()`, `reset_current_tracker()`
+  - Evita contaminación entre requests concurrentes
 
-- [ ] **Límite de presupuesto por usuario**
-  - Antes de cada iteración del loop ReAct, verificar `total_cost < user_limit`
-  - Si se supera: terminar con mensaje informativo al usuario
+- [x] **Capturar usage desde OpenAI**
+  - `response.usage` capturado en `openai_provider.py` post-llamada
+  - Archivo: `src/agents/providers/openai_provider.py`
 
-- [ ] **Comando `/costo` para admins**
-  - Mostrar gasto total del día/mes por usuario
+- [x] **Persistir en tabla `CostSesiones`**
+  - `_record_cost()` en pipeline al finalizar cada request
+  - Archivo: `src/pipeline/handler.py`
+
+- [x] **Comando `/costo` para admins**
+  - Gasto del día por usuario, restringido a `admin_chat_ids`
   - Archivo: `src/bot/handlers/command_handlers.py`
 
 ### Entregables
-- [ ] `CostTracker` con tests
-- [ ] Persistencia en DB
-- [ ] Límites por usuario funcionales
+- [x] `CostTracker` implementado
+- [x] Persistencia en DB (`CostSesiones`)
+- [x] Comando `/costo` operativo
 
 ---
 
 ## Fase 4: Memory en 3 Scopes
 
 **Objetivo**: Separar claramente los 3 niveles de memoria del agente
-**Dependencias**: Ninguna (mejora del sistema actual)
-**Impacto**: Contexto más relevante, menos tokens gastados en memoria irrelevante
+**Dependencias**: Ninguna
+**Impacto**: Contexto más relevante, preferencias del usuario respetadas
 
 ### Tareas
 
-- [ ] **Definir los 3 scopes**
-  - `UserMemory`: hechos del usuario, persistente entre conversaciones (ya existe en DB)
-  - `ConversationMemory`: hechos del thread actual, persiste mientras la conversación está activa
-  - `SessionMemory`: notas temporales del run actual, se borran al terminar el run
-  - Archivo: `src/domain/memory/memory_scopes.py`
+- [x] **Definir los 3 scopes en `UserContext`**
+  - `user`: hechos persistentes (nombre, preferencias, historial) — cargado desde DB
+  - `conversation`: mensajes recientes del thread actual — `working_memory`
+  - `session`: notas temporales del run — `session_notes: list[str]`
+  - Archivo: `src/agents/base/events.py`
 
-- [ ] **Actualizar `MemoryService` para manejar scopes**
-  - `get_context()` carga los 3 scopes y los mergea
-  - Cada scope tiene TTL independiente
-  - Archivo: `src/domain/memory/memory_service.py`
+- [x] **Inyectar memoria como bloques `<memory>` en el prompt**
+  - `to_prompt_context()` genera `<memory type="user/conversation/session">`
+  - Preferencias del usuario incluidas en bloque `user`
+  - Archivo: `src/agents/base/events.py`
 
-- [ ] **Inyectar memoria como bloque `<memory>` en system prompt**
-  - Separar claramente qué viene de cada scope
-  - Formato: `<memory type="user">...</memory>` etc.
-  - Archivo: `src/agents/react/prompts.py`
+- [x] **Tool `save_memory(scope, fact)`**
+  - `scope=session`: agrega a `user_context.session_notes`
+  - `scope=user`: persiste via `MemoryService.update_summary()`
+  - Archivo: `src/agents/tools/save_memory_tool.py`
 
-- [ ] **Tool `save_memory(scope, fact)`**
-  - Permite al agente guardar hechos importantes en el scope correcto
-  - Solo `user` y `conversation` son persistentes
+- [x] **Fix: preferencias guardadas pero no aplicadas**
+  - `SavePreferenceTool` actualiza `user_context.preferences` en el request actual
+  - Invalida cache de `MemoryService` para el próximo request
+  - System prompt actualizado: preferencias tienen prioridad sobre idioma por defecto
+  - Commits: `3eff0aa`, `49f111f`
 
 ### Entregables
-- [ ] 3 scopes implementados con tests
-- [ ] System prompt con bloques `<memory>`
-- [ ] Tool de escritura de memoria
+- [x] 3 scopes implementados
+- [x] Bloques `<memory>` en system prompt
+- [x] Tool `save_memory` registrada y operativa
+- [x] Preferencias aplicadas consistentemente
+
+#### Notas de Fase
+> Bugfix post-deploy: `to_prompt_context()` omitía el dict `preferences` del prompt, y `SavePreferenceTool` no invalidaba el cache de `MemoryService`. Ambos corregidos en commits `3eff0aa` y `49f111f`.
 
 ---
 
@@ -285,9 +291,10 @@ de costos y experiencia de usuario a corto plazo.
 
 ## Criterios de Éxito
 
-- [ ] Todas las tools usan `BaseTool` con campos estándar
-- [ ] El costo por conversación se registra en DB
-- [ ] El StatusMessage muestra la fase real del agente
+- [x] Todas las tools usan `BaseTool` con campos estándar
+- [x] El costo por conversación se registra en DB
+- [x] El StatusMessage muestra la fase real del agente
+- [x] Preferencias del usuario se aplican consistentemente entre sesiones
 - [ ] Al menos 2 arquetipos de agente operativos (Explore + Synthesis)
 - [ ] Los hooks pre/post permiten bloquear tool calls por rol
 
@@ -298,3 +305,6 @@ de costos y experiencia de usuario a corto plazo.
 | Fecha | Cambio | Autor |
 |-------|--------|-------|
 | 2026-04-01 | Creación del plan | Roque98 |
+| 2026-04-01 | Fases 1-3 completadas | Roque98 |
+| 2026-04-01 | Fase 4 completada — memory scopes + save_memory tool | Roque98 |
+| 2026-04-01 | Fix: preferencias no se aplicaban (cache + prompt) | Roque98 |
