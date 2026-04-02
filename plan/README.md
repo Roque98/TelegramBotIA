@@ -76,7 +76,8 @@ plan/
 |------|----------|------|--------|
 | [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 11% (3/28) | `feature/obs-27-observabilidad` | Logs, traces y métricas |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
-| [Claude Code Patterns](02-activos/PLAN_ARQ_29_CLAUDE_CODE_PATTERNS.md) | 0% (0/33) | `feature/arq-29-claude-code-patterns` | Tool layer, events, cost, memory, archetypes |
+| [Claude Code Patterns](02-activos/PLAN_ARQ_29_CLAUDE_CODE_PATTERNS.md) | 73% (22/30) | `develop` | Tool layer, events, cost, memory, archetypes |
+| [Migración Sistema de Permisos](02-activos/PLAN_SEC_01_PERMISOS_MIGRATION.md) | 0% (0/24) | `feature/sec-01-permisos` | Reemplazar SPs, roles en contexto, permisos en tools |
 
 ---
 
