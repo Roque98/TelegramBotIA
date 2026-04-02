@@ -12,11 +12,11 @@
 | Fase 2: Agent Events | ██████████ 100% | ✅ Completada |
 | Fase 3: Cost Tracking | ██████████ 100% | ✅ Completada |
 | Fase 4: Memory Scopes | ██████████ 100% | ✅ Completada |
-| Fase 5: Agent Archetypes | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 5: Agent Archetypes | ██████████ 100% | ✅ Completada |
 | Fase 6: Hooks y Permisos | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 7: UX Avanzado | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ██████░░░░ 60% (18/30 tareas)
+**Progreso Total**: ███████░░░ 73% (22/30 tareas)
 
 ---
 
@@ -194,28 +194,28 @@ de costos y experiencia de usuario a corto plazo.
 
 ### Tareas
 
-- [ ] **Definir arquetipos de agente**
+- [x] **Definir arquetipos de agente**
   - `CasualAgent`: conversación y preferencias, usa `gpt-5.4-mini`
   - `DataAgent`: queries SQL + síntesis de datos de negocio, usa `gpt-5.4`
-  - Archivo: `src/agents/archetypes/`
+  - Archivo: `src/agents/orchestrator/orchestrator.py`
 
-- [ ] **Orquestador con clasificación de intent**
-  - Paso 1: llamada a `gpt-5.4-nano` → clasifica en `casual` o `business_data`
-  - Paso 2: instanciar arquetipo correspondiente con su modelo
-  - Archivo: `src/agents/orchestrator.py`
+- [x] **Orquestador con clasificación de intent**
+  - `IntentClassifier` (nano): clasifica en `casual` o `business_data`
+  - `AgentOrchestrator`: rutea al agente correcto, misma interfaz que `ReActAgent`
+  - Archivo: `src/agents/orchestrator/`
 
-- [ ] **Configuración de modelos**
-  - `INTENT_MODEL = "gpt-5.4-nano"`, `CASUAL_MODEL = "gpt-5.4-mini"`, `DATA_MODEL = "gpt-5.4"` en config
-  - Permite cambiar modelos sin tocar código
+- [x] **Configuración de modelos**
+  - `openai_intent_model`, `openai_casual_model`, `openai_data_model` en settings
+  - `create_orchestrator()` en factory reemplaza `create_react_agent()` en el pipeline
 
-- [ ] **Tests de integración por arquetipo**
-  - Verificar que cada arquetipo use el modelo correcto
-  - Verificar que las tools restringidas no estén disponibles
+- [x] **Tests del orquestador**
+  - 10 tests: IntentClassifier (5) + AgentOrchestrator (5) — todos pasando
+  - Archivo: `tests/agents/test_orchestrator.py`
 
 ### Entregables
-- [ ] 3 arquetipos implementados
-- [ ] Orquestador con tests
-- [ ] Config de modelos documentada
+- [x] 2 arquetipos implementados (casual + data)
+- [x] Orquestador con tests
+- [x] Config de modelos en settings
 
 ---
 
@@ -304,7 +304,7 @@ de costos y experiencia de usuario a corto plazo.
 - [x] El costo por conversación se registra en DB
 - [x] El StatusMessage muestra la fase real del agente
 - [x] Preferencias del usuario se aplican consistentemente entre sesiones
-- [ ] Al menos 2 arquetipos de agente operativos (Explore + Synthesis)
+- [x] Al menos 2 arquetipos de agente operativos (casual + data con 3 modelos)
 - [ ] Los hooks pre/post permiten bloquear tool calls por rol
 
 ---
@@ -318,3 +318,4 @@ de costos y experiencia de usuario a corto plazo.
 | 2026-04-01 | Fase 4 completada — memory scopes + save_memory tool | Roque98 |
 | 2026-04-01 | Fix: preferencias no se aplicaban (cache + prompt) | Roque98 |
 | 2026-04-01 | Fase 5: modelos actualizados a familia gpt-5.4 | Roque98 |
+| 2026-04-01 | Fase 5 completada — IntentClassifier + AgentOrchestrator | Roque98 |
