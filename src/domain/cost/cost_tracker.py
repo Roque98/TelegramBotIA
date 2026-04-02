@@ -24,13 +24,17 @@ logger = logging.getLogger(__name__)
 # Precios por modelo (USD por token)
 # Fuente: https://platform.openai.com/docs/pricing
 _MODEL_PRICING: dict[str, dict[str, float]] = {
-    # gpt-5 family
+    # gpt-5.4 family (precios a confirmar en platform.openai.com/docs/pricing)
+    "gpt-5.4":      {"input": 2.50 / 1_000_000, "output": 10.00 / 1_000_000},
+    "gpt-5.4-pro":  {"input": 5.00 / 1_000_000, "output": 20.00 / 1_000_000},
+    "gpt-5.4-mini": {"input": 0.40 / 1_000_000, "output": 1.60 / 1_000_000},
+    "gpt-5.4-nano": {"input": 0.10 / 1_000_000, "output": 0.40 / 1_000_000},
+    # gpt-5 family (legacy)
     "gpt-5-mini": {"input": 1.10 / 1_000_000, "output": 4.40 / 1_000_000},
     "gpt-5-nano-2025-08-07": {"input": 0.10 / 1_000_000, "output": 0.40 / 1_000_000},
-    # gpt-4o family
+    # gpt-4o family (legacy)
     "gpt-4o": {"input": 2.50 / 1_000_000, "output": 10.00 / 1_000_000},
     "gpt-4o-mini": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
-    "gpt-4o-mini-2024-07-18": {"input": 0.15 / 1_000_000, "output": 0.60 / 1_000_000},
 }
 _DEFAULT_PRICING = {"input": 1.00 / 1_000_000, "output": 4.00 / 1_000_000}
 

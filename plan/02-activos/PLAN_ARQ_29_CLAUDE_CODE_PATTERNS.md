@@ -182,21 +182,30 @@ de costos y experiencia de usuario a corto plazo.
 **Dependencias**: Fase 2 (Typed Events)
 **Impacto**: Reducción significativa de costos (estimado 40-60%)
 
+### Modelos disponibles (familia gpt-5.4)
+
+| Modelo | Tier | Caso de uso |
+|--------|------|-------------|
+| `gpt-5.4-nano` | Nano | Tareas simples, clasificación de intent |
+| `gpt-5.4-mini` | Mini | Alto volumen, baja latencia, menor costo |
+| `gpt-5.4` | Standard | Razonamiento complejo, coding, uso general |
+| `gpt-5.4-pro` | Pro | Máximo rendimiento en tareas muy complejas |
+
 ### Tareas
 
 - [ ] **Definir arquetipos de agente**
-  - `ExploreAgent`: solo tools de lectura, usa modelo barato (gpt-4o-mini)
-  - `DataAgent`: solo queries SQL, usa modelo barato
-  - `SynthesisAgent`: respuesta final al usuario, usa modelo capaz (gpt-4o)
+  - `ExploreAgent`: solo tools de lectura, usa `gpt-5.4-mini`
+  - `DataAgent`: queries SQL y cálculos, usa `gpt-5.4-mini`
+  - `SynthesisAgent`: respuesta final al usuario, usa `gpt-5.4`
   - Archivo: `src/agents/archetypes/`
 
 - [ ] **Orquestador que asigna arquetipos por tarea**
-  - Detectar si la consulta requiere solo lectura o escritura
-  - Asignar arquetipo apropiado
+  - Clasificar intent con `gpt-5.4-nano` (barato y rápido)
+  - Asignar arquetipo apropiado según clasificación
   - Archivo: `src/agents/orchestrator.py`
 
 - [ ] **Configuración de modelo por arquetipo**
-  - `EXPLORE_MODEL`, `DATA_MODEL`, `SYNTHESIS_MODEL` en config
+  - `EXPLORE_MODEL = "gpt-5.4-mini"`, `SYNTHESIS_MODEL = "gpt-5.4"`, `INTENT_MODEL = "gpt-5.4-nano"` en config
   - Permite cambiar modelos sin tocar código
 
 - [ ] **Tests de integración por arquetipo**
@@ -308,3 +317,4 @@ de costos y experiencia de usuario a corto plazo.
 | 2026-04-01 | Fases 1-3 completadas | Roque98 |
 | 2026-04-01 | Fase 4 completada — memory scopes + save_memory tool | Roque98 |
 | 2026-04-01 | Fix: preferencias no se aplicaban (cache + prompt) | Roque98 |
+| 2026-04-01 | Fase 5: modelos actualizados a familia gpt-5.4 | Roque98 |
