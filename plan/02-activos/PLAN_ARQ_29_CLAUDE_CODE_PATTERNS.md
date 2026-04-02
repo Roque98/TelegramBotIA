@@ -184,26 +184,28 @@ de costos y experiencia de usuario a corto plazo.
 
 ### Modelos (familia gpt-5.4)
 
-| Modelo | Uso |
-|--------|-----|
-| `gpt-5.4-nano` | Clasificación de intent (barato y rápido) |
-| `gpt-5.4-mini` | Todo lo demás: exploración, queries SQL, síntesis |
+| Modelo | Caso de uso | Criterio de selección |
+|--------|-------------|----------------------|
+| `gpt-5.4-nano` | Clasificación de intent | Siempre — primera llamada barata |
+| `gpt-5.4-mini` | Conversación casual, formateo, preferencias | Intent = casual/simple |
+| `gpt-5.4` | Queries SQL complejas, síntesis multi-tool | Intent = business_data |
+
+**Lógica de selección:** si el intent classifier detecta que la consulta involucra datos de negocio (ventas, usuarios, reportes), se usa `gpt-5.4`. Para todo lo demás, `gpt-5.4-mini`. El modelo caro solo se activa cuando realmente importa la calidad del SQL generado.
 
 ### Tareas
 
 - [ ] **Definir arquetipos de agente**
-  - `ExploreAgent`: solo tools de lectura, usa `gpt-5.4-mini`
-  - `DataAgent`: queries SQL y cálculos, usa `gpt-5.4-mini`
-  - `SynthesisAgent`: respuesta final al usuario, usa `gpt-5.4-mini`
+  - `CasualAgent`: conversación y preferencias, usa `gpt-5.4-mini`
+  - `DataAgent`: queries SQL + síntesis de datos de negocio, usa `gpt-5.4`
   - Archivo: `src/agents/archetypes/`
 
-- [ ] **Orquestador que asigna arquetipos por tarea**
-  - Clasificar intent con `gpt-5.4-nano` (barato y rápido)
-  - Asignar arquetipo apropiado según clasificación
+- [ ] **Orquestador con clasificación de intent**
+  - Paso 1: llamada a `gpt-5.4-nano` → clasifica en `casual` o `business_data`
+  - Paso 2: instanciar arquetipo correspondiente con su modelo
   - Archivo: `src/agents/orchestrator.py`
 
-- [ ] **Configuración de modelo por arquetipo**
-  - `AGENT_MODEL = "gpt-5.4-mini"`, `INTENT_MODEL = "gpt-5.4-nano"` en config
+- [ ] **Configuración de modelos**
+  - `INTENT_MODEL = "gpt-5.4-nano"`, `CASUAL_MODEL = "gpt-5.4-mini"`, `DATA_MODEL = "gpt-5.4"` en config
   - Permite cambiar modelos sin tocar código
 
 - [ ] **Tests de integración por arquetipo**
