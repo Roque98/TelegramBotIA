@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/37 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/42 tareas)
 
 ---
 
@@ -54,7 +54,7 @@
 ### Lo que se REESCRIBE
 - Sistema de roles unificado (eliminar `RolesIA` separado)
 - Lógica de permisos en Python con cache (eliminar SPs del flujo principal)
-- Jerarquía de resolución: usuario > autenticado > gerencia > dirección > público
+- Jerarquía de resolución: usuario > autenticado > gerencia > dirección (recursos públicos via `esPublico` en `BotRecurso`)
 - Catálogos de entidades y recursos administrables desde BD
 - Capa de dominio con responsabilidades separadas
 
@@ -73,7 +73,7 @@
 ```sql
 BotTipoEntidad
   idTipoEntidad    INT IDENTITY PK
-  nombre           VARCHAR(50) UNIQUE NOT NULL   -- 'usuario', 'autenticado', 'gerencia', 'direccion', 'publico'
+  nombre           VARCHAR(50) UNIQUE NOT NULL   -- 'usuario', 'autenticado', 'gerencia', 'direccion'
   prioridad        TINYINT UNIQUE NOT NULL        -- 1=más alta, mayor número=menor prioridad
   tipoResolucion   VARCHAR(20) NOT NULL           -- 'definitivo' | 'permisivo'
   descripcion      VARCHAR(255) NULL
@@ -120,9 +120,11 @@ Recursos iniciales (tools del agente):
 | tool:save_memory | tool | Guardar notas de sesión |
 | tool:datetime | tool | Consultar fecha y hora |
 | cmd:/ia | cmd | Comando principal del agente |
-| cmd:/start | cmd | Inicio del bot (público) |
-| cmd:/help | cmd | Ayuda (público) |
-| cmd:/costo | cmd | Ver costos (admin) |
+| cmd:/start | cmd | Inicio del bot (público) — `esPublico=1` |
+| cmd:/help | cmd | Ayuda (público) — `esPublico=1` |
+| cmd:/costo | cmd | Ver costos |
+| cmd:/recargar_permisos | cmd | Recargar permisos del usuario — `esPublico=1` |
+| tool:reload_permissions | tool | Tool del agente para recargar permisos — `esPublico=1` |
 
 ---
 
@@ -132,7 +134,7 @@ Recursos iniciales (tools del agente):
 BotPermisos
   idPermiso            INT IDENTITY PK
   idTipoEntidad        INT NOT NULL FK → BotTipoEntidad
-  idEntidad            INT NOT NULL               -- ID del usuario/gerencia/direccion según tipo. 0 para autenticado/publico
+  idEntidad            INT NOT NULL               -- ID del usuario/gerencia/direccion según tipo. 0 para autenticado
   idRecurso            INT NOT NULL FK → BotRecurso
   idRolRequerido       INT NULL FK → Roles        -- NULL=cualquier rol. Aplica a autenticado/gerencia/direccion
   permitido            BIT NOT NULL DEFAULT 1
@@ -209,8 +211,11 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | autenticado | 5 (Usuario) | tool:knowledge_search, tool:calculate | ✅ |
 | autenticado | 6 (Consulta) | tool:knowledge_search | ✅ |
 | autenticado | NULL (todos) | tool:save_preference, tool:save_memory, tool:datetime | ✅ |
+| autenticado | NULL (todos) | cmd:/ia | ✅ |
+| autenticado | 1 (Administrador) | cmd:/costo | ✅ |
 
-> **Nota**: `cmd:/start` y `cmd:/help` se marcan `esPublico=1` en `BotRecurso` — no necesitan fila en `BotPermisos`.
+> **Nota**: `cmd:/start`, `cmd:/help`, `cmd:/recargar_permisos` y `tool:reload_permissions` se marcan `esPublico=1` en `BotRecurso` — no necesitan fila en `BotPermisos`.
+> `esPublico=1` en `cmd:/recargar_permisos` y `tool:reload_permissions` garantiza que cualquier usuario autenticado pueda recargar sus permisos incluso si su cache está vacío o corrupto.
 
 ---
 
@@ -288,10 +293,16 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Test: cache hit no hace query a BD
   - Test: `invalidate(user_id)` fuerza re-query en el siguiente acceso
 
+- [ ] **`create_permission_service()` en factory**
+  - Archivo: `src/pipeline/factory.py`
+  - Recibe `db_manager`, crea `PermissionRepository` y `PermissionService`
+  - Llamado en `create_main_handler()` antes de crear `MemoryService`
+
 #### Entregables
 - [ ] `PermissionService` con cache TTL y métodos de invalidación con tests
 - [ ] 3 repositories con responsabilidades separadas
 - [ ] Enums reemplazando magic strings
+- [ ] Factory function para `PermissionService`
 
 ---
 
@@ -310,7 +321,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `direccion_ids: list[int]`
 
 - [ ] **Actualizar `MemoryRepository.get_profile()`**
-  - Agregar JOIN con `Usuarios`, `Roles`, `GerenciasUsuarios`, `Gerencias`
+  - Agregar JOINs con `Usuarios`, `Roles`, `GerenciasUsuarios`, `Gerencias`, `DireccionesUsuarios`, `Direcciones`
   - Una sola query que trae todo
   - Archivo: `src/domain/memory/memory_repository.py`
 
@@ -321,11 +332,15 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `direccion_ids = profile.direccion_ids`
   - Archivo: `src/domain/memory/memory_service.py`
 
+- [ ] **Inyectar `PermissionService` en `MemoryService`**
+  - `MemoryService.__init__` recibe `permission_service: PermissionService`
+  - Archivo: `src/domain/memory/memory_service.py`
+
 - [ ] **Cargar `permisos` al inicio de cada request**
   - Campo: `permisos: dict[str, bool]` — clave = nombre del recurso, valor = permitido
   - Ejemplo: `{"tool:database_query": True, "tool:calculate": True, "tool:knowledge_search": False}`
-  - Llamar `PermissionService.get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids)`
-  - Cargar junto con el contexto en `MemoryService.get_or_create_context()`
+  - Llamar `permission_service.get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids)` en `get_or_create_context()`
+  - `permisos` se recarga en cada request (respeta TTL de `PermissionService`) — no se hereda de la sesión anterior
   - Archivo: `src/domain/memory/memory_service.py`
 
 - [ ] **Verificar prompt con rol y capacidades visibles**
@@ -333,8 +348,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - El agente adapta respuestas según el contexto organizacional (comportamiento proactivo)
 
 #### Entregables
-- [ ] `UserContext` con contexto organizacional completo
-- [ ] `permisos` cargados al inicio de cada request
+- [ ] `UserContext` con contexto organizacional completo (rol, gerencias, direcciones)
+- [ ] `PermissionService` inyectado en `MemoryService`
+- [ ] `permisos` cargados (con TTL) al inicio de cada request
 - [ ] Rol, gerencia y capacidades visibles en el prompt del agente
 
 ---
@@ -531,3 +547,4 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-02 | Scopes de tools diferidos a plan futuro | Roque98 |
 | 2026-04-02 | Cache TTL 60s + /recargar_permisos (cualquier usuario) + tool reload_permissions (agente) | Roque98 |
 | 2026-04-02 | Fase 6: agregar DROP de tablas y SPs legacy como tareas explícitas | Roque98 |
+| 2026-04-02 | Revisión completa: corregir inconsistencias 'publico', completar BotRecurso/BotPermisos iniciales, agregar wiring PermissionService→MemoryService, JOINs de direcciones, ciclo de vida de permisos | Roque98 |
