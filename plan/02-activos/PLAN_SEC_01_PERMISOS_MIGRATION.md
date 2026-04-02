@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/28 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/30 tareas)
 
 ---
 
@@ -88,11 +88,12 @@ Datos iniciales:
 | autenticado | 2 | permisivo | Cualquier usuario autenticado, filtrable por rol via idRolRequerido |
 | gerencia | 3 | permisivo | Gerencia(s) del usuario, filtrable por rol via idRolRequerido |
 | direccion | 4 | permisivo | Dirección del usuario, filtrable por rol via idRolRequerido |
-| publico | 99 | permisivo | Sin autenticación requerida, idRolRequerido no aplica |
+
+> **Nota**: No existe entidad `publico`. Los recursos públicos se marcan con `esPublico=1` en `BotRecurso` y se cortocircuitan antes de consultar permisos.
 
 > **Regla de resolución**: Si `tipoResolucion='definitivo'` y existe una entrada → es la respuesta final.
 > Si `tipoResolucion='permisivo'` → si ALGUNA entrada permite, se permite (más permisivo gana).
-> `idRolRequerido`: aplica a `autenticado`, `gerencia` y `direccion`. No aplica a `usuario` ni `publico`.
+> `idRolRequerido`: aplica a `autenticado`, `gerencia` y `direccion`. No aplica a `usuario`.
 
 ---
 
@@ -172,7 +173,7 @@ BotPermisosAudit
 ```
 Request: usuario X quiere ejecutar recurso Y
 
-1. ¿esPublico=1 en BotRecurso? → PERMITIDO (sin consultar permisos)
+1. ¿esPublico=1 en BotRecurso? → PERMITIDO inmediatamente (sin consultar BotPermisos)
 
 2. Cargar todas las filas de BotPermisos donde:
    - (tipoEntidad='usuario'      AND idEntidad = idUsuario)
@@ -181,7 +182,6 @@ Request: usuario X quiere ejecutar recurso Y
                                  AND (idRolRequerido IS NULL OR idRolRequerido = idRol))
    - (tipoEntidad='direccion'    AND idEntidad IN direcciones del usuario
                                  AND (idRolRequerido IS NULL OR idRolRequerido = idRol))
-   - (tipoEntidad='publico')
    - idRecurso = Y
    - activo = 1
    - fechaExpiracion IS NULL OR fechaExpiracion > NOW()
@@ -209,7 +209,8 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | autenticado | 5 (Usuario) | tool:knowledge_search, tool:calculate | ✅ |
 | autenticado | 6 (Consulta) | tool:knowledge_search | ✅ |
 | autenticado | NULL (todos) | tool:save_preference, tool:save_memory, tool:datetime | ✅ |
-| publico | NULL | cmd:/start, cmd:/help | ✅ |
+
+> **Nota**: `cmd:/start` y `cmd:/help` se marcan `esPublico=1` en `BotRecurso` — no necesitan fila en `BotPermisos`.
 
 ---
 
@@ -317,44 +318,67 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `direccion_ids = profile.direccion_ids`
   - Archivo: `src/domain/memory/memory_service.py`
 
-- [ ] **Verificar prompt con rol visible**
-  - `<memory type="user">` debe mostrar rol y gerencia
-  - El agente adapta respuestas según el contexto organizacional
+- [ ] **Cargar `permisos` al inicio de cada request**
+  - Campo: `permisos: dict[str, bool]` — clave = nombre del recurso, valor = permitido
+  - Ejemplo: `{"tool:database_query": True, "tool:calculate": True, "tool:knowledge_search": False}`
+  - Llamar `PermissionService.get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids)`
+  - Cargar junto con el contexto en `MemoryService.get_or_create_context()`
+  - Archivo: `src/domain/memory/memory_service.py`
+
+- [ ] **Verificar prompt con rol y capacidades visibles**
+  - `<memory type="user">` debe mostrar rol, gerencia y lista de capacidades disponibles
+  - El agente adapta respuestas según el contexto organizacional (comportamiento proactivo)
 
 #### Entregables
 - [ ] `UserContext` con contexto organizacional completo
-- [ ] Rol y gerencia visibles en el prompt del agente
+- [ ] `permisos` cargados al inicio de cada request
+- [ ] Rol, gerencia y capacidades visibles en el prompt del agente
 
 ---
 
-### Fase 4: Permisos en Tools del Agente
+### Fase 4: Permisos en Tools del Agente (Proactivo)
 
-**Objetivo**: Cada tool verifica permisos antes de ejecutarse
+**Objetivo**: Filtrar tools disponibles según permisos cargados en `UserContext`, y que el agente responda proactivamente según lo que el usuario puede hacer
 **Dependencias**: Fases 2 y 3
 
 #### Tareas
 
-- [ ] **Inyectar `PermissionService` en `ToolRegistry`**
+- [ ] **Filtrar tools en `ToolRegistry.get_tools_prompt()`**
+  - Recibe `user_context: Optional[UserContext]` como parámetro
+  - Si `user_context.permisos` está cargado: solo incluir tools donde `permisos.get(f"tool:{name}", False) == True`
+  - Si no hay contexto de permisos: incluir todas (backward compat)
+  - El agente solo "ve" las tools a las que tiene acceso → no puede invocar lo que no aparece en el prompt
   - Archivo: `src/agents/tools/registry.py`
-  - `ToolRegistry.__init__` recibe `permission_service: Optional[PermissionService]`
 
-- [ ] **Check de permiso en `ToolRegistry` antes de ejecutar**
-  - Si `permission_service` disponible: verificar `can(user_id, f"tool:{tool_name}")`
+- [ ] **Check de permiso en `ToolRegistry` al ejecutar** (segunda línea de defensa)
+  - Verificar `user_context.permisos.get(f"tool:{tool_name}", False)` antes de ejecutar
   - Si deniega: retornar `ToolResult.error_result("No tenés permiso para usar esta herramienta")`
-  - Log del intento denegado
+  - Log del intento denegado (para detectar prompt injection o bypass)
+  - Archivo: `src/agents/tools/registry.py`
+
+- [ ] **Inyectar capacidades disponibles en `<memory type="user">`**
+  - `UserContext.to_prompt_context()` agrega bloque "Capacidades disponibles:"
+  - Lista las tools permitidas en lenguaje natural (e.g. "Consultas a base de datos, Cálculos matemáticos")
+  - El agente puede responder proactivamente "Puedo ayudarte con X, Y, Z"
+  - Archivo: `src/agents/base/events.py`
 
 - [ ] **Wiring en factory**
-  - `create_tool_registry()` recibe y pasa `permission_service`
+  - `create_tool_registry()` ya no recibe `permission_service` — los permisos viven en `UserContext`
+  - `ToolRegistry.execute()` y `get_tools_prompt()` reciben `user_context` que ya trae los permisos precargados
   - Archivo: `src/pipeline/factory.py`
 
 - [ ] **Tests de permisos en tools**
-  - Test: tool bloqueado retorna observation de error
-  - Test: tool permitido ejecuta normalmente
-  - Test: sin `permission_service` → ejecuta sin restricciones (backward compat)
+  - Test: tool ausente en `permisos` no aparece en `get_tools_prompt()`
+  - Test: tool denegada en ejecución retorna observation de error
+  - Test: tool permitida ejecuta normalmente
+  - Test: sin `permisos` en `user_context` → incluye todas (backward compat)
+
+> **Nota — Scopes de tools (futuro)**: Control más granular de permisos dentro de una tool (ej: solo ciertas tablas de SQL, solo ciertos módulos de conocimiento) está **diferido a un plan separado**. En esta fase, el permiso es binario por tool.
 
 #### Entregables
-- [ ] Tools con control de acceso desde BD
-- [ ] Mensaje claro al usuario cuando no tiene acceso
+- [ ] Tools filtradas en prompt según `UserContext.permisos`
+- [ ] Segunda verificación en ejecución como defensa en profundidad
+- [ ] Agente responde proactivamente sobre sus capacidades disponibles
 
 ---
 
@@ -453,3 +477,6 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-01 | Creación del plan — análisis completo del sistema legacy | Roque98 |
 | 2026-04-01 | Rediseño completo con catálogos, audit trail y resolución configurable | Roque98 |
 | 2026-04-02 | Diseño final: entidad 'autenticado' + idRolRequerido en gerencia/direccion | Roque98 |
+| 2026-04-02 | Eliminar entidad 'publico' — reemplazada por esPublico en BotRecurso | Roque98 |
+| 2026-04-02 | Agregar permisos proactivos: UserContext.permisos + filtro en ToolRegistry + capacidades en prompt | Roque98 |
+| 2026-04-02 | Scopes de tools diferidos a plan futuro | Roque98 |
