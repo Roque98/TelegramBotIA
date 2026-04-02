@@ -64,7 +64,7 @@ def create_tool_registry(
         logger.warning("KnowledgeTool not registered: no KnowledgeService available")
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
-    registry.register(SavePreferenceTool(db_manager=db_manager))
+    registry.register(SavePreferenceTool(db_manager=db_manager, memory_service=memory_service))
     registry.register(SaveMemoryTool(memory_service=memory_service))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")

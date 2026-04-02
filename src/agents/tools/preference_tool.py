@@ -31,14 +31,16 @@ class SavePreferenceTool(BaseTool):
         >>> print(result.to_observation())
     """
 
-    def __init__(self, db_manager: Any):
+    def __init__(self, db_manager: Any, memory_service: Optional[Any] = None):
         """
         Inicializa el SavePreferenceTool.
 
         Args:
             db_manager: Gestor de base de datos
+            memory_service: Servicio de memoria (para invalidar cache tras guardar)
         """
         self.db_manager = db_manager
+        self.memory_service = memory_service
         logger.info("SavePreferenceTool inicializado")
 
     @property
@@ -177,6 +179,13 @@ class SavePreferenceTool(BaseTool):
 
             elapsed = (time.perf_counter() - start_time) * 1000
             logger.info(f"Preferencia guardada: {key}={value} para usuario {user_id}")
+
+            # Actualizar user_context en el request actual y limpiar cache para el próximo
+            user_context = kwargs.get("user_context")
+            if user_context is not None:
+                user_context.preferences[key] = value
+            if self.memory_service:
+                self.memory_service._invalidate_user_cache(str(user_id))
 
             return ToolResult(
                 success=True,

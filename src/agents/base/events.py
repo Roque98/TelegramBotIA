@@ -192,6 +192,10 @@ class UserContext(BaseModel):
         ]
         if self.roles:
             user_lines.append(f"Roles: {', '.join(self.roles)}")
+        display_prefs = {k: v for k, v in self.preferences.items() if k != "alias"}
+        if display_prefs:
+            pref_lines = "\n".join(f"  {k}: {v}" for k, v in display_prefs.items())
+            user_lines.append(f"Preferencias del usuario:\n{pref_lines}")
         if self.long_term_summary:
             user_lines.append(f"Historial conocido: {self.long_term_summary}")
         blocks.append("<memory type=\"user\">\n" + "\n".join(user_lines) + "\n</memory>")
