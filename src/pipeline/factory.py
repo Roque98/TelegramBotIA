@@ -22,6 +22,7 @@ from src.agents.tools.save_memory_tool import SaveMemoryTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
+from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
 from src.infra.observability.sql_repository import ObservabilityRepository
@@ -161,6 +162,7 @@ def create_main_handler(
     )
 
     obs_repo = ObservabilityRepository(db_manager=db)
+    cost_repo = CostRepository(db_manager=db)
 
     sql_handler = get_sql_handler()
     if sql_handler:
@@ -171,6 +173,7 @@ def create_main_handler(
         react_agent=orchestrator,
         memory_service=memory_service,
         observability_repo=obs_repo,
+        cost_repository=cost_repo,
     )
 
     logger.info("MainHandler created with AgentOrchestrator + ObservabilityRepository")

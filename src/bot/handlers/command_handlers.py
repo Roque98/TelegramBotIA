@@ -7,6 +7,7 @@ import logging
 from typing import Any, List, Dict, Optional
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, Application
+from src.domain.cost.cost_repository import CostRepository
 from src.domain.knowledge import KnowledgeRepository
 from src.infra.database.connection import DatabaseManager
 
@@ -296,23 +297,9 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        query = """
-            SELECT
-                cs.telegramChatId                                       AS chat_id,
-                COALESCE(u.Nombre, ut.telegramUsername, 'Desconocido') AS nombre,
-                COUNT(*)                                                AS sesiones,
-                SUM(cs.llamadasLLM)                                    AS llamadas,
-                SUM(cs.inputTokens)                                    AS input_tokens,
-                SUM(cs.outputTokens)                                   AS output_tokens,
-                SUM(cs.costoUSD)                                       AS costo_usd
-            FROM abcmasplus..CostSesiones cs
-            LEFT JOIN abcmasplus..UsuariosTelegram ut ON cs.telegramChatId = ut.telegramChatId
-            LEFT JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE cs.fechaSesion >= CAST(GETDATE() AS DATE)
-            GROUP BY cs.telegramChatId, u.Nombre, ut.telegramUsername
-            ORDER BY costo_usd DESC
-        """
-        rows = await db_manager.execute_query_async(query)
+        from datetime import date
+        cost_repo = CostRepository(db_manager)
+        rows = await cost_repo.get_daily_costs(date.today().isoformat())
 
         if not rows:
             await update.message.reply_text("_Sin datos de costo para hoy._", parse_mode="Markdown")

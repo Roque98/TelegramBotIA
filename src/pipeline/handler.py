@@ -19,6 +19,8 @@ from src.agents.base.agent import AgentResponse
 from src.agents.base.agent_events import AgentEvent
 from src.agents.base.events import ConversationEvent, UserContext
 from src.agents.react.agent import ReActAgent
+from src.domain.cost.cost_entity import CostSession
+from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.gateway.message_gateway import MessageGateway
 from src.infra.observability.sql_repository import ObservabilityRepository
@@ -69,6 +71,7 @@ class MainHandler:
         fallback_agent: Optional[FallbackAgent] = None,
         use_fallback_on_error: bool = True,
         observability_repo: Optional[ObservabilityRepository] = None,
+        cost_repository: Optional[CostRepository] = None,
     ):
         """
         Inicializa el handler.
@@ -79,12 +82,14 @@ class MainHandler:
             fallback_agent: Agente de fallback (LLMAgent existente)
             use_fallback_on_error: Si usar fallback cuando ReAct falla
             observability_repo: Repositorio para persistir trazas en SQL
+            cost_repository: Repositorio para persistir costos de sesión
         """
         self.react_agent = react_agent
         self.memory = memory_service
         self.fallback_agent = fallback_agent
         self.use_fallback_on_error = use_fallback_on_error
         self.observability_repo = observability_repo
+        self.cost_repo = cost_repository
         self.gateway = MessageGateway()
 
         logger.info(
@@ -363,29 +368,11 @@ class MainHandler:
         steps_taken: int,
     ) -> None:
         """Persiste el costo de la sesión en CostSesiones."""
+        if not self.cost_repo:
+            return
         try:
-            db_manager = getattr(self.memory.repository, "db_manager", None)
-            if not db_manager:
-                return
-            query = """
-                INSERT INTO abcmasplus..CostSesiones (
-                    telegramChatId, modelo, inputTokens, outputTokens,
-                    cacheReadTokens, llamadasLLM, costoUSD, pasos, fechaSesion
-                ) VALUES (
-                    :chat_id, :modelo, :input_tokens, :output_tokens,
-                    :cache_read_tokens, :llm_calls, :cost_usd, :pasos, GETDATE()
-                )
-            """
-            await db_manager.execute_non_query_async(query, {
-                "chat_id": str(user_id),
-                "modelo": cost.get("model", "unknown"),
-                "input_tokens": cost.get("input_tokens", 0),
-                "output_tokens": cost.get("output_tokens", 0),
-                "cache_read_tokens": cost.get("cache_read_tokens", 0),
-                "llm_calls": cost.get("llm_calls", 1),
-                "cost_usd": cost.get("cost_usd", 0.0),
-                "pasos": steps_taken,
-            })
+            session = CostSession.from_summary(user_id, cost, steps_taken)
+            await self.cost_repo.save_session(session)
         except Exception as e:
             logger.error(f"Error guardando costo de sesión: {e}")
 
