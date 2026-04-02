@@ -27,6 +27,7 @@ class ActionType(str, Enum):
     CALCULATE = "calculate"
     DATETIME = "datetime"
     SAVE_PREFERENCE = "save_preference"
+    SAVE_MEMORY = "save_memory"
     FINISH = "finish"
 
     @classmethod
@@ -61,6 +62,9 @@ class ActionType(str, Enum):
             "preference": cls.SAVE_PREFERENCE,
             "save_pref": cls.SAVE_PREFERENCE,
             "set_preference": cls.SAVE_PREFERENCE,
+            "memory": cls.SAVE_MEMORY,
+            "save_mem": cls.SAVE_MEMORY,
+            "remember": cls.SAVE_MEMORY,
             "done": cls.FINISH,
             "end": cls.FINISH,
             "answer": cls.FINISH,
