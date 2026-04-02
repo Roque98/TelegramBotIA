@@ -17,6 +17,7 @@ from src.agents.tools.knowledge_tool import KnowledgeTool
 from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
+from src.agents.tools.save_memory_tool import SaveMemoryTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 def create_tool_registry(
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
+    memory_service: Optional[Any] = None,
 ) -> ToolRegistry:
     """
     Crea y configura el registro de herramientas.
@@ -63,6 +65,7 @@ def create_tool_registry(
     registry.register(CalculateTool())
     registry.register(DateTimeTool())
     registry.register(SavePreferenceTool(db_manager=db_manager))
+    registry.register(SaveMemoryTool(memory_service=memory_service))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")
 
@@ -73,6 +76,7 @@ def create_react_agent(
     llm_provider: Any,
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
+    memory_service: Optional[Any] = None,
 ) -> ReActAgent:
     """
     Crea el agente ReAct con sus dependencias.
@@ -81,11 +85,12 @@ def create_react_agent(
         llm_provider: Proveedor de LLM
         db_manager: Gestor de base de datos
         knowledge_manager: Gestor de conocimiento
+        memory_service: Servicio de memoria (para SaveMemoryTool)
 
     Returns:
         ReActAgent configurado
     """
-    tool_registry = create_tool_registry(db_manager, knowledge_manager)
+    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service)
 
     agent = ReActAgent(
         llm=llm_provider,
@@ -165,13 +170,14 @@ def create_main_handler(
         logger.warning(f"KnowledgeService creation failed, knowledge search disabled: {e}")
         knowledge_manager = None
 
+    memory_service = create_memory_service(db_manager=db)
+
     react_agent = create_react_agent(
         llm_provider=llm_provider,
         db_manager=db,
         knowledge_manager=knowledge_manager,
+        memory_service=memory_service,
     )
-
-    memory_service = create_memory_service(db_manager=db)
 
     obs_repo = ObservabilityRepository(db_manager=db)
 

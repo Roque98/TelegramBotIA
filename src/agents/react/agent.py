@@ -266,11 +266,11 @@ class ReActAgent(BaseAgent):
         except asyncio.CancelledError:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             logger.warning(f"ReAct execution cancelled after {elapsed_ms:.2f}ms")
-            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "CancelledError", tracer)
+            self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), "CancelledError", tracer, _trace_owner)
             raise
 
         except (MaxIterationsException, LLMException, ToolException, Exception) as e:
-            return self._handle_agent_error(e, start_time, scratchpad, kwargs, tracer)
+            return self._handle_agent_error(e, start_time, scratchpad, kwargs, tracer, _trace_owner)
 
         finally:
             reset_current_tracker(_tracker_token)
@@ -282,6 +282,7 @@ class ReActAgent(BaseAgent):
         scratchpad: "Scratchpad",
         kwargs: dict,
         tracer: Optional[Any],
+        trace_owner: bool = False,
     ) -> AgentResponse:
         """
         Centraliza el manejo de errores del loop ReAct.
@@ -316,7 +317,7 @@ class ReActAgent(BaseAgent):
             logger.exception(f"Unexpected error in ReAct: {error}")
             error_msg = str(error)
 
-        self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), type(error).__name__, tracer)
+        self._record_error_metrics(kwargs, elapsed_ms, len(scratchpad), type(error).__name__, tracer, trace_owner)
         return AgentResponse.error_response(
             agent_name=self.name,
             error=error_msg,
@@ -331,6 +332,7 @@ class ReActAgent(BaseAgent):
         steps: int,
         error_type: str,
         tracer: Optional[Any],
+        trace_owner: bool = False,
     ) -> None:
         """Registra métricas de error."""
         if _OBSERVABILITY_AVAILABLE:
@@ -342,7 +344,7 @@ class ReActAgent(BaseAgent):
                 error_type=error_type,
             )
             if tracer:
-                if _trace_owner: tracer.end_trace()
+                if trace_owner: tracer.end_trace()
 
     async def _generate_step(
         self,
@@ -509,9 +511,11 @@ class ReActAgent(BaseAgent):
             return f"Error: {error_msg}"
 
         try:
-            # Agregar user_id del contexto a action_input si está disponible
+            # Agregar user_id y user_context a action_input si están disponibles
             if context and "user_id" not in action_input:
                 action_input["user_id"] = context.user_id
+            if context and "user_context" not in action_input:
+                action_input["user_context"] = context
 
             logger.debug(f"Executing tool: {tool_name} with {action_input}")
             result: ToolResult = await tool.execute(**action_input)

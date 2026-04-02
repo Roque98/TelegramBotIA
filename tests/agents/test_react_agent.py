@@ -339,7 +339,7 @@ class TestReActAgent:
     async def test_simple_finish_response(self, mock_llm, tool_registry, user_context):
         """El agente debe responder directamente para saludos."""
         # LLM retorna FINISH directamente
-        mock_llm.generate.return_value = json.dumps({
+        mock_llm.generate_messages.return_value = json.dumps({
             "thought": "User is greeting, I'll respond directly",
             "action": "finish",
             "action_input": {},
@@ -358,7 +358,7 @@ class TestReActAgent:
         """El agente debe ejecutar tools y luego responder."""
         # Primera llamada: ejecutar tool
         # Segunda llamada: finish con resultado
-        mock_llm.generate.side_effect = [
+        mock_llm.generate_messages.side_effect = [
             json.dumps({
                 "thought": "Need to query database",
                 "action": "database_query",
@@ -384,7 +384,7 @@ class TestReActAgent:
     async def test_max_iterations_reached(self, mock_llm, tool_registry, user_context):
         """El agente debe sintetizar respuesta cuando alcanza max_iterations."""
         # LLM siempre retorna tool calls, nunca finish
-        mock_llm.generate.return_value = json.dumps({
+        mock_llm.generate_messages.return_value = json.dumps({
             "thought": "Need more data",
             "action": "calculate",
             "action_input": {"expression": "1+1"},
@@ -405,7 +405,7 @@ class TestReActAgent:
     @pytest.mark.asyncio
     async def test_error_handling(self, mock_llm, tool_registry, user_context):
         """El agente debe manejar errores gracefully."""
-        mock_llm.generate.side_effect = Exception("LLM API error")
+        mock_llm.generate_messages.side_effect = Exception("LLM API error")
 
         agent = ReActAgent(llm=mock_llm, tool_registry=tool_registry)
         response = await agent.execute("Test query", user_context)
@@ -418,7 +418,7 @@ class TestReActAgent:
         """El agente debe manejar tools no registrados en el registry."""
         # El LLM usa un action válido pero el tool no está registrado
         # Nota: "knowledge_search" es válido en ActionType pero no está en este registry
-        mock_llm.generate.side_effect = [
+        mock_llm.generate_messages.side_effect = [
             json.dumps({
                 "thought": "Need to search knowledge",
                 "action": "knowledge_search",
@@ -443,7 +443,7 @@ class TestReActAgent:
     @pytest.mark.asyncio
     async def test_json_in_code_block(self, mock_llm, tool_registry, user_context):
         """El agente debe parsear JSON envuelto en code blocks."""
-        mock_llm.generate.return_value = """```json
+        mock_llm.generate_messages.return_value = """```json
 {
     "thought": "Responding",
     "action": "finish",
@@ -461,7 +461,7 @@ class TestReActAgent:
     @pytest.mark.asyncio
     async def test_scratchpad_in_response_data(self, mock_llm, tool_registry, user_context):
         """La respuesta debe incluir el scratchpad en data."""
-        mock_llm.generate.return_value = json.dumps({
+        mock_llm.generate_messages.return_value = json.dumps({
             "thought": "Simple response",
             "action": "finish",
             "action_input": {},
@@ -568,7 +568,7 @@ class TestHandleAgentError:
         ToolRegistry.reset()
         registry = ToolRegistry()
         agent2 = ReActAgent(llm=AsyncMock(), tool_registry=registry)
-        agent2.llm.generate = AsyncMock(side_effect=asyncio.CancelledError())
+        agent2.llm.generate_messages = AsyncMock(side_effect=asyncio.CancelledError())
 
         with pytest.raises(asyncio.CancelledError):
             await agent2.execute("query", UserContext.empty("user_1"))
@@ -579,7 +579,7 @@ class TestHandleAgentError:
         ToolRegistry.reset()
         registry = ToolRegistry()
         llm = AsyncMock()
-        llm.generate = AsyncMock(
+        llm.generate_messages = AsyncMock(
             side_effect=LLMException(message="rate limit", provider="openai")
         )
         agent2 = ReActAgent(llm=llm, tool_registry=registry)

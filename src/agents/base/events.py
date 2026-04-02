@@ -127,6 +127,8 @@ class UserContext(BaseModel):
     working_memory: list[dict[str, Any]] = Field(default_factory=list)
     long_term_summary: Optional[str] = None
     current_date: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    # Notas temporales del agente durante el run actual (se borran al terminar)
+    session_notes: list[str] = Field(default_factory=list)
 
     model_config = {"frozen": False}
 
@@ -171,33 +173,47 @@ class UserContext(BaseModel):
 
     def to_prompt_context(self) -> str:
         """
-        Genera una representación textual del contexto para prompts.
+        Genera bloques <memory> estructurados para el system prompt.
+
+        Tres scopes:
+        - user: hechos persistentes del usuario (nombre, historial, preferencias)
+        - conversation: mensajes recientes del thread actual
+        - session: notas temporales del run actual (borradas al terminar)
 
         Returns:
-            String con el contexto formateado
+            String con bloques <memory> para incluir en el prompt
         """
-        lines = [
-            f"Usuario: {self.display_name}",
+        blocks = []
+
+        # --- user memory ---
+        user_lines = [
+            f"Nombre: {self.display_name}",
             f"Fecha actual: {self.current_date.strftime('%Y-%m-%d')}",
         ]
-
         if self.roles:
-            lines.append(f"Roles: {', '.join(self.roles)}")
-
+            user_lines.append(f"Roles: {', '.join(self.roles)}")
         if self.long_term_summary:
-            lines.append(f"Historial: {self.long_term_summary}")
+            user_lines.append(f"Historial conocido: {self.long_term_summary}")
+        blocks.append("<memory type=\"user\">\n" + "\n".join(user_lines) + "\n</memory>")
 
+        # --- conversation memory ---
         if self.working_memory:
-            lines.append("\nMensajes recientes de esta conversación:")
+            conv_lines = []
             for msg in self.working_memory[-5:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
-                # Queries del usuario son cortas; respuestas del asistente pueden ser largas.
-                # Truncar en límite de párrafo para no cortar a mitad de oración.
                 limit = 120 if role == "user" else 600
                 if len(content) > limit:
                     cutoff = content.rfind("\n", 0, limit)
                     content = content[: cutoff if cutoff > 0 else limit] + "…"
-                lines.append(f"  [{role}]: {content}")
+                conv_lines.append(f"[{role}]: {content}")
+            blocks.append(
+                "<memory type=\"conversation\">\n" + "\n".join(conv_lines) + "\n</memory>"
+            )
 
-        return "\n".join(lines)
+        # --- session memory ---
+        if self.session_notes:
+            notes = "\n".join(f"- {n}" for n in self.session_notes)
+            blocks.append("<memory type=\"session\">\n" + notes + "\n</memory>")
+
+        return "\n\n".join(blocks)
