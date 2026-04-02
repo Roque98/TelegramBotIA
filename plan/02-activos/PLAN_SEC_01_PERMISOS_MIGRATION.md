@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/44 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/46 tareas)
 
 ---
 
@@ -274,7 +274,10 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 - [ ] **Crear `PermissionRepository`**
   - Archivo: `src/domain/auth/permission_repository.py`
   - `get_all_permissions(user_id, role_id, gerencia_ids, direccion_ids) -> list[dict]`
-  - Una sola query con todos los JOINs necesarios
+  - La query usa UNION de dos partes:
+    1. Filas de `BotPermisos` que aplican al usuario (por rol, gerencia, dirección, usuario)
+    2. `SELECT recurso, 1 AS permitido FROM BotRecurso WHERE esPublico=1 AND activo=1` — siempre incluidos como `True`
+  - Así `get_all_for_user()` retorna un dict completo que incluye recursos públicos, y `get_tools_prompt()` los muestra correctamente
 
 - [ ] **Crear `PermissionService`**
   - Archivo: `src/domain/auth/permission_service.py`
@@ -455,6 +458,10 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Responde al usuario explicando qué cambió (qué tools están ahora disponibles)
   - Archivo: `src/agents/tools/reload_permissions_tool.py`
 
+- [ ] **Registrar `ReloadPermissionsTool` en `create_tool_registry()`**
+  - Recibe `permission_service` como dependencia (ya pasado desde `create_main_handler()`)
+  - Archivo: `src/pipeline/factory.py`
+
 #### Entregables
 - [ ] Un solo punto de autorización (middleware)
 - [ ] Sin magic strings en handlers
@@ -564,3 +571,4 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-02 | Fase 6: agregar DROP de tablas y SPs legacy como tareas explícitas | Roque98 |
 | 2026-04-02 | Revisión completa: corregir inconsistencias 'publico', completar BotRecurso/BotPermisos iniciales, agregar wiring PermissionService→MemoryService, JOINs de direcciones, ciclo de vida de permisos | Roque98 |
 | 2026-04-02 | Segunda revisión: fix UNIQUE nullable en BotPermisos, wiring ReloadPermissionsTool, permisos siempre frescos fuera del cache de MemoryService, AuthMiddleware con query liviana, verificación pre-migración | Roque98 |
+| 2026-04-02 | Tercera revisión: PermissionRepository incluye esPublico=1 via UNION, registrar ReloadPermissionsTool en create_tool_registry() | Roque98 |
