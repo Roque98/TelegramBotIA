@@ -1,244 +1,416 @@
-# Plan: SEC-01 — Migración del Sistema de Permisos
+# Plan: SEC-01 — Rediseño Completo del Sistema de Permisos
 
 > **Estado**: ⚪ No iniciado
 > **Última actualización**: 2026-04-01
 > **Rama Git**: `feature/sec-01-permisos`
-> **Motivación**: El sistema legacy usa stored procedures para todo, no tiene cache, los roles nunca se cargan en UserContext, y los tools del agente no tienen ningún control de acceso.
 
 ## Resumen de Progreso
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Diagnóstico y DB | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Nuevo Esquema BD | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 2: Capa de Dominio | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Cargar Roles en Contexto | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 3: UserContext con Roles y Gerencias | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/24 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/28 tareas)
 
 ---
 
-## Descripción
+## Contexto: Problemas del Sistema Legacy
 
-Reemplazar el sistema de permisos legacy (stored procedures + checks dispersos en handlers)
-por una capa de dominio limpia que:
+### Críticos (bugs reales)
+- **Explicit deny no funciona**: `sp_VerificarPermisoOperacion` tiene bug — si el rol permite pero el usuario tiene deny, el rol gana. Debería ser al revés.
+- **Sistema de roles duplicado**: Existen `Roles` y `RolesIA` desconectados. `sp_VerificarPermisoOperacion` solo consulta `Roles`, ignorando `RolesIA` completamente.
+- **Defaults inseguros**: `TelegramUser` defaultea `activo=1` y `estado='ACTIVO'` cuando el valor de BD es NULL → usuario nulo queda activo.
+- **UserContext.roles siempre vacío**: El campo existe pero ningún código lo popula. El agente nunca sabe el rol del usuario.
 
-1. Carga roles desde BD y los inyecta en `UserContext`
-2. Registra los tools del agente como operaciones en `Operaciones`
-3. Controla acceso a tools via `RolesOperaciones` (administrable desde BD)
-4. Unifica toda la lógica de permisos en `PermissionService`
-5. Elimina los stored procedures del flujo principal (mantener como fallback)
+### Importantes
+- **N+1 queries sin cache**: Cada check de permiso ejecuta 4-5 queries al SP sin ningún caching.
+- **Lógica dispersa**: Checks de autenticación duplicados en middleware, handlers y service.
+- **Magic strings hardcodeados**: `'/ia'`, `'ACTIVO'`, `'EXITOSO'`, `'DENEGADO'` en 5+ archivos.
+- **God Repository**: `UserRepository` tiene 30+ métodos mezclando queries, mutaciones y lógica de negocio.
+- **Gerencias no integradas**: El modelo organizacional (Gerencias, Direcciones) existe en BD pero no se usa para permisos.
 
----
-
-## Estado Actual (Legacy)
-
-### Lo que funciona bien
-- Esquema de BD sólido: `Roles`, `Operaciones`, `RolesOperaciones`, `UsuariosOperaciones`
-- Jerarquía: permisos de usuario sobreescriben los de rol
-- `UsuariosOperaciones.fechaExpiracion` para permisos temporales
-- `LogOperaciones` como audit trail completo
-
-### Problemas a corregir
-- `sp_VerificarPermisoOperacion` hace 3-4 queries sin cache → lento
-- `UserContext.roles` siempre vacío — los agentes no saben el rol del usuario
-- Tools del agente (`database_query`, `calculate`, etc.) no están en `Operaciones` → sin control
-- Lógica de permisos dispersa en handlers con hard-coded strings (`'/ia'`)
-- `UserService` abre sesión DB en cada check sin pool ni cache
+### Deuda técnica
 - Stored procedures difíciles de testear
+- Sin audit trail para cambios de permisos
+- Convención de nombres inconsistente (camelCase en BD, snake_case en Python, mezclados)
+- `RolesIA` y `GerenciasRolesIA` son un sistema paralelo nunca integrado al flujo principal
 
 ---
 
-## Fase 1: Diagnóstico y BD
+## Decisiones de Diseño
 
-**Objetivo**: Extender el esquema existente para soportar tools del agente
-**Dependencias**: Ninguna
+### Lo que se CONSERVA
+- Concepto RBAC con overrides por usuario ✅
+- Soft-delete (`activo = 0`) en todas las tablas ✅
+- `LogOperaciones` como audit trail de ejecuciones ✅
+- Agrupación de operaciones por módulo ✅
+- Soporte multi-cuenta Telegram por usuario ✅
 
-### Tareas
+### Lo que se REESCRIBE
+- Sistema de roles unificado (eliminar `RolesIA` separado)
+- Lógica de permisos en Python con cache (eliminar SPs del flujo principal)
+- Jerarquía de resolución: usuario > rol > gerencia > dirección > público
+- Catálogos de entidades y recursos administrables desde BD
+- Capa de dominio con responsabilidades separadas
 
-- [ ] **Registrar tools del agente en tabla `Operaciones`**
-  - Agregar un módulo "Agente IA" en `Modulos`
-  - Insertar operaciones: `tool:database_query`, `tool:calculate`, `tool:knowledge_search`, `tool:save_preference`, `tool:save_memory`, `tool:datetime`
-  - Convención de nombre: prefijo `tool:` para distinguir de comandos `/comando`
-
-- [ ] **Configurar permisos default en `RolesOperaciones`**
-  - Administrador (1): todos los tools permitidos
-  - Gerente (2): todos los tools permitidos
-  - Supervisor (3): todos los tools permitidos
-  - Coordinador (7): database_query, calculate, knowledge_search
-  - Especialista (8): database_query, calculate, knowledge_search
-  - Analista (4): database_query, calculate, knowledge_search
-  - Usuario (5): knowledge_search, calculate
-  - Consulta (6): knowledge_search únicamente
-
-- [ ] **Script SQL de migración**
-  - Archivo: `database/migrations/10_AgentToolsPermisos.sql`
-  - Idempotente (puede ejecutarse múltiples veces sin errores)
-
-### Entregables
-- [ ] Tools registrados en `Operaciones`
-- [ ] Permisos default configurados por rol
-- [ ] Script de migración documentado
+### Lo que se AGREGA
+- Soporte de Gerencias y Direcciones en permisos
+- `tipoResolucion` por tipo de entidad (definitivo vs permisivo)
+- Audit trail para cambios de permisos (`PermisosAudit`)
+- Tools del agente como recursos controlables desde BD
 
 ---
 
-## Fase 2: Capa de Dominio Nueva
+## Nuevo Esquema de BD
 
-**Objetivo**: Reemplazar los stored procedures con Python limpio y testeable
+### Catálogo de tipos de entidad
+
+```sql
+BotTipoEntidad
+  idTipoEntidad    INT IDENTITY PK
+  nombre           VARCHAR(50) UNIQUE NOT NULL   -- 'usuario', 'rol', 'gerencia', 'direccion', 'publico'
+  prioridad        TINYINT UNIQUE NOT NULL        -- 1=más alta, mayor número=menor prioridad
+  tipoResolucion   VARCHAR(20) NOT NULL           -- 'definitivo' | 'permisivo'
+  descripcion      VARCHAR(255) NULL
+  activo           BIT DEFAULT 1
+  fechaCreacion    DATETIME DEFAULT GETDATE()
+```
+
+Datos iniciales:
+| nombre | prioridad | tipoResolucion | descripcion |
+|--------|-----------|----------------|-------------|
+| usuario | 1 | definitivo | Override individual, pisa todo |
+| rol | 2 | permisivo | Rol base del usuario |
+| gerencia | 3 | permisivo | Gerencia(s) del usuario |
+| direccion | 4 | permisivo | Dirección del usuario (via gerencias) |
+| publico | 99 | permisivo | Sin autenticación requerida |
+
+> **Regla de resolución**: Si `tipoResolucion='definitivo'` y existe una entrada → es la respuesta final.
+> Si `tipoResolucion='permisivo'` → si ALGUNA entrada permite, se permite (más permisivo gana).
+
+---
+
+### Catálogo de recursos
+
+```sql
+BotRecurso
+  idRecurso        INT IDENTITY PK
+  recurso          VARCHAR(100) UNIQUE NOT NULL   -- 'tool:database_query', 'cmd:/ia'
+  tipoRecurso      VARCHAR(20) NOT NULL           -- 'tool' | 'cmd'
+  esPublico        BIT DEFAULT 0                  -- shortcut: skip check si true
+  descripcion      VARCHAR(255) NULL
+  activo           BIT DEFAULT 1
+  fechaCreacion    DATETIME DEFAULT GETDATE()
+```
+
+Recursos iniciales (tools del agente):
+| recurso | tipoRecurso | descripcion |
+|---------|-------------|-------------|
+| tool:database_query | tool | Consultas SQL a la BD |
+| tool:calculate | tool | Cálculos matemáticos |
+| tool:knowledge_search | tool | Búsqueda en base de conocimiento |
+| tool:save_preference | tool | Guardar preferencias del usuario |
+| tool:save_memory | tool | Guardar notas de sesión |
+| tool:datetime | tool | Consultar fecha y hora |
+| cmd:/ia | cmd | Comando principal del agente |
+| cmd:/start | cmd | Inicio del bot (público) |
+| cmd:/help | cmd | Ayuda (público) |
+| cmd:/costo | cmd | Ver costos (admin) |
+
+---
+
+### Tabla principal de permisos
+
+```sql
+BotPermisos
+  idPermiso            INT IDENTITY PK
+  idTipoEntidad        INT NOT NULL FK → BotTipoEntidad
+  idEntidad            INT NOT NULL               -- ID del usuario/rol/gerencia según tipo
+  idRecurso            INT NOT NULL FK → BotRecurso
+  permitido            BIT NOT NULL DEFAULT 1
+  fechaExpiracion      DATETIME NULL              -- NULL = permanente
+  activo               BIT DEFAULT 1
+  descripcion          VARCHAR(255) NULL
+  fechaCreacion        DATETIME DEFAULT GETDATE()
+  usuarioCreacion      VARCHAR(100) NULL
+  fechaModificacion    DATETIME NULL
+  usuarioModificacion  VARCHAR(100) NULL
+
+  UNIQUE (idTipoEntidad, idEntidad, idRecurso)
+  INDEX IX_BotPermisos_lookup (idTipoEntidad, idEntidad, idRecurso) -- para resolución rápida
+```
+
+---
+
+### Audit trail de cambios de permisos
+
+```sql
+BotPermisosAudit
+  idAudit              BIGINT IDENTITY PK
+  idPermiso            INT NOT NULL               -- FK a BotPermisos (sin CASCADE)
+  accion               VARCHAR(20) NOT NULL       -- 'INSERT' | 'UPDATE' | 'DELETE'
+  valorAnterior        NVARCHAR(MAX) NULL         -- JSON del estado anterior
+  valorNuevo           NVARCHAR(MAX) NULL         -- JSON del estado nuevo
+  usuario              VARCHAR(100) NOT NULL
+  fechaAccion          DATETIME DEFAULT GETDATE()
+  ip                   VARCHAR(50) NULL
+```
+
+> Poblado via trigger en `BotPermisos` para capturar cualquier cambio, incluyendo los hechos directamente en BD.
+
+---
+
+## Jerarquía de Resolución
+
+```
+Request: usuario X quiere ejecutar recurso Y
+
+1. ¿esPublico=1 en BotRecurso? → PERMITIDO (sin consultar permisos)
+
+2. Cargar todas las filas de BotPermisos donde:
+   - (tipoEntidad='usuario'   AND idEntidad = idUsuario)
+   - (tipoEntidad='rol'       AND idEntidad = idRol del usuario)
+   - (tipoEntidad='gerencia'  AND idEntidad IN gerencias del usuario)
+   - (tipoEntidad='direccion' AND idEntidad IN direcciones del usuario)
+   - recurso = Y
+   - activo = 1
+   - fechaExpiracion IS NULL OR fechaExpiracion > NOW()
+
+3. Aplicar resolución por tipoResolucion:
+   a. Buscar entradas 'definitivo' (usuario) → si existe, es la respuesta final
+   b. Entre entradas 'permisivo' → si ALGUNA tiene permitido=1, PERMITIDO
+   c. Sin ninguna fila → DENEGADO (default deny)
+```
+
+---
+
+## Permisos por Defecto (datos iniciales `BotPermisos`)
+
+| Rol | Recurso | Permitido |
+|-----|---------|-----------|
+| Administrador (1) | tool:* | ✅ todos |
+| Gerente (2) | tool:* | ✅ todos |
+| Supervisor (3) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| Coordinador (7) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| Especialista (8) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| Analista (4) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| Usuario (5) | tool:knowledge_search, tool:calculate | ✅ |
+| Consulta (6) | tool:knowledge_search | ✅ |
+| Todos los roles | tool:save_preference, tool:save_memory, tool:datetime | ✅ |
+
+---
+
+## Fases de Implementación
+
+---
+
+### Fase 1: Nuevo Esquema BD
+
+**Objetivo**: Crear las nuevas tablas y poblar datos iniciales
+**Dependencias**: Ninguna — las tablas legacy siguen funcionando en paralelo
+
+#### Tareas
+
+- [ ] **Script SQL: crear `BotTipoEntidad`, `BotRecurso`, `BotPermisos`, `BotPermisosAudit`**
+  - Archivo: `database/migrations/10_BotPermisos.sql`
+  - Incluir índices y unique constraints
+  - Idempotente (IF NOT EXISTS)
+
+- [ ] **Script SQL: insertar datos iniciales**
+  - Archivo: `database/migrations/11_BotPermisos_DatosIniciales.sql`
+  - TipoEntidades, Recursos (tools + cmds), permisos por rol
+
+- [ ] **Script SQL: trigger de audit**
+  - Archivo: `database/migrations/12_BotPermisos_Audit.sql`
+  - Trigger AFTER INSERT/UPDATE/DELETE en `BotPermisos`
+
+- [ ] **Verificar en staging antes de prod**
+
+#### Entregables
+- [ ] 4 tablas nuevas creadas
+- [ ] Datos iniciales por rol configurados
+- [ ] Trigger de audit activo
+
+---
+
+### Fase 2: Capa de Dominio Nueva
+
+**Objetivo**: Python limpio que reemplaza los stored procedures
 **Dependencias**: Fase 1
 
-### Tareas
+#### Tareas
 
 - [ ] **Crear `PermissionRepository`**
   - Archivo: `src/domain/auth/permission_repository.py`
-  - `get_user_permissions(user_id) -> dict[str, bool]` — carga todos los permisos del usuario de una sola query (JOIN RolesOperaciones + UsuariosOperaciones)
-  - `get_role_id(user_id) -> int` — obtiene el idRol del usuario
+  - `get_all_permissions(user_id, role_id, gerencia_ids, direccion_ids) -> list[dict]`
+  - Una sola query con todos los JOINs necesarios
 
 - [ ] **Crear `PermissionService`**
   - Archivo: `src/domain/auth/permission_service.py`
-  - `can(user_id, operation) -> bool` — check principal
-  - `get_user_role(user_id) -> str` — retorna nombre del rol
-  - Cache en memoria con TTL de 60s (evita query en cada tool call)
-  - Invalida cache cuando se modifica `UsuariosOperaciones`
+  - `can(user_id, recurso) -> bool` — método principal
+  - Cache LRU con TTL de 60s por usuario
+  - `invalidate(user_id)` — para forzar recarga tras cambio en BD
+  - Lee `tipoResolucion` de BD (no hardcodeado)
 
-- [ ] **Deprecar stored procedures del flujo principal**
-  - `sp_VerificarPermisoOperacion` → reemplazado por `PermissionService.can()`
-  - `sp_ObtenerOperacionesUsuario` → reemplazado por `PermissionRepository.get_user_permissions()`
-  - Mantener SPs en BD pero no llamarlos desde código nuevo
+- [ ] **Crear enums para magic strings**
+  - Archivo: `src/domain/auth/constants.py`
+  - `AccountState`, `OperationResult`, `EntityType`, `ResolutionType`
+
+- [ ] **Separar `UserRepository` en 3**
+  - `UserQueryRepository`: get_user_by_chat_id, get_user_by_id
+  - `TelegramAccountRepository`: registro, verificación, bloqueo
+  - `PermissionRepository`: consultas de permisos (ya definido arriba)
 
 - [ ] **Tests de `PermissionService`**
   - Archivo: `tests/domain/test_permission_service.py`
-  - Test: permisos de rol base
-  - Test: override de usuario sobreescribe rol
-  - Test: permiso temporal expirado se deniega
+  - Test: rol permite → OK
+  - Test: usuario deniega sobre rol que permite → DENEGADO
+  - Test: gerencia permite, rol no tiene regla → OK (permisivo)
+  - Test: permiso expirado → DENEGADO
+  - Test: recurso público → siempre OK
+  - Test: sin ninguna regla → DENEGADO (default deny)
   - Test: cache hit no hace query a BD
 
-### Entregables
-- [ ] `PermissionRepository` con tests
+#### Entregables
 - [ ] `PermissionService` con cache y tests
-- [ ] SPs como fallback (no eliminados)
+- [ ] 3 repositories con responsabilidades separadas
+- [ ] Enums reemplazando magic strings
 
 ---
 
-## Fase 3: Cargar Roles en UserContext
+### Fase 3: UserContext con Roles y Gerencias
 
-**Objetivo**: Que el agente sepa el rol del usuario en cada request
+**Objetivo**: Que cada request cargue el contexto organizacional completo del usuario
 **Dependencias**: Fase 2
 
-### Tareas
+#### Tareas
 
-- [ ] **Agregar `role_name` y `role_id` a `UserProfile`**
+- [ ] **Agregar campos a `UserProfile`**
   - Archivo: `src/domain/memory/memory_entity.py`
-  - Campos: `role_id: Optional[int]`, `role_name: Optional[str]`
+  - `role_id: Optional[int]`
+  - `role_name: Optional[str]`
+  - `gerencia_ids: list[int]`
+  - `direccion_ids: list[int]`
 
 - [ ] **Actualizar `MemoryRepository.get_profile()`**
-  - Agregar JOIN con `Usuarios` y `Roles` para traer `idRol` y `rolNombre`
+  - Agregar JOIN con `Usuarios`, `Roles`, `GerenciasUsuarios`, `Gerencias`
+  - Una sola query que trae todo
   - Archivo: `src/domain/memory/memory_repository.py`
 
-- [ ] **Poblar `UserContext.roles`**
-  - En `MemoryService.build_context()`: `roles=[profile.role_name]` si existe
+- [ ] **Poblar `UserContext` completo**
+  - `roles = [profile.role_name]`
+  - `role_id = profile.role_id`
+  - `gerencia_ids = profile.gerencia_ids`
+  - `direccion_ids = profile.direccion_ids`
   - Archivo: `src/domain/memory/memory_service.py`
 
-- [ ] **Verificar que el rol aparece en el prompt**
-  - `to_prompt_context()` ya incluye roles en `<memory type="user">`
-  - El agente verá: `Roles: Gerente`
+- [ ] **Verificar prompt con rol visible**
+  - `<memory type="user">` debe mostrar rol y gerencia
+  - El agente adapta respuestas según el contexto organizacional
 
-### Entregables
-- [ ] `UserContext.roles` poblado en cada request
-- [ ] Rol visible en el bloque `<memory type="user">` del prompt
+#### Entregables
+- [ ] `UserContext` con contexto organizacional completo
+- [ ] Rol y gerencia visibles en el prompt del agente
 
 ---
 
-## Fase 4: Permisos en Tools del Agente
+### Fase 4: Permisos en Tools del Agente
 
-**Objetivo**: Que cada tool verifique permisos antes de ejecutarse
+**Objetivo**: Cada tool verifica permisos antes de ejecutarse
 **Dependencias**: Fases 2 y 3
 
-### Tareas
+#### Tareas
 
-- [ ] **Agregar `permission_service` al `ToolRegistry`**
+- [ ] **Inyectar `PermissionService` en `ToolRegistry`**
   - Archivo: `src/agents/tools/registry.py`
-  - El registry recibe `PermissionService` al construirse
+  - `ToolRegistry.__init__` recibe `permission_service: Optional[PermissionService]`
 
-- [ ] **Verificar permiso en `ToolRegistry.execute_tool()`**
-  - Antes de llamar `tool.execute()`: `permission_service.can(user_id, f"tool:{tool_name}")`
-  - Si no tiene permiso: retornar `ToolResult.error_result("No tienes permiso para usar esta herramienta")`
-  - El agente recibe el error como observation y lo comunica al usuario
+- [ ] **Check de permiso en `ToolRegistry` antes de ejecutar**
+  - Si `permission_service` disponible: verificar `can(user_id, f"tool:{tool_name}")`
+  - Si deniega: retornar `ToolResult.error_result("No tenés permiso para usar esta herramienta")`
+  - Log del intento denegado
 
-- [ ] **Inyectar `user_id` en el contexto de ejecución**
-  - Ya se inyecta `user_context` en kwargs — usar `user_context.user_id`
+- [ ] **Wiring en factory**
+  - `create_tool_registry()` recibe y pasa `permission_service`
+  - Archivo: `src/pipeline/factory.py`
 
 - [ ] **Tests de permisos en tools**
-  - Test: tool bloqueado retorna error observation
-  - Test: tool permitido se ejecuta normalmente
-  - Test: usuario sin rol configurado deniega por defecto
+  - Test: tool bloqueado retorna observation de error
+  - Test: tool permitido ejecuta normalmente
+  - Test: sin `permission_service` → ejecuta sin restricciones (backward compat)
 
-### Entregables
-- [ ] Tools con verificación de permisos
-- [ ] Error claro al usuario cuando no tiene acceso
-- [ ] Tests pasando
+#### Entregables
+- [ ] Tools con control de acceso desde BD
+- [ ] Mensaje claro al usuario cuando no tiene acceso
 
 ---
 
-## Fase 5: Migrar Middleware y Handlers
+### Fase 5: Migrar Middleware y Handlers
 
-**Objetivo**: Reemplazar los checks legacy en handlers con el nuevo `PermissionService`
+**Objetivo**: Reemplazar lógica legacy con el nuevo `PermissionService`
 **Dependencias**: Fase 2
 
-### Tareas
+#### Tareas
 
 - [ ] **Refactorizar `AuthMiddleware`**
-  - Reemplazar llamada a SP por `PermissionService.can(user_id, comando)`
-  - Archivo: `src/bot/middleware/auth_middleware.py`
-  - Eliminar el hard-coded `'/ia'` en `query_handlers.py`
-
-- [ ] **Refactorizar decorador `@require_permission`**
-  - Usar `PermissionService` en lugar de `UserService.check_permission()`
+  - Reemplazar llamadas a SP por `PermissionService.can(user_id, comando)`
+  - Usar enums en lugar de magic strings
   - Archivo: `src/bot/middleware/auth_middleware.py`
 
-- [ ] **Cargar `telegram_user` con rol en middleware**
-  - Al autenticar, guardar `role_name` en `context.user_data`
-  - Evitar segunda query en handlers que necesitan el rol
+- [ ] **Eliminar check duplicado en `query_handlers.py`**
+  - El check de permiso en el handler es redundante si el middleware ya lo hace
+  - Limpiar: una sola capa de autorización
+  - Archivo: `src/bot/handlers/query_handlers.py`
 
-- [ ] **Limpiar `UserService`**
-  - Mover lógica de permisos a `PermissionService`
-  - `UserService` queda solo para gestión de usuarios (registro, verificación, bloqueo)
+- [ ] **Fix defaults inseguros en `TelegramUser`**
+  - `activo` default → `False` (no `True`)
+  - `estado` default → `'BLOQUEADO'` (no `'ACTIVO'`)
+  - Archivo: `src/domain/auth/user_entity.py`
 
-### Entregables
-- [ ] Middleware usando nuevo `PermissionService`
-- [ ] Sin strings hard-coded de comandos en handlers
-- [ ] `UserService` con responsabilidad única
+- [ ] **Unificar `UserService`**
+  - Remover métodos de permisos (ahora en `PermissionService`)
+  - `UserService` queda solo para: registro, verificación, bloqueo
+  - Archivo: `src/domain/auth/user_service.py`
+
+#### Entregables
+- [ ] Un solo punto de autorización (middleware)
+- [ ] Sin magic strings en handlers
+- [ ] Defaults seguros en entidades
 
 ---
 
-## Fase 6: Tests y Cleanup
+### Fase 6: Tests y Cleanup
 
 **Objetivo**: Cobertura completa y eliminación de código muerto
 **Dependencias**: Todas las anteriores
 
-### Tareas
-
-- [ ] **Tests de integración del flujo completo**
-  - Request Telegram → middleware → handler → agente → tool → permiso verificado
-  - Archivo: `tests/integration/test_permission_flow.py`
+#### Tareas
 
 - [ ] **Actualizar tests existentes**
-  - `tests/domain/test_user_service.py` — adaptar a nueva estructura
-  - `tests/auth/test_auth_middleware.py` — usar nuevo `PermissionService`
+  - `tests/domain/test_user_service.py`
+  - `tests/auth/test_auth_middleware.py`
 
-- [ ] **Eliminar código dead**
-  - Calls directas a SPs desde Python
-  - Lógica de permisos duplicada en handlers
+- [ ] **Test de integración del flujo completo**
+  - Archivo: `tests/integration/test_permission_flow.py`
+  - Flujo: request → middleware → permiso verificado → tool ejecutado
+
+- [ ] **Eliminar stored procedures del flujo Python**
+  - Remover todas las llamadas a `sp_VerificarPermisoOperacion` y `sp_ObtenerOperacionesUsuario`
+  - Los SPs se quedan en BD como documentación/fallback pero no se llaman
 
 - [ ] **Documentar el nuevo sistema**
+  - Cómo agregar un nuevo permiso desde BD
+  - Cómo agregar una nueva entidad (ej: equipo)
   - Actualizar `.claude/context/DATABASE.md`
-  - README de cómo agregar un nuevo permiso desde BD
 
-### Entregables
+#### Entregables
 - [ ] Suite de tests completa
-- [ ] Zero llamadas a SPs de permisos desde Python
+- [ ] Sin llamadas a SPs de permisos desde Python
 - [ ] Documentación actualizada
 
 ---
@@ -247,19 +419,21 @@ por una capa de dominio limpia que:
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
-| Cache desactualizado tras cambio en BD | Media | Medio | TTL de 60s + invalidación manual via comando admin |
-| Tool nuevo no registrado en Operaciones → denegado por default | Alta | Bajo | Log explícito cuando se deniega un tool no configurado |
-| Migración rompe permisos existentes de comandos | Media | Alto | Ejecutar en staging, verificar todos los roles antes de prod |
-| Usuario sin rol asignado en Usuarios | Baja | Medio | Default a rol "Consulta" (más restrictivo) |
+| Cache desactualizado tras cambio en BD | Media | Medio | TTL de 60s + comando `/recargar_permisos` para admins |
+| Tool nuevo sin configurar en BotRecurso | Alta | Bajo | Log WARNING explícito + default deny con mensaje claro |
+| Migración rompe auth existente | Media | Alto | Fases paralelas — legacy sigue funcionando hasta Fase 5 |
+| Usuario sin rol asignado | Baja | Medio | Default a rol "Consulta" (más restrictivo) + log |
+| Orphan rows en BotPermisos tras borrar rol/gerencia | Media | Bajo | Trigger o job nocturno de limpieza |
 
 ---
 
 ## Criterios de Éxito
 
-- [ ] `UserContext.roles` poblado en el 100% de los requests
-- [ ] Todos los tools del agente verifican permisos antes de ejecutarse
-- [ ] Un admin puede cambiar permisos desde BD sin reiniciar el bot (cache se invalida en ≤60s)
-- [ ] Zero llamadas a `sp_VerificarPermisoOperacion` desde el flujo del agente
+- [ ] `UserContext` tiene rol, gerencias y direcciones en el 100% de los requests
+- [ ] Todos los tools verifican permisos antes de ejecutarse
+- [ ] Admin puede cambiar permiso en BD → efecto en ≤60s (TTL cache)
+- [ ] Explicit deny de usuario siempre pisa permisos de rol/gerencia
+- [ ] Sin llamadas a `sp_VerificarPermisoOperacion` desde código Python
 - [ ] Tests cubren los 8 roles con sus permisos esperados
 
 ---
@@ -268,4 +442,5 @@ por una capa de dominio limpia que:
 
 | Fecha | Cambio | Autor |
 |-------|--------|-------|
-| 2026-04-01 | Creación del plan tras análisis del sistema legacy | Roque98 |
+| 2026-04-01 | Creación del plan — análisis completo del sistema legacy | Roque98 |
+| 2026-04-01 | Rediseño completo con catálogos, audit trail y resolución configurable | Roque98 |
