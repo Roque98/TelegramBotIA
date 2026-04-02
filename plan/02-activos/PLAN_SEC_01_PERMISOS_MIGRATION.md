@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/42 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/44 tareas)
 
 ---
 
@@ -146,8 +146,13 @@ BotPermisos
   fechaModificacion    DATETIME NULL
   usuarioModificacion  VARCHAR(100) NULL
 
-  UNIQUE (idTipoEntidad, idEntidad, idRecurso, idRolRequerido)
-  INDEX IX_BotPermisos_lookup (idTipoEntidad, idEntidad, idRecurso)
+  -- idRolRequerido es nullable: no usar UNIQUE directo (NULL != NULL en SQL Server)
+  -- En su lugar, índice único filtrado para filas con rol + índice único filtrado para NULL
+  INDEX UX_BotPermisos_conRol    (idTipoEntidad, idEntidad, idRecurso, idRolRequerido)
+    WHERE idRolRequerido IS NOT NULL
+  INDEX UX_BotPermisos_sinRol    (idTipoEntidad, idEntidad, idRecurso)
+    WHERE idRolRequerido IS NULL
+  INDEX IX_BotPermisos_lookup    (idTipoEntidad, idEntidad, idRecurso)
 ```
 
 ---
@@ -243,12 +248,20 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Archivo: `database/migrations/12_BotPermisos_Audit.sql`
   - Trigger AFTER INSERT/UPDATE/DELETE en `BotPermisos`
 
+- [ ] **Script de verificación pre-migración**
+  - Archivo: `database/migrations/09_PreMigracionCheck.sql`
+  - Query: contar usuarios sin `idRol` asignado en `Usuarios`
+  - Query: contar usuarios activos sin gerencia asignada
+  - Si hay usuarios sin rol → asignarles rol "Consulta" (más restrictivo) antes de correr los datos iniciales
+  - Objetivo: garantizar que ningún usuario activo quede con `DENEGADO` en todo por falta de datos
+
 - [ ] **Verificar en staging antes de prod**
 
 #### Entregables
 - [ ] 4 tablas nuevas creadas
 - [ ] Datos iniciales por rol configurados
 - [ ] Trigger de audit activo
+- [ ] 0 usuarios activos sin rol asignado al momento de la migración
 
 ---
 
@@ -297,6 +310,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Archivo: `src/pipeline/factory.py`
   - Recibe `db_manager`, crea `PermissionRepository` y `PermissionService`
   - Llamado en `create_main_handler()` antes de crear `MemoryService`
+  - Pasado también a `create_tool_registry()` para que `ReloadPermissionsTool` pueda llamar `invalidate()`
 
 #### Entregables
 - [ ] `PermissionService` con cache TTL y métodos de invalidación con tests
@@ -336,11 +350,11 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `MemoryService.__init__` recibe `permission_service: PermissionService`
   - Archivo: `src/domain/memory/memory_service.py`
 
-- [ ] **Cargar `permisos` al inicio de cada request**
+- [ ] **Cargar `permisos` al inicio de cada request (siempre frescos)**
   - Campo: `permisos: dict[str, bool]` — clave = nombre del recurso, valor = permitido
   - Ejemplo: `{"tool:database_query": True, "tool:calculate": True, "tool:knowledge_search": False}`
-  - Llamar `permission_service.get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids)` en `get_or_create_context()`
-  - `permisos` se recarga en cada request (respeta TTL de `PermissionService`) — no se hereda de la sesión anterior
+  - **Importante**: `MemoryService` cachea `UserContext` con TTL 300s, pero `permisos` NO debe venir del cache del contexto. En `get_or_create_context()`, siempre llamar `permission_service.get_all_for_user()` al final y setear `context.permisos` antes de retornar, aunque el resto del contexto venga de cache.
+  - Esto garantiza que el TTL de `PermissionService` (60s) se respeta independientemente del cache de `MemoryService` (300s).
   - Archivo: `src/domain/memory/memory_service.py`
 
 - [ ] **Verificar prompt con rol y capacidades visibles**
@@ -409,7 +423,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 #### Tareas
 
 - [ ] **Refactorizar `AuthMiddleware`**
-  - Reemplazar llamadas a SP por `PermissionService.can(user_id, comando)`
+  - El middleware corre antes de que `UserContext` esté cargado, pero necesita `role_id` y `gerencia_ids` para resolver permisos de comando
+  - Estrategia: `AuthMiddleware` inyecta `PermissionService` + `UserQueryRepository`. Antes del check, hace una query liviana para obtener `(user_id, role_id, gerencia_ids)` del usuario — query simple sin cargar historial ni memoria
+  - Reemplazar llamadas a SP por `PermissionService.can(user_id, recurso, role_id, gerencia_ids, direccion_ids)`
   - Usar enums en lugar de magic strings
   - Archivo: `src/bot/middleware/auth_middleware.py`
 
@@ -548,3 +564,4 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-02 | Cache TTL 60s + /recargar_permisos (cualquier usuario) + tool reload_permissions (agente) | Roque98 |
 | 2026-04-02 | Fase 6: agregar DROP de tablas y SPs legacy como tareas explícitas | Roque98 |
 | 2026-04-02 | Revisión completa: corregir inconsistencias 'publico', completar BotRecurso/BotPermisos iniciales, agregar wiring PermissionService→MemoryService, JOINs de direcciones, ciclo de vida de permisos | Roque98 |
+| 2026-04-02 | Segunda revisión: fix UNIQUE nullable en BotPermisos, wiring ReloadPermissionsTool, permisos siempre frescos fuera del cache de MemoryService, AuthMiddleware con query liviana, verificación pre-migración | Roque98 |
