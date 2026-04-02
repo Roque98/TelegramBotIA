@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/30 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/35 tareas)
 
 ---
 
@@ -261,9 +261,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 - [ ] **Crear `PermissionService`**
   - Archivo: `src/domain/auth/permission_service.py`
-  - `can(user_id, recurso) -> bool` — método principal
-  - Cache LRU con TTL de 60s por usuario
-  - `invalidate(user_id)` — para forzar recarga tras cambio en BD
+  - `can(user_id, recurso, context) -> bool` — método principal
+  - `get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids) -> dict[str, bool]`
+  - **Sin cache** — permisos consultados en cada request para reflejo inmediato de cambios en BD
   - Lee `tipoResolucion` de BD (no hardcodeado)
 
 - [ ] **Crear enums para magic strings**
@@ -283,10 +283,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Test: permiso expirado → DENEGADO
   - Test: recurso público → siempre OK
   - Test: sin ninguna regla → DENEGADO (default deny)
-  - Test: cache hit no hace query a BD
 
 #### Entregables
-- [ ] `PermissionService` con cache y tests
+- [ ] `PermissionService` sin cache (efecto inmediato) con tests
 - [ ] 3 repositories con responsabilidades separadas
 - [ ] Enums reemplazando magic strings
 
@@ -416,12 +415,12 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 ---
 
-### Fase 6: Tests y Cleanup
+### Fase 6: Tests, Cleanup y Eliminación de Objetos Legacy
 
-**Objetivo**: Cobertura completa y eliminación de código muerto
+**Objetivo**: Cobertura completa, eliminación de código muerto y drop de objetos BD que ya no se usan
 **Dependencias**: Todas las anteriores
 
-#### Tareas
+#### Tareas — Tests
 
 - [ ] **Actualizar tests existentes**
   - `tests/domain/test_user_service.py`
@@ -429,20 +428,50 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 - [ ] **Test de integración del flujo completo**
   - Archivo: `tests/integration/test_permission_flow.py`
-  - Flujo: request → middleware → permiso verificado → tool ejecutado
+  - Flujo: request → middleware → permiso cargado en UserContext → tool filtrada → ejecutada
 
-- [ ] **Eliminar stored procedures del flujo Python**
+#### Tareas — Cleanup Python
+
+- [ ] **Eliminar llamadas a stored procedures desde Python**
   - Remover todas las llamadas a `sp_VerificarPermisoOperacion` y `sp_ObtenerOperacionesUsuario`
-  - Los SPs se quedan en BD como documentación/fallback pero no se llaman
+  - Remover importaciones y referencias en: `auth_middleware.py`, `user_service.py`, `query_handlers.py`
+
+- [ ] **Eliminar tablas legacy del código Python**
+  - Remover accesos directos a `RolesOperaciones`, `OperacionesIA`, `PerfilOperacion` desde el nuevo flujo
+  - Verificar que ningún repositorio nuevo las referencie
+
+#### Tareas — Eliminación de Objetos BD
+
+> **Estrategia**: primero verificar que nadie más los consume (logs, reportes, otros sistemas), luego dropear en staging, luego en prod.
+
+- [ ] **Script: DROP stored procedures de permisos**
+  - Archivo: `database/migrations/20_DropLegacyPermisosSPs.sql`
+  - SPs a eliminar: `sp_VerificarPermisoOperacion`, `sp_ObtenerOperacionesUsuario`, y dependientes
+  - Idempotente (`IF OBJECT_ID(...) IS NOT NULL DROP PROCEDURE ...`)
+
+- [ ] **Script: DROP tablas legacy de permisos**
+  - Archivo: `database/migrations/21_DropLegacyPermisosTablas.sql`
+  - Tablas a evaluar para drop: `RolesOperaciones`, `OperacionesIA`, `PerfilOperacion`, `RolesIA`, `GerenciasRolesIA`
+  - **Verificar antes de dropear**: que no tengan FK activas hacia otras tablas usadas
+  - Mover data histórica relevante a tabla de archivo antes del drop si aplica
+
+- [ ] **Verificar integridad tras cleanup**
+  - Correr suite de tests completa post-drop
+  - Verificar que `LogOperaciones` siga funcionando (no depende de las tablas dropeadas)
+  - Confirmar en staging antes de prod
+
+#### Tareas — Documentación
 
 - [ ] **Documentar el nuevo sistema**
-  - Cómo agregar un nuevo permiso desde BD
-  - Cómo agregar una nueva entidad (ej: equipo)
+  - Cómo agregar un nuevo permiso desde BD (INSERT en `BotPermisos`)
+  - Cómo agregar una nueva entidad organizacional (ej: equipo)
   - Actualizar `.claude/context/DATABASE.md`
 
 #### Entregables
-- [ ] Suite de tests completa
+- [ ] Suite de tests completa con integración
 - [ ] Sin llamadas a SPs de permisos desde Python
+- [ ] Scripts de drop versionados y ejecutados
+- [ ] Tablas legacy eliminadas de BD
 - [ ] Documentación actualizada
 
 ---
@@ -451,21 +480,23 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
-| Cache desactualizado tras cambio en BD | Media | Medio | TTL de 60s + comando `/recargar_permisos` para admins |
+| Query de permisos agrega latencia por request | Media | Bajo | Una sola query con JOINs optimizados + índice `IX_BotPermisos_lookup`. Monitorear en staging. |
 | Tool nuevo sin configurar en BotRecurso | Alta | Bajo | Log WARNING explícito + default deny con mensaje claro |
 | Migración rompe auth existente | Media | Alto | Fases paralelas — legacy sigue funcionando hasta Fase 5 |
 | Usuario sin rol asignado | Baja | Medio | Default a rol "Consulta" (más restrictivo) + log |
+| Drop de tabla legacy rompe otro sistema | Media | Alto | Verificar FK activas y consumidores externos antes de cada DROP |
 | Orphan rows en BotPermisos tras borrar rol/gerencia | Media | Bajo | Trigger o job nocturno de limpieza |
 
 ---
 
 ## Criterios de Éxito
 
-- [ ] `UserContext` tiene rol, gerencias y direcciones en el 100% de los requests
-- [ ] Todos los tools verifican permisos antes de ejecutarse
-- [ ] Admin puede cambiar permiso en BD → efecto en ≤60s (TTL cache)
+- [ ] `UserContext` tiene rol, gerencias y permisos en el 100% de los requests
+- [ ] Cambio de permiso en BD → efecto **inmediato** en el siguiente request (sin cache)
+- [ ] Todos los tools filtran su disponibilidad según `UserContext.permisos`
 - [ ] Explicit deny de usuario siempre pisa permisos de rol/gerencia
 - [ ] Sin llamadas a `sp_VerificarPermisoOperacion` desde código Python
+- [ ] Tablas y SPs legacy dropeados y verificados en staging
 - [ ] Tests cubren los 8 roles con sus permisos esperados
 
 ---
@@ -480,3 +511,5 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-02 | Eliminar entidad 'publico' — reemplazada por esPublico en BotRecurso | Roque98 |
 | 2026-04-02 | Agregar permisos proactivos: UserContext.permisos + filtro en ToolRegistry + capacidades en prompt | Roque98 |
 | 2026-04-02 | Scopes de tools diferidos a plan futuro | Roque98 |
+| 2026-04-02 | Sin cache en permisos — consulta por request para efecto inmediato | Roque98 |
+| 2026-04-02 | Fase 6: agregar DROP de tablas y SPs legacy como tareas explícitas | Roque98 |
