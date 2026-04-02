@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/35 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/37 tareas)
 
 ---
 
@@ -263,7 +263,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Archivo: `src/domain/auth/permission_service.py`
   - `can(user_id, recurso, context) -> bool` — método principal
   - `get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids) -> dict[str, bool]`
-  - **Sin cache** — permisos consultados en cada request para reflejo inmediato de cambios en BD
+  - Cache LRU con TTL de 60s por usuario
+  - `invalidate(user_id)` — forzar recarga inmediata para un usuario específico
+  - `invalidate_all()` — forzar recarga de todo el cache (para admins)
   - Lee `tipoResolucion` de BD (no hardcodeado)
 
 - [ ] **Crear enums para magic strings**
@@ -283,9 +285,11 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Test: permiso expirado → DENEGADO
   - Test: recurso público → siempre OK
   - Test: sin ninguna regla → DENEGADO (default deny)
+  - Test: cache hit no hace query a BD
+  - Test: `invalidate(user_id)` fuerza re-query en el siguiente acceso
 
 #### Entregables
-- [ ] `PermissionService` sin cache (efecto inmediato) con tests
+- [ ] `PermissionService` con cache TTL y métodos de invalidación con tests
 - [ ] 3 repositories con responsabilidades separadas
 - [ ] Enums reemplazando magic strings
 
@@ -408,10 +412,24 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `UserService` queda solo para: registro, verificación, bloqueo
   - Archivo: `src/domain/auth/user_service.py`
 
+- [ ] **Comando `/recargar_permisos` disponible para cualquier usuario**
+  - Llama `PermissionService.invalidate(user_id)` → vacía el cache solo del usuario que lo ejecuta
+  - Responde confirmación: "Tus permisos fueron recargados"
+  - No requiere ser admin — cada usuario recarga los suyos propios
+  - Archivo: `src/bot/handlers/command_handlers.py`
+
+- [ ] **Tool `reload_permissions` para el agente**
+  - El agente puede llamar esta tool cuando detecta que el usuario menciona problemas de acceso
+  - Llama `PermissionService.invalidate(user_id)` y recarga `UserContext.permisos` en el request actual
+  - Responde al usuario explicando qué cambió (qué tools están ahora disponibles)
+  - Archivo: `src/agents/tools/reload_permissions_tool.py`
+
 #### Entregables
 - [ ] Un solo punto de autorización (middleware)
 - [ ] Sin magic strings en handlers
 - [ ] Defaults seguros en entidades
+- [ ] Comando `/recargar_permisos` disponible para todos los usuarios
+- [ ] Tool `reload_permissions` registrada en el agente
 
 ---
 
@@ -480,7 +498,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
-| Query de permisos agrega latencia por request | Media | Bajo | Una sola query con JOINs optimizados + índice `IX_BotPermisos_lookup`. Monitorear en staging. |
+| Cache desactualizado tras cambio en BD | Media | Medio | TTL de 60s + comando `/recargar_permisos` para efecto inmediato |
 | Tool nuevo sin configurar en BotRecurso | Alta | Bajo | Log WARNING explícito + default deny con mensaje claro |
 | Migración rompe auth existente | Media | Alto | Fases paralelas — legacy sigue funcionando hasta Fase 5 |
 | Usuario sin rol asignado | Baja | Medio | Default a rol "Consulta" (más restrictivo) + log |
@@ -492,7 +510,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 ## Criterios de Éxito
 
 - [ ] `UserContext` tiene rol, gerencias y permisos en el 100% de los requests
-- [ ] Cambio de permiso en BD → efecto **inmediato** en el siguiente request (sin cache)
+- [ ] Admin puede cambiar permiso en BD → efecto en ≤60s (TTL) o inmediato con `/recargar_permisos`
 - [ ] Todos los tools filtran su disponibilidad según `UserContext.permisos`
 - [ ] Explicit deny de usuario siempre pisa permisos de rol/gerencia
 - [ ] Sin llamadas a `sp_VerificarPermisoOperacion` desde código Python
@@ -511,5 +529,5 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 | 2026-04-02 | Eliminar entidad 'publico' — reemplazada por esPublico en BotRecurso | Roque98 |
 | 2026-04-02 | Agregar permisos proactivos: UserContext.permisos + filtro en ToolRegistry + capacidades en prompt | Roque98 |
 | 2026-04-02 | Scopes de tools diferidos a plan futuro | Roque98 |
-| 2026-04-02 | Sin cache en permisos — consulta por request para efecto inmediato | Roque98 |
+| 2026-04-02 | Cache TTL 60s + /recargar_permisos (cualquier usuario) + tool reload_permissions (agente) | Roque98 |
 | 2026-04-02 | Fase 6: agregar DROP de tablas y SPs legacy como tareas explícitas | Roque98 |
