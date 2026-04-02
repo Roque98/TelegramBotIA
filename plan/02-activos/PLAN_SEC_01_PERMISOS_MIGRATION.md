@@ -250,10 +250,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 - [ ] **Script de verificación pre-migración**
   - Archivo: `database/migrations/09_PreMigracionCheck.sql`
-  - Query: contar usuarios sin `idRol` asignado en `Usuarios`
-  - Query: contar usuarios activos sin gerencia asignada
-  - Si hay usuarios sin rol → asignarles rol "Consulta" (más restrictivo) antes de correr los datos iniciales
-  - Objetivo: garantizar que ningún usuario activo quede con `DENEGADO` en todo por falta de datos
+  - Query: contar usuarios activos sin gerencia asignada (los sin gerencia solo tendrán permisos via `autenticado`)
+  - Query: verificar que todos los `idRol` en `Usuarios` tienen su fila correspondiente en los datos iniciales de `BotPermisos`
+  - Objetivo: confirmar que no hay roles en uso que no estén cubiertos por los datos iniciales
 
 - [ ] **Verificar en staging antes de prod**
 
@@ -261,7 +260,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 - [ ] 4 tablas nuevas creadas
 - [ ] Datos iniciales por rol configurados
 - [ ] Trigger de audit activo
-- [ ] 0 usuarios activos sin rol asignado al momento de la migración
+- [ ] Todos los roles en uso cubiertos por datos iniciales de `BotPermisos`
 
 ---
 
