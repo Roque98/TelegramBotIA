@@ -11,6 +11,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from src.agents.react.agent import ReActAgent
+from src.agents.orchestrator import AgentOrchestrator, IntentClassifier
 from src.agents.tools.registry import ToolRegistry
 from src.agents.tools.database_tool import DatabaseTool
 from src.agents.tools.knowledge_tool import KnowledgeTool
@@ -39,27 +40,13 @@ def create_tool_registry(
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
 ) -> ToolRegistry:
-    """
-    Crea y configura el registro de herramientas.
-
-    Args:
-        db_manager: Gestor de base de datos
-        knowledge_manager: Gestor de conocimiento
-
-    Returns:
-        ToolRegistry configurado
-    """
-    # Resetear singleton para tests
+    """Crea y configura el registro de herramientas."""
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    # Usar KnowledgeService proporcionado (ya debe venir con db_manager)
-    km = knowledge_manager
-
-    # Registrar herramientas
     registry.register(DatabaseTool(db_manager=db_manager))
-    if km is not None:
-        registry.register(KnowledgeTool(knowledge_manager=km))
+    if knowledge_manager is not None:
+        registry.register(KnowledgeTool(knowledge_manager=knowledge_manager))
     else:
         logger.warning("KnowledgeTool not registered: no KnowledgeService available")
     registry.register(CalculateTool())
@@ -68,7 +55,6 @@ def create_tool_registry(
     registry.register(SaveMemoryTool(memory_service=memory_service))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")
-
     return registry
 
 
@@ -78,44 +64,60 @@ def create_react_agent(
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
 ) -> ReActAgent:
-    """
-    Crea el agente ReAct con sus dependencias.
-
-    Args:
-        llm_provider: Proveedor de LLM
-        db_manager: Gestor de base de datos
-        knowledge_manager: Gestor de conocimiento
-        memory_service: Servicio de memoria (para SaveMemoryTool)
-
-    Returns:
-        ReActAgent configurado
-    """
+    """Crea el agente ReAct con sus dependencias."""
     tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service)
-
     agent = ReActAgent(
         llm=llm_provider,
         tool_registry=tool_registry,
         max_iterations=10,
         temperature=0.1,
     )
-
-    logger.info("ReActAgent created")
-
+    logger.info(f"ReActAgent created (model={llm_provider.model})")
     return agent
+
+
+def create_orchestrator(
+    db_manager: Optional[Any] = None,
+    knowledge_manager: Optional[Any] = None,
+    memory_service: Optional[Any] = None,
+) -> AgentOrchestrator:
+    """
+    Crea el orquestador con sus tres proveedores LLM.
+
+    - IntentClassifier usa gpt-5.4-nano (barato, solo clasifica)
+    - CasualAgent usa gpt-5.4-mini (conversación casual, preferencias)
+    - DataAgent usa gpt-5.4 (queries SQL complejas, síntesis de datos)
+    """
+    if not settings.openai_api_key:
+        raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
+
+    intent_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_intent_model)
+    casual_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_casual_model)
+    data_llm   = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+
+    intent_classifier = IntentClassifier(llm=intent_llm)
+    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service)
+    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service)
+
+    orchestrator = AgentOrchestrator(
+        casual_agent=casual_agent,
+        data_agent=data_agent,
+        intent_classifier=intent_classifier,
+    )
+
+    logger.info(
+        f"AgentOrchestrator created: "
+        f"intent={settings.openai_intent_model}, "
+        f"casual={settings.openai_casual_model}, "
+        f"data={settings.openai_data_model}"
+    )
+    return orchestrator
 
 
 def create_memory_service(
     db_manager: Optional[Any] = None,
 ) -> MemoryService:
-    """
-    Crea el servicio de memoria.
-
-    Args:
-        db_manager: Gestor de base de datos
-
-    Returns:
-        MemoryService configurado
-    """
+    """Crea el servicio de memoria."""
     repository = MemoryRepository(db_manager=db_manager)
     service = MemoryService(
         repository=repository,
@@ -123,22 +125,12 @@ def create_memory_service(
         max_cache_size=1000,
         max_working_memory=10,
     )
-
     logger.info("MemoryService created")
-
     return service
 
 
 def create_llm_provider() -> OpenAIProvider:
-    """
-    Crea el proveedor de LLM según la configuración.
-
-    Returns:
-        OpenAIProvider configurado
-
-    Raises:
-        ValueError: Si no hay API key configurada
-    """
+    """Crea el proveedor de LLM según la configuración (legacy — usar create_orchestrator)."""
     if not settings.openai_api_key:
         raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
     return OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_model)
@@ -147,19 +139,9 @@ def create_llm_provider() -> OpenAIProvider:
 def create_main_handler(
     db_manager: Optional[Any] = None,
 ) -> MainHandler:
-    """
-    Crea el handler principal con todas sus dependencias.
-
-    Args:
-        db_manager: Gestor de base de datos
-
-    Returns:
-        MainHandler configurado
-    """
+    """Crea el handler principal con todas sus dependencias."""
     from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
-
-    llm_provider = create_llm_provider()
 
     try:
         knowledge_manager = KnowledgeService(db_manager=db)
@@ -172,8 +154,7 @@ def create_main_handler(
 
     memory_service = create_memory_service(db_manager=db)
 
-    react_agent = create_react_agent(
-        llm_provider=llm_provider,
+    orchestrator = create_orchestrator(
         db_manager=db,
         knowledge_manager=knowledge_manager,
         memory_service=memory_service,
@@ -181,29 +162,23 @@ def create_main_handler(
 
     obs_repo = ObservabilityRepository(db_manager=db)
 
-    # Cablear SQL log handler con el repositorio (a partir de aquí WARNING/ERROR van a SQL)
     sql_handler = get_sql_handler()
     if sql_handler:
         sql_handler.set_repository(obs_repo)
         logger.info("SqlLogHandler wired to ObservabilityRepository")
 
     handler = MainHandler(
-        react_agent=react_agent,
+        react_agent=orchestrator,
         memory_service=memory_service,
         observability_repo=obs_repo,
     )
 
-    logger.info("MainHandler created with ReActAgent + ObservabilityRepository")
-
+    logger.info("MainHandler created with AgentOrchestrator + ObservabilityRepository")
     return handler
 
 
 class HandlerManager:
-    """
-    Gestor singleton para el MainHandler.
-
-    Permite acceder al handler desde cualquier parte de la aplicación.
-    """
+    """Gestor singleton para el MainHandler."""
 
     _instance: Optional["HandlerManager"] = None
     _handler: Optional[MainHandler] = None
@@ -217,15 +192,6 @@ class HandlerManager:
         self,
         db_manager: Optional[Any] = None,
     ) -> MainHandler:
-        """
-        Inicializa el handler.
-
-        Args:
-            db_manager: Gestor de base de datos
-
-        Returns:
-            MainHandler inicializado
-        """
         if self._handler is None:
             self._handler = create_main_handler(db_manager)
             logger.info("HandlerManager initialized")
@@ -233,16 +199,13 @@ class HandlerManager:
 
     @property
     def handler(self) -> Optional[MainHandler]:
-        """Retorna el handler actual."""
         return self._handler
 
     def is_initialized(self) -> bool:
-        """Verifica si el handler está inicializado."""
         return self._handler is not None
 
     @classmethod
     def reset(cls) -> None:
-        """Resetea el singleton (para tests)."""
         cls._instance = None
         cls._handler = None
 
