@@ -54,7 +54,7 @@
 ### Lo que se REESCRIBE
 - Sistema de roles unificado (eliminar `RolesIA` separado)
 - Lógica de permisos en Python con cache (eliminar SPs del flujo principal)
-- Jerarquía de resolución: usuario > rol > gerencia > dirección > público
+- Jerarquía de resolución: usuario > autenticado > gerencia > dirección > público
 - Catálogos de entidades y recursos administrables desde BD
 - Capa de dominio con responsabilidades separadas
 
@@ -73,7 +73,7 @@
 ```sql
 BotTipoEntidad
   idTipoEntidad    INT IDENTITY PK
-  nombre           VARCHAR(50) UNIQUE NOT NULL   -- 'usuario', 'rol', 'gerencia', 'direccion', 'publico'
+  nombre           VARCHAR(50) UNIQUE NOT NULL   -- 'usuario', 'autenticado', 'gerencia', 'direccion', 'publico'
   prioridad        TINYINT UNIQUE NOT NULL        -- 1=más alta, mayor número=menor prioridad
   tipoResolucion   VARCHAR(20) NOT NULL           -- 'definitivo' | 'permisivo'
   descripcion      VARCHAR(255) NULL
@@ -85,13 +85,14 @@ Datos iniciales:
 | nombre | prioridad | tipoResolucion | descripcion |
 |--------|-----------|----------------|-------------|
 | usuario | 1 | definitivo | Override individual, pisa todo |
-| rol | 2 | permisivo | Rol base del usuario |
-| gerencia | 3 | permisivo | Gerencia(s) del usuario |
-| direccion | 4 | permisivo | Dirección del usuario (via gerencias) |
-| publico | 99 | permisivo | Sin autenticación requerida |
+| autenticado | 2 | permisivo | Cualquier usuario autenticado, filtrable por rol via idRolRequerido |
+| gerencia | 3 | permisivo | Gerencia(s) del usuario, filtrable por rol via idRolRequerido |
+| direccion | 4 | permisivo | Dirección del usuario, filtrable por rol via idRolRequerido |
+| publico | 99 | permisivo | Sin autenticación requerida, idRolRequerido no aplica |
 
 > **Regla de resolución**: Si `tipoResolucion='definitivo'` y existe una entrada → es la respuesta final.
 > Si `tipoResolucion='permisivo'` → si ALGUNA entrada permite, se permite (más permisivo gana).
+> `idRolRequerido`: aplica a `autenticado`, `gerencia` y `direccion`. No aplica a `usuario` ni `publico`.
 
 ---
 
@@ -130,8 +131,9 @@ Recursos iniciales (tools del agente):
 BotPermisos
   idPermiso            INT IDENTITY PK
   idTipoEntidad        INT NOT NULL FK → BotTipoEntidad
-  idEntidad            INT NOT NULL               -- ID del usuario/rol/gerencia según tipo
+  idEntidad            INT NOT NULL               -- ID del usuario/gerencia/direccion según tipo. 0 para autenticado/publico
   idRecurso            INT NOT NULL FK → BotRecurso
+  idRolRequerido       INT NULL FK → Roles        -- NULL=cualquier rol. Aplica a autenticado/gerencia/direccion
   permitido            BIT NOT NULL DEFAULT 1
   fechaExpiracion      DATETIME NULL              -- NULL = permanente
   activo               BIT DEFAULT 1
@@ -141,8 +143,8 @@ BotPermisos
   fechaModificacion    DATETIME NULL
   usuarioModificacion  VARCHAR(100) NULL
 
-  UNIQUE (idTipoEntidad, idEntidad, idRecurso)
-  INDEX IX_BotPermisos_lookup (idTipoEntidad, idEntidad, idRecurso) -- para resolución rápida
+  UNIQUE (idTipoEntidad, idEntidad, idRecurso, idRolRequerido)
+  INDEX IX_BotPermisos_lookup (idTipoEntidad, idEntidad, idRecurso)
 ```
 
 ---
@@ -173,11 +175,14 @@ Request: usuario X quiere ejecutar recurso Y
 1. ¿esPublico=1 en BotRecurso? → PERMITIDO (sin consultar permisos)
 
 2. Cargar todas las filas de BotPermisos donde:
-   - (tipoEntidad='usuario'   AND idEntidad = idUsuario)
-   - (tipoEntidad='rol'       AND idEntidad = idRol del usuario)
-   - (tipoEntidad='gerencia'  AND idEntidad IN gerencias del usuario)
-   - (tipoEntidad='direccion' AND idEntidad IN direcciones del usuario)
-   - recurso = Y
+   - (tipoEntidad='usuario'      AND idEntidad = idUsuario)
+   - (tipoEntidad='autenticado'  AND (idRolRequerido IS NULL OR idRolRequerido = idRol))
+   - (tipoEntidad='gerencia'     AND idEntidad IN gerencias del usuario
+                                 AND (idRolRequerido IS NULL OR idRolRequerido = idRol))
+   - (tipoEntidad='direccion'    AND idEntidad IN direcciones del usuario
+                                 AND (idRolRequerido IS NULL OR idRolRequerido = idRol))
+   - (tipoEntidad='publico')
+   - idRecurso = Y
    - activo = 1
    - fechaExpiracion IS NULL OR fechaExpiracion > NOW()
 
@@ -191,17 +196,20 @@ Request: usuario X quiere ejecutar recurso Y
 
 ## Permisos por Defecto (datos iniciales `BotPermisos`)
 
-| Rol | Recurso | Permitido |
-|-----|---------|-----------|
-| Administrador (1) | tool:* | ✅ todos |
-| Gerente (2) | tool:* | ✅ todos |
-| Supervisor (3) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
-| Coordinador (7) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
-| Especialista (8) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
-| Analista (4) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
-| Usuario (5) | tool:knowledge_search, tool:calculate | ✅ |
-| Consulta (6) | tool:knowledge_search | ✅ |
-| Todos los roles | tool:save_preference, tool:save_memory, tool:datetime | ✅ |
+Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
+
+| tipoEntidad | idRolRequerido | Recurso | Permitido |
+|-------------|----------------|---------|-----------|
+| autenticado | 1 (Administrador) | tool:* | ✅ todos |
+| autenticado | 2 (Gerente) | tool:* | ✅ todos |
+| autenticado | 3 (Supervisor) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| autenticado | 7 (Coordinador) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| autenticado | 8 (Especialista) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| autenticado | 4 (Analista) | tool:database_query, tool:calculate, tool:knowledge_search | ✅ |
+| autenticado | 5 (Usuario) | tool:knowledge_search, tool:calculate | ✅ |
+| autenticado | 6 (Consulta) | tool:knowledge_search | ✅ |
+| autenticado | NULL (todos) | tool:save_preference, tool:save_memory, tool:datetime | ✅ |
+| publico | NULL | cmd:/start, cmd:/help | ✅ |
 
 ---
 
@@ -444,3 +452,4 @@ Request: usuario X quiere ejecutar recurso Y
 |-------|--------|-------|
 | 2026-04-01 | Creación del plan — análisis completo del sistema legacy | Roque98 |
 | 2026-04-01 | Rediseño completo con catálogos, audit trail y resolución configurable | Roque98 |
+| 2026-04-02 | Diseño final: entidad 'autenticado' + idRolRequerido en gerencia/direccion | Roque98 |
