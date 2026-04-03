@@ -11,11 +11,11 @@
 | Fase 1: Nuevo Esquema BD | ██████████ 100% | ✅ Completada |
 | Fase 2: Capa de Dominio | ██████████ 100% | ✅ Completada |
 | Fase 3: UserContext con Roles y Gerencias | ██████████ 100% | ✅ Completada |
-| Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 4: Permisos en Tools del Agente | ██████████ 100% | ✅ Completada |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: █████░░░░░ 48% (22/46 tareas)
+**Progreso Total**: ███████░░░ 65% (30/46 tareas)
 
 ---
 
@@ -376,42 +376,34 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 #### Tareas
 
-- [ ] **Filtrar tools en `ToolRegistry.get_tools_prompt()`**
+- [x] **Filtrar tools en `ToolRegistry.get_tools_prompt()`**
   - Recibe `user_context: Optional[UserContext]` como parámetro
-  - Si `user_context.permisos` está cargado: solo incluir tools donde `permisos.get(f"tool:{name}", False) == True`
-  - Si no hay contexto de permisos: incluir todas (backward compat)
-  - El agente solo "ve" las tools a las que tiene acceso → no puede invocar lo que no aparece en el prompt
-  - Archivo: `src/agents/tools/registry.py`
+  - Si `user_context.permisos` está cargado: solo incluir tools con `permisos.get("tool:<name>", False)`
+  - Si no hay permisos cargados: incluye todas (backward compat)
+  - Archivo: `src/agents/tools/registry.py` — Commit: `c0435b1`
 
-- [ ] **Check de permiso en `ToolRegistry` al ejecutar** (segunda línea de defensa)
-  - Verificar `user_context.permisos.get(f"tool:{tool_name}", False)` antes de ejecutar
-  - Si deniega: retornar `ToolResult.error_result("No tenés permiso para usar esta herramienta")`
-  - Log del intento denegado (para detectar prompt injection o bypass)
-  - Archivo: `src/agents/tools/registry.py`
+- [x] **`ToolRegistry.execute()` — segunda línea de defensa**
+  - Verifica `user_context.permisos` antes de ejecutar
+  - Si deniega: retorna `ToolResult(success=False, error="No tenés permiso...")` + log WARNING
+  - Archivo: `src/agents/tools/registry.py` — Commit: `c0435b1`
 
-- [ ] **Inyectar capacidades disponibles en `<memory type="user">`**
-  - `UserContext.to_prompt_context()` agrega bloque "Capacidades disponibles:"
-  - Lista las tools permitidas en lenguaje natural (e.g. "Consultas a base de datos, Cálculos matemáticos")
-  - El agente puede responder proactivamente "Puedo ayudarte con X, Y, Z"
-  - Archivo: `src/agents/base/events.py`
+- [x] **Capacidades disponibles en `<memory type="user">`**
+  - `UserContext.to_prompt_context()` agrega "Capacidades disponibles: ..."
+  - Archivo: `src/agents/base/events.py` — Commit: `7f33817` (Fase 3)
 
-- [ ] **Wiring en factory**
-  - `create_tool_registry()` ya no recibe `permission_service` — los permisos viven en `UserContext`
-  - `ToolRegistry.execute()` y `get_tools_prompt()` reciben `user_context` que ya trae los permisos precargados
-  - Archivo: `src/pipeline/factory.py`
+- [x] **Wiring en agent.py**
+  - `get_tools_prompt(user_context=context)` y `registry.execute(user_context=context)`
+  - Archivo: `src/agents/react/agent.py` — Commit: `c0435b1`
 
-- [ ] **Tests de permisos en tools**
-  - Test: tool ausente en `permisos` no aparece en `get_tools_prompt()`
-  - Test: tool denegada en ejecución retorna observation de error
-  - Test: tool permitida ejecuta normalmente
-  - Test: sin `permisos` en `user_context` → incluye todas (backward compat)
+- [x] **Tests de permisos en tools** (9 tests, todos pasando)
+  - Archivo: `tests/agents/test_tool_permissions.py` — Commit: `c0435b1`
 
 > **Nota — Scopes de tools (futuro)**: Control más granular de permisos dentro de una tool (ej: solo ciertas tablas de SQL, solo ciertos módulos de conocimiento) está **diferido a un plan separado**. En esta fase, el permiso es binario por tool.
 
 #### Entregables
-- [ ] Tools filtradas en prompt según `UserContext.permisos`
-- [ ] Segunda verificación en ejecución como defensa en profundidad
-- [ ] Agente responde proactivamente sobre sus capacidades disponibles
+- [x] Tools filtradas en prompt según `UserContext.permisos`
+- [x] Segunda verificación en ejecución como defensa en profundidad
+- [x] Agente responde proactivamente sobre sus capacidades disponibles
 
 ---
 
