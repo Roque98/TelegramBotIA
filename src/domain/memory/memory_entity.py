@@ -30,6 +30,12 @@ class UserProfile:
     interaction_count: int = 0
     last_updated: Optional[datetime] = None
     preferences: dict[str, Any] = field(default_factory=dict)
+    # Contexto organizacional (SEC-01)
+    db_user_id: Optional[int] = None
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    gerencia_ids: list[int] = field(default_factory=list)
+    direccion_ids: list[int] = field(default_factory=list)
 
     def has_summary(self) -> bool:
         return self.long_term_summary is not None and len(self.long_term_summary) > 0

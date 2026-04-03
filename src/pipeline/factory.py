@@ -129,11 +129,13 @@ def create_permission_service(
 
 def create_memory_service(
     db_manager: Optional[Any] = None,
+    permission_service: Optional[Any] = None,
 ) -> MemoryService:
     """Crea el servicio de memoria."""
     repository = MemoryRepository(db_manager=db_manager)
     service = MemoryService(
         repository=repository,
+        permission_service=permission_service,
         cache_ttl_seconds=300,
         max_cache_size=1000,
         max_working_memory=10,
@@ -166,7 +168,7 @@ def create_main_handler(
         knowledge_manager = None
 
     permission_service = create_permission_service(db_manager=db)
-    memory_service = create_memory_service(db_manager=db)
+    memory_service = create_memory_service(db_manager=db, permission_service=permission_service)
 
     orchestrator = create_orchestrator(
         db_manager=db,

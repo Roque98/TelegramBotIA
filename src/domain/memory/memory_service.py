@@ -32,11 +32,13 @@ class MemoryService:
     def __init__(
         self,
         repository: Optional[MemoryRepository] = None,
+        permission_service: Optional[Any] = None,
         cache_ttl_seconds: int = 300,
         max_cache_size: int = 1000,
         max_working_memory: int = 10,
     ):
         self.repository = repository or MemoryRepository()
+        self._permission_service = permission_service
         self.cache_ttl_seconds = cache_ttl_seconds
         self.max_cache_size = max_cache_size
         self.max_working_memory = max_working_memory
@@ -72,6 +74,10 @@ class MemoryService:
             preferences=profile.preferences if profile else {},
             working_memory=working_memory,
             long_term_summary=(profile.long_term_summary if profile and include_long_term else None),
+            db_user_id=profile.db_user_id if profile else None,
+            role_id=profile.role_id if profile else None,
+            gerencia_ids=profile.gerencia_ids if profile else [],
+            direccion_ids=profile.direccion_ids if profile else [],
         )
 
     async def build_minimal_context(self, user_id: str) -> UserContext:
@@ -126,23 +132,40 @@ class MemoryService:
             cached = self._get_from_cache(cache_key)
             if cached:
                 logger.debug(f"Cache hit for user {user_id}")
-                return cached
+                context = cached
+            else:
+                context = None
+        else:
+            context = None
 
-        logger.debug(f"Cache miss for user {user_id}, building context")
-        context = await self.build_context(
-            user_id=user_id,
-            include_working_memory=include_working_memory,
-            include_long_term=include_long_term,
-        )
+        if context is None:
+            logger.debug(f"Cache miss for user {user_id}, building context")
+            context = await self.build_context(
+                user_id=user_id,
+                include_working_memory=include_working_memory,
+                include_long_term=include_long_term,
+            )
+            logger.debug(
+                f"Context built for {user_id}: "
+                f"name={context.display_name}, "
+                f"working_memory={len(context.working_memory)} msgs, "
+                f"has_summary={context.long_term_summary is not None}"
+            )
+            await self._add_to_cache(cache_key, context)
 
-        logger.debug(
-            f"Context built for {user_id}: "
-            f"name={context.display_name}, "
-            f"working_memory={len(context.working_memory)} msgs, "
-            f"has_summary={context.long_term_summary is not None}"
-        )
+        # Permisos siempre frescos — TTL propio de 60s en PermissionService,
+        # independiente del cache de contexto (300s).
+        if self._permission_service and context.db_user_id and context.role_id is not None:
+            try:
+                context.permisos = await self._permission_service.get_all_for_user(
+                    user_id=context.db_user_id,
+                    role_id=context.role_id,
+                    gerencia_ids=context.gerencia_ids,
+                    direccion_ids=context.direccion_ids,
+                )
+            except Exception as e:
+                logger.warning(f"Error cargando permisos para user {user_id}: {e}")
 
-        await self._add_to_cache(cache_key, context)
         return context
 
     async def get_minimal_context(self, user_id: str) -> UserContext:
