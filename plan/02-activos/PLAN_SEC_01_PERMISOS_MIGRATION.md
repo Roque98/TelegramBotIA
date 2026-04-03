@@ -1,7 +1,7 @@
 # Plan: SEC-01 — Rediseño Completo del Sistema de Permisos
 
-> **Estado**: ⚪ No iniciado
-> **Última actualización**: 2026-04-01
+> **Estado**: 🟡 En progreso
+> **Última actualización**: 2026-04-03
 > **Rama Git**: `feature/sec-01-permisos`
 
 ## Resumen de Progreso
@@ -10,12 +10,12 @@
 |------|----------|--------|
 | Fase 1: Nuevo Esquema BD | ██████████ 100% | ✅ Completada |
 | Fase 2: Capa de Dominio | ██████████ 100% | ✅ Completada |
-| Fase 3: UserContext con Roles y Gerencias | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 3: UserContext con Roles y Gerencias | ██████████ 100% | ✅ Completada |
 | Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ███░░░░░░░ 26% (12/46 tareas)
+**Progreso Total**: █████░░░░░ 48% (22/46 tareas)
 
 ---
 
@@ -330,45 +330,42 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 #### Tareas
 
-- [ ] **Agregar campos a `UserProfile`**
+- [x] **Agregar campos a `UserProfile`**
   - Archivo: `src/domain/memory/memory_entity.py`
-  - `role_id: Optional[int]`
-  - `role_name: Optional[str]`
-  - `gerencia_ids: list[int]`
-  - `direccion_ids: list[int]`
+  - `db_user_id`, `role_id`, `role_name`, `gerencia_ids`, `direccion_ids`
+  - Commit: `7f33817`
 
-- [ ] **Actualizar `MemoryRepository.get_profile()`**
-  - Agregar JOINs con `Usuarios`, `Roles`, `GerenciasUsuarios`, `Gerencias`, `DireccionesUsuarios`, `Direcciones`
-  - Una sola query que trae todo
+- [x] **Actualizar `MemoryRepository.get_profile()`**
+  - JOINs con `Roles`, `GerenciasUsuarios`, `DireccionesUsuarios` en una sola query
   - Archivo: `src/domain/memory/memory_repository.py`
+  - Commit: `7f33817`
 
-- [ ] **Poblar `UserContext` completo**
-  - `roles = [profile.role_name]`
-  - `role_id = profile.role_id`
-  - `gerencia_ids = profile.gerencia_ids`
-  - `direccion_ids = profile.direccion_ids`
+- [x] **Poblar `UserContext` completo**
+  - `db_user_id`, `role_id`, `gerencia_ids`, `direccion_ids` desde el perfil
   - Archivo: `src/domain/memory/memory_service.py`
+  - Commit: `7f33817`
 
-- [ ] **Inyectar `PermissionService` en `MemoryService`**
-  - `MemoryService.__init__` recibe `permission_service: PermissionService`
+- [x] **Inyectar `PermissionService` en `MemoryService`**
+  - `MemoryService.__init__` recibe `permission_service: Optional[Any]`
   - Archivo: `src/domain/memory/memory_service.py`
+  - Commit: `7f33817`
 
-- [ ] **Cargar `permisos` al inicio de cada request (siempre frescos)**
-  - Campo: `permisos: dict[str, bool]` — clave = nombre del recurso, valor = permitido
-  - Ejemplo: `{"tool:database_query": True, "tool:calculate": True, "tool:knowledge_search": False}`
-  - **Importante**: `MemoryService` cachea `UserContext` con TTL 300s, pero `permisos` NO debe venir del cache del contexto. En `get_or_create_context()`, siempre llamar `permission_service.get_all_for_user()` al final y setear `context.permisos` antes de retornar, aunque el resto del contexto venga de cache.
-  - Esto garantiza que el TTL de `PermissionService` (60s) se respeta independientemente del cache de `MemoryService` (300s).
+- [x] **Cargar `permisos` al inicio de cada request (siempre frescos)**
+  - `get_context()` llama `permission_service.get_all_for_user()` siempre al final
+  - TTL 60s de PermissionService independiente del cache de MemoryService (300s)
   - Archivo: `src/domain/memory/memory_service.py`
+  - Commit: `7f33817`
 
-- [ ] **Verificar prompt con rol y capacidades visibles**
-  - `<memory type="user">` debe mostrar rol, gerencia y lista de capacidades disponibles
-  - El agente adapta respuestas según el contexto organizacional (comportamiento proactivo)
+- [x] **Capacidades visibles en el prompt del agente**
+  - `to_prompt_context()` muestra "Capacidades disponibles: ..." con tools permitidas
+  - Archivo: `src/agents/base/events.py`
+  - Commit: `7f33817`
 
 #### Entregables
-- [ ] `UserContext` con contexto organizacional completo (rol, gerencias, direcciones)
-- [ ] `PermissionService` inyectado en `MemoryService`
-- [ ] `permisos` cargados (con TTL) al inicio de cada request
-- [ ] Rol, gerencia y capacidades visibles en el prompt del agente
+- [x] `UserContext` con contexto organizacional completo (rol, gerencias, direcciones)
+- [x] `PermissionService` inyectado en `MemoryService`
+- [x] `permisos` cargados (con TTL) al inicio de cada request
+- [x] Rol, gerencia y capacidades visibles en el prompt del agente
 
 ---
 
