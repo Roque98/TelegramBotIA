@@ -20,6 +20,7 @@ from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agents.tools.save_memory_tool import SaveMemoryTool
 from src.agents.tools.reload_permissions_tool import ReloadPermissionsTool
+from src.agents.tools.read_attachment_tool import ReadAttachmentTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
@@ -44,6 +45,7 @@ def create_tool_registry(
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
     permission_service: Optional[Any] = None,
+    bot_token: Optional[str] = None,
 ) -> ToolRegistry:
     """Crea y configura el registro de herramientas."""
     ToolRegistry.reset()
@@ -59,6 +61,9 @@ def create_tool_registry(
     registry.register(SavePreferenceTool(db_manager=db_manager, memory_service=memory_service))
     registry.register(SaveMemoryTool(memory_service=memory_service))
     registry.register(ReloadPermissionsTool(permission_service=permission_service))
+    token = bot_token or settings.telegram_bot_token
+    if token:
+        registry.register(ReadAttachmentTool(bot_token=token))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")
     return registry
@@ -70,9 +75,10 @@ def create_react_agent(
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
     permission_service: Optional[Any] = None,
+    bot_token: Optional[str] = None,
 ) -> ReActAgent:
     """Crea el agente ReAct con sus dependencias."""
-    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service, permission_service)
+    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service, permission_service, bot_token)
     agent = ReActAgent(
         llm=llm_provider,
         tool_registry=tool_registry,
@@ -104,8 +110,8 @@ def create_orchestrator(
     data_llm   = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
 
     intent_classifier = IntentClassifier(llm=intent_llm)
-    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service, permission_service)
-    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service, permission_service)
+    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service, permission_service, settings.telegram_bot_token)
+    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service, permission_service, settings.telegram_bot_token)
 
     orchestrator = AgentOrchestrator(
         casual_agent=casual_agent,

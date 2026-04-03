@@ -40,6 +40,19 @@ class StatusMessage:
         >>> await status.complete("¡Listo!")
     """
 
+    # Mensajes específicos por herramienta para set_tool_active()
+    _TOOL_MESSAGES: dict[str, str] = {
+        "database_query": "🗄️ Consultando base de datos...",
+        "knowledge_search": "📚 Buscando en el conocimiento...",
+        "calculate": "🔢 Calculando...",
+        "datetime": "📅 Consultando fecha y hora...",
+        "get_preferences": "👤 Revisando preferencias...",
+        "save_preferences": "💾 Guardando preferencias...",
+        "save_memory": "🧠 Guardando en memoria...",
+        "reload_permissions": "🔐 Recargando permisos...",
+        "read_attachment": "📎 Leyendo archivo adjunto...",
+    }
+
     # Mensajes de progreso con personalidad de Amber
     PROCESSING_MESSAGES = [
         "🔄 Analizando tu consulta...",
@@ -65,7 +78,8 @@ class StatusMessage:
         update: Update,
         initial_message: str = "🔄 Procesando tu solicitud...",
         show_elapsed_time: bool = True,
-        auto_update_interval: float = 6.0
+        auto_update_interval: float = 6.0,
+        background_threshold: float = 15.0,
     ):
         """
         Inicializar gestor de mensajes de estado.
@@ -80,12 +94,14 @@ class StatusMessage:
         self.initial_message = initial_message
         self.show_elapsed_time = show_elapsed_time
         self.auto_update_interval = auto_update_interval
+        self.background_threshold = background_threshold
 
         self._status_message: Optional[Message] = None
         self._start_time: float = 0
         self._is_started: bool = False
         self._message_index: int = 0
         self._auto_update_task: Optional[asyncio.Task] = None
+        self._background_task: Optional[asyncio.Task] = None
         self._used_messages: set = set()
 
     async def __aenter__(self):
@@ -127,6 +143,8 @@ class StatusMessage:
 
         # Iniciar tarea de actualización automática en background
         self._auto_update_task = asyncio.create_task(self._auto_update_loop())
+        # Iniciar tarea de aviso de background (si el proceso supera el umbral)
+        self._background_task = asyncio.create_task(self._background_warning())
 
     async def _auto_update_loop(self) -> None:
         """Loop de actualización automática en background."""
@@ -179,6 +197,39 @@ class StatusMessage:
             if "message is not modified" not in str(e).lower():
                 logger.debug(f"set_phase falló: {e}")
 
+    async def _background_warning(self) -> None:
+        """
+        Tarea en background que avisa al usuario si el procesamiento supera el umbral.
+
+        Envía un mensaje NUEVO (no edita el de estado) para no interferir
+        con set_phase(). Esto da al usuario feedback de que el bot sigue trabajando.
+        """
+        await asyncio.sleep(self.background_threshold)
+        if not self._is_started:
+            return
+        try:
+            await self.update.message.reply_text(
+                "⏳ _Sigo trabajando, esto está tomando más de lo esperado..._\n"
+                "_Un momento más, por favor._",
+                parse_mode="Markdown",
+            )
+            logger.debug(f"Background warning enviado después de {self.background_threshold:.0f}s")
+        except Exception as e:
+            logger.debug(f"Background warning falló (ignorado): {e}")
+
+    async def set_tool_active(self, tool_name: str) -> None:
+        """
+        Muestra el mensaje de progreso específico para una herramienta.
+
+        Atajo que busca el mensaje predefinido por nombre de tool y llama set_phase().
+        Útil cuando se llama una tool directamente sin pasar por agent_events.
+
+        Args:
+            tool_name: Nombre de la herramienta (ej. "database_query")
+        """
+        text = self._TOOL_MESSAGES.get(tool_name, f"🔧 Ejecutando {tool_name}...")
+        await self.set_phase(text)
+
     async def update_progress(self) -> None:
         """
         Actualizar mensaje al siguiente estado genérico.
@@ -220,13 +271,15 @@ class StatusMessage:
             logger.error("No hay mensaje de estado para completar")
             return
 
-        # Cancelar loop de auto-update
-        if self._auto_update_task and not self._auto_update_task.done():
-            self._auto_update_task.cancel()
-            try:
-                await self._auto_update_task
-            except asyncio.CancelledError:
-                pass
+        # Cancelar loop de auto-update y tarea de background
+        for task in (self._auto_update_task, self._background_task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        self._background_task = None
 
         # Calcular duración total
         total_duration = time.time() - self._start_time
@@ -305,13 +358,15 @@ class StatusMessage:
             logger.error("No hay mensaje de estado para marcar como error")
             return
 
-        # Cancelar loop de auto-update
-        if self._auto_update_task and not self._auto_update_task.done():
-            self._auto_update_task.cancel()
-            try:
-                await self._auto_update_task
-            except asyncio.CancelledError:
-                pass
+        # Cancelar loop de auto-update y tarea de background
+        for task in (self._auto_update_task, self._background_task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        self._background_task = None
 
         total_duration = time.time() - self._start_time
 

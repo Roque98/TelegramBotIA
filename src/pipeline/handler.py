@@ -102,6 +102,7 @@ class MainHandler:
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
         event_callback: Optional[Callable[[AgentEvent], Awaitable[None]]] = None,
+        session_notes: Optional[list[str]] = None,
     ) -> str:
         """
         Procesa un mensaje de Telegram.
@@ -133,7 +134,9 @@ class MainHandler:
                     tracer = None
 
             # 3. Procesar
-            response = await self._process_event(event, event_callback=event_callback)
+            response = await self._process_event(
+                event, event_callback=event_callback, session_notes=session_notes
+            )
 
             elapsed = (time.perf_counter() - start_time) * 1000
             logger.info(
@@ -215,6 +218,7 @@ class MainHandler:
         self,
         event: ConversationEvent,
         event_callback: Optional[Callable[[AgentEvent], Awaitable[None]]] = None,
+        session_notes: Optional[list[str]] = None,
     ) -> AgentResponse:
         """
         Procesa un evento normalizado midiendo cada etapa del pipeline.
@@ -229,6 +233,8 @@ class MainHandler:
 
         # 1. Obtener contexto del usuario
         user_context = await self.memory.get_context(event.user_id)
+        if session_notes:
+            user_context.session_notes.extend(session_notes)
         memory_ms = int((time.perf_counter() - t_start) * 1000)
 
         # 2. Ejecutar ReAct Agent

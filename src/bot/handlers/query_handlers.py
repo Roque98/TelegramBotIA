@@ -85,7 +85,12 @@ class QueryHandler:
 
         async with StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...") as status:
             try:
-                response = await self.main_handler.handle_telegram(update, context)
+                async def on_agent_event(event):
+                    await status.set_phase(event.status_text)
+
+                response = await self.main_handler.handle_telegram(
+                    update, context, event_callback=on_agent_event
+                )
                 await status.complete(response)
 
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -111,6 +116,84 @@ class QueryHandler:
                 raise
 
 
+    async def handle_document_message(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        """
+        Manejar documentos/archivos enviados por el usuario.
+
+        Obtiene los metadatos del archivo desde Telegram, los inyecta como
+        session_notes y delega al MainHandler igual que un mensaje de texto.
+        """
+        doc = update.message.document
+        if not doc:
+            return
+
+        user = update.effective_user
+        chat_id = user.id
+        telegram_user = context.user_data.get("telegram_user")
+
+        if not telegram_user:
+            db_manager = context.bot_data.get("db_manager")
+            if not db_manager:
+                await update.message.reply_text("❌ Error de configuración del sistema.")
+                return
+            from src.domain.auth.user_query_repository import UserQueryRepository
+            repo = UserQueryRepository(db_manager)
+            telegram_user = await repo.get_by_chat_id(chat_id)
+            if not telegram_user or not telegram_user.is_verified or not telegram_user.is_active:
+                await update.message.reply_text(
+                    "⚠️ No podés enviar archivos hasta tener la cuenta verificada y activa."
+                )
+                return
+            context.user_data["telegram_user"] = telegram_user
+
+        # Obtener metadatos del archivo desde Telegram
+        try:
+            tg_file = await context.bot.get_file(doc.file_id)
+        except Exception as e:
+            logger.error(f"Error obteniendo file info de Telegram: {e}")
+            await update.message.reply_text("❌ No pude acceder al archivo. Por favor, intenta de nuevo.")
+            return
+
+        name = doc.file_name or "archivo"
+        size_kb = (doc.file_size or 0) // 1024
+        file_path = tg_file.file_path
+        caption = update.message.caption or "Por favor analiza este archivo."
+
+        # Nota de sesión para que ReadAttachmentTool lo encuentre
+        session_notes = [
+            f"[ATTACHMENT:{doc.file_id}] name={name} size={size_kb}KB path={file_path}"
+        ]
+
+        # Texto sintético que verá el agente
+        update.message.text = (
+            f"[Archivo adjunto: {name} ({size_kb}KB) — ID: {doc.file_id}]\n{caption}"
+        )
+
+        logger.info(
+            f"Usuario {telegram_user.id_usuario}: archivo adjunto '{name}' ({size_kb}KB)"
+        )
+
+        async with StatusMessage(update, initial_message="📎 Procesando archivo adjunto...") as status:
+            try:
+                async def on_agent_event(event):
+                    await status.set_phase(event.status_text)
+
+                response = await self.main_handler.handle_telegram(
+                    update, context,
+                    event_callback=on_agent_event,
+                    session_notes=session_notes,
+                )
+                await status.complete(response)
+            except Exception as e:
+                logger.error(f"Error procesando archivo de usuario {telegram_user.id_usuario}: {e}", exc_info=True)
+                await status.error("Lo siento, ocurrió un error al procesar el archivo.")
+                raise
+
+
 def register_query_handlers(application: Application, main_handler: "MainHandler") -> None:
     """
     Registrar handler de queries en la aplicación.
@@ -127,5 +210,11 @@ def register_query_handlers(application: Application, main_handler: "MainHandler
             query_handler.handle_text_message
         )
     )
+    application.add_handler(
+        MessageHandler(
+            filters.Document.ALL,
+            query_handler.handle_document_message
+        )
+    )
 
-    logger.info("Query handlers registrados exitosamente")
+    logger.info("Query handlers registrados exitosamente (texto + documentos)")

@@ -14,9 +14,9 @@
 | Fase 4: Memory Scopes | ██████████ 100% | ✅ Completada |
 | Fase 5: Agent Archetypes | ██████████ 100% | ✅ Completada |
 | Fase 6: Hooks y Permisos | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 7: UX Avanzado | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 7: UX Avanzado | ██████████ 100% | ✅ Completada |
 
-**Progreso Total**: ███████░░░ 73% (22/30 tareas)
+**Progreso Total**: █████████░ 87% (26/30 tareas)
 
 ---
 
@@ -259,28 +259,33 @@ de costos y experiencia de usuario a corto plazo.
 
 ### Tareas
 
-- [ ] **Auto-backgrounding**
-  - Si el agente supera 15s, enviar "Sigo trabajando, esto toma más de lo esperado..."
-  - Continuar async y enviar resultado cuando termine
-  - Archivo: `src/pipeline/handler.py`
+- [x] **Auto-backgrounding**
+  - Si el agente supera 15s, enviar mensaje nuevo "Sigo trabajando..." (no edita el status)
+  - Task `_background_warning()` se cancela en `complete()` / `error()`
+  - Archivos: `src/utils/status_message.py`
 
-- [ ] **`verificationNudgeNeeded`**
-  - Si el agente completa 3+ tool calls sin ninguna verificación, agregar reminder
-  - "¿Verificaste el resultado?" en el siguiente mensaje del sistema
+- [x] **`verificationNudgeNeeded`**
+  - Tras 3+ pasos (tool calls), `build_continue_prompt()` agrega recordatorio interno
+  - "Ya has completado varios pasos. Si tienes suficiente info, usa 'finish'."
+  - Archivos: `src/agents/react/prompts.py`, `src/agents/react/agent.py`
 
-- [ ] **Soporte para archivos adjuntos de Telegram**
-  - Guardar documento externamente, inyectar `[Archivo: nombre.pdf, 42KB]` en contexto
-  - Tool `read_attachment(id)` para que el agente pida el contenido
-  - Archivo: `src/bot/handlers/message_handlers.py`
+- [x] **Soporte para archivos adjuntos de Telegram**
+  - Handler `handle_document_message` en `QueryHandler` (doc → session_notes + query sintético)
+  - `ReadAttachmentTool`: descarga desde API de Telegram por file_id, retorna texto o metadatos
+  - Archivos: `src/bot/handlers/query_handlers.py`, `src/agents/tools/read_attachment_tool.py`, `src/pipeline/factory.py`
 
-- [ ] **`activeForm` en StatusMessage**
-  - Cada tool tiene su propio mensaje de progreso (ej. "Consultando base de datos...")
-  - `StatusMessage.set_tool_active(tool_name)` muestra el mensaje del tool activo
+- [x] **`activeForm` en StatusMessage / `set_tool_active(tool_name)`**
+  - `_TOOL_MESSAGES` dict con mensajes específicos por tool
+  - `set_tool_active(tool_name)` busca en dict y llama `set_phase()`
+  - Archivo: `src/utils/status_message.py`
 
 ### Entregables
-- [ ] Auto-backgrounding con tests
-- [ ] Soporte básico para archivos
-- [ ] StatusMessage con mensajes de tool
+- [x] Auto-backgrounding con tests (`tests/utils/test_status_message.py`)
+- [x] Soporte básico para archivos con tests (`tests/agents/test_read_attachment_tool.py`)
+- [x] StatusMessage con mensajes de tool (`set_tool_active`)
+
+#### Notas de Fase
+> También se corrigió `query_handlers.py`: el handler de texto no pasaba `event_callback` al `main_handler`, por lo que el `StatusMessage` no mostraba fases reales del agente. Corregido en esta fase.
 
 ---
 
@@ -317,3 +322,4 @@ de costos y experiencia de usuario a corto plazo.
 | 2026-04-01 | Fase 5: modelos actualizados a familia gpt-5.4 | Roque98 |
 | 2026-04-01 | Fase 5 completada — IntentClassifier + AgentOrchestrator | Roque98 |
 | 2026-04-02 | Fase 6 actualizada — permisos por rol delegados a SEC-01, hooks acotados a validaciones de negocio e integraciones externas | Roque98 |
+| 2026-04-02 | Fase 7 completada — auto-backgrounding, verificationNudge, read_attachment tool, set_tool_active | Roque98 |

@@ -123,7 +123,7 @@ Genera tu siguiente paso de razonamiento en formato JSON:"""
 REACT_CONTINUE_PROMPT = """## Observación del Paso Anterior
 {observation}
 
----
+{nudge_text}---
 Basándote en esta observación, genera tu siguiente paso de razonamiento en formato JSON:"""
 
 SYNTHESIS_PROMPT = """Has ejecutado {steps} pasos pero no has llegado a una respuesta final.
@@ -179,17 +179,23 @@ def build_user_prompt(
     )
 
 
-def build_continue_prompt(observation: str) -> str:
+def build_continue_prompt(observation: str, add_nudge: bool = False) -> str:
     """
     Construye el prompt para continuar después de una observación.
 
     Args:
         observation: Resultado del tool ejecutado
+        add_nudge: Si agregar recordatorio de verificación (activo tras 3+ pasos)
 
     Returns:
         Prompt de continuación
     """
-    return REACT_CONTINUE_PROMPT.format(observation=observation)
+    nudge_text = (
+        "> 💡 Has completado varios pasos. Si ya tienes suficiente información "
+        "para responder al usuario, usa 'finish'. "
+        "Evita llamadas extra innecesarias.\n\n"
+    ) if add_nudge else ""
+    return REACT_CONTINUE_PROMPT.format(observation=observation, nudge_text=nudge_text)
 
 
 def build_synthesis_prompt(

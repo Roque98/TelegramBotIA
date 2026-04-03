@@ -36,6 +36,7 @@ __all__ = [
     "KnowledgeTool",
     "CalculateTool",
     "DateTimeTool",
+    "ReadAttachmentTool",
 ]
 
 
@@ -53,4 +54,7 @@ def __getattr__(name: str):
     if name == "DateTimeTool":
         from .datetime_tool import DateTimeTool
         return DateTimeTool
+    if name == "ReadAttachmentTool":
+        from .read_attachment_tool import ReadAttachmentTool
+        return ReadAttachmentTool
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

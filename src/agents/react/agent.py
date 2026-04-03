@@ -379,7 +379,7 @@ class ReActAgent(BaseAgent):
             )
         else:
             last_obs = scratchpad.get_last_observation() or "No observation"
-            user_prompt = build_continue_prompt(observation=last_obs)
+            user_prompt = build_continue_prompt(observation=last_obs, add_nudge=len(scratchpad) >= 3)
 
         # Agregar al historial
         messages.append({"role": "user", "content": user_prompt})
