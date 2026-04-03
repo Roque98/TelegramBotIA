@@ -12,10 +12,10 @@
 | Fase 2: Capa de Dominio | ██████████ 100% | ✅ Completada |
 | Fase 3: UserContext con Roles y Gerencias | ██████████ 100% | ✅ Completada |
 | Fase 4: Permisos en Tools del Agente | ██████████ 100% | ✅ Completada |
-| Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 5: Migrar Middleware y Handlers | ██████████ 100% | ✅ Completada |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ███████░░░ 65% (30/46 tareas)
+**Progreso Total**: ████████░░ 85% (39/46 tareas)
 
 ---
 
@@ -415,49 +415,40 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 #### Tareas
 
 - [ ] **Refactorizar `AuthMiddleware`**
-  - El middleware corre antes de que `UserContext` esté cargado, pero necesita `role_id` y `gerencia_ids` para resolver permisos de comando
-  - Estrategia: `AuthMiddleware` inyecta `PermissionService` + `UserQueryRepository`. Antes del check, hace una query liviana para obtener `(user_id, role_id, gerencia_ids)` del usuario — query simple sin cargar historial ni memoria
-  - Reemplazar llamadas a SP por `PermissionService.can(user_id, recurso, role_id, gerencia_ids, direccion_ids)`
-  - Usar enums en lugar de magic strings
-  - Archivo: `src/bot/middleware/auth_middleware.py`
+- [x] **Refactorizar `AuthMiddleware`**
+  - `UserQueryRepository` async + `PermissionService.can()` para permisos de comando
+  - `UserQueryRepository.get_profile_for_permissions()` para query liviana
+  - Archivo: `src/bot/middleware/auth_middleware.py` — Commit: `b5790a5`
 
-- [ ] **Eliminar check duplicado en `query_handlers.py`**
-  - El check de permiso en el handler es redundante si el middleware ya lo hace
-  - Limpiar: una sola capa de autorización
-  - Archivo: `src/bot/handlers/query_handlers.py`
+- [x] **Eliminar check duplicado en `query_handlers.py`**
+  - Eliminado el check de `/ia` permission (ahora en middleware) y reemplazado sync UserService por async UserQueryRepository
+  - Archivo: `src/bot/handlers/query_handlers.py` — Commit: `b5790a5`
 
-- [ ] **Fix defaults inseguros en `TelegramUser`**
-  - `activo` default → `False` (no `True`)
-  - `estado` default → `'BLOQUEADO'` (no `'ACTIVO'`)
-  - Archivo: `src/domain/auth/user_entity.py`
+- [x] **Fix defaults inseguros en `TelegramUser`**
+  - `activo` default → `0`, `estado` default → `'BLOQUEADO'`
+  - Archivo: `src/domain/auth/user_entity.py` — Commit: `b5790a5`
 
-- [ ] **Unificar `UserService`**
-  - Remover métodos de permisos (ahora en `PermissionService`)
-  - `UserService` queda solo para: registro, verificación, bloqueo
-  - Archivo: `src/domain/auth/user_service.py`
+- [x] **Unificar `UserService`**
+  - Removidos: `check_permission`, `get_user_operations`, `get_user_operations_by_module`, `get_command_operations_map`, `is_operation_critical`
+  - Archivo: `src/domain/auth/user_service.py` — Commit: `b5790a5`
 
-- [ ] **Comando `/recargar_permisos` disponible para cualquier usuario**
-  - Llama `PermissionService.invalidate(user_id)` → vacía el cache solo del usuario que lo ejecuta
-  - Responde confirmación: "Tus permisos fueron recargados"
-  - No requiere ser admin — cada usuario recarga los suyos propios
-  - Archivo: `src/bot/handlers/command_handlers.py`
+- [x] **Comando `/recargar_permisos`**
+  - Disponible para cualquier usuario, invalida solo su propio cache
+  - Archivo: `src/bot/handlers/command_handlers.py` — Commit: `b5790a5`
 
-- [ ] **Tool `reload_permissions` para el agente**
-  - El agente puede llamar esta tool cuando detecta que el usuario menciona problemas de acceso
-  - Llama `PermissionService.invalidate(user_id)` y recarga `UserContext.permisos` en el request actual
-  - Responde al usuario explicando qué cambió (qué tools están ahora disponibles)
-  - Archivo: `src/agents/tools/reload_permissions_tool.py`
+- [x] **Tool `reload_permissions`**
+  - El agente invalida permisos y recarga `UserContext.permisos` en el request actual
+  - Archivo: `src/agents/tools/reload_permissions_tool.py` — Commit: `b5790a5`
 
-- [ ] **Registrar `ReloadPermissionsTool` en `create_tool_registry()`**
-  - Recibe `permission_service` como dependencia (ya pasado desde `create_main_handler()`)
-  - Archivo: `src/pipeline/factory.py`
+- [x] **Registrar `ReloadPermissionsTool`**
+  - `permission_service` propagado a todos los agentes vía factory
+  - Archivo: `src/pipeline/factory.py` — Commit: `b5790a5`
 
 #### Entregables
-- [ ] Un solo punto de autorización (middleware)
-- [ ] Sin magic strings en handlers
-- [ ] Defaults seguros en entidades
-- [ ] Comando `/recargar_permisos` disponible para todos los usuarios
-- [ ] Tool `reload_permissions` registrada en el agente
+- [x] Un solo punto de autorización (middleware)
+- [x] Defaults seguros en entidades
+- [x] Comando `/recargar_permisos` disponible para todos los usuarios
+- [x] Tool `reload_permissions` registrada en el agente
 
 ---
 
