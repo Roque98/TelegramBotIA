@@ -219,38 +219,35 @@ de costos y experiencia de usuario a corto plazo.
 
 ---
 
-## Fase 6: Hooks y Permisos por Rol
+## Fase 6: Hooks de Validación e Integración
 
-**Objetivo**: Sistema de hooks pre/post tool y permisos basados en rol de usuario
+**Objetivo**: Callbacks pre/post tool para validaciones de negocio y notificaciones a sistemas externos
 **Dependencias**: Fase 1 (BaseTool)
-**Impacto**: Seguridad mejorada, integraciones con sistemas externos
+**Impacto**: Validaciones de negocio reutilizables, integración con CRM/ERP
+
+> **Nota**: El control de acceso por rol (deny/allow por rol, bloqueo de tools por permisos) está **delegado a [SEC-01](PLAN_SEC_01_PERMISOS_MIGRATION.md)**. Esta fase cubre hooks para casos que van más allá de permisos: validaciones de negocio y notificaciones a sistemas externos.
 
 ### Tareas
 
 - [ ] **`FunctionHook`: callbacks pre-ejecución de tool**
-  - Hook puede retornar `False` para bloquear la tool call
-  - Caso de uso: bloquear escritura a registros de otro usuario
+  - Hook puede retornar `False` para bloquear la tool call con un mensaje descriptivo
+  - Casos de uso (no cubiertos por SEC-01): validar que el usuario no acceda a registros de otro usuario, checks de integridad de datos antes de escribir
   - Archivo: `src/agents/hooks/function_hook.py`
 
 - [ ] **`HttpHook`: POST a webhook después de una tool**
   - Notificar sistemas externos (CRM, ERP) cuando el agente modifica datos
-  - Configurable por tipo de tool y rol de usuario
+  - Configurable por nombre de tool
   - Archivo: `src/agents/hooks/http_hook.py`
 
-- [ ] **Deny/allow rules con prefix matching**
-  - `allow: ["get_*", "list_*"]` + `deny: ["delete_*"]` por rol
-  - Parsear desde config o DB
-  - Archivo: `src/agents/permissions/permission_rules.py`
-
-- [ ] **Integrar hooks con `BaseTool.call()`**
-  - Antes de ejecutar: correr pre-hooks
+- [ ] **Integrar hooks con `ToolRegistry.execute()`**
+  - Antes de ejecutar: correr pre-hooks registrados para esa tool
   - Después de ejecutar: correr post-hooks
-  - Si pre-hook bloquea: retornar error descriptivo al agente
+  - Si pre-hook retorna `False`: retornar `ToolResult.error_result` con el mensaje del hook
+  - Archivo: `src/agents/tools/registry.py`
 
 ### Entregables
 - [ ] `FunctionHook` y `HttpHook` con tests
-- [ ] Permission rules con tests
-- [ ] Integración en BaseTool
+- [ ] Integración en `ToolRegistry` con tests
 
 ---
 
@@ -305,7 +302,7 @@ de costos y experiencia de usuario a corto plazo.
 - [x] El StatusMessage muestra la fase real del agente
 - [x] Preferencias del usuario se aplican consistentemente entre sesiones
 - [x] Al menos 2 arquetipos de agente operativos (casual + data con 3 modelos)
-- [ ] Los hooks pre/post permiten bloquear tool calls por rol
+- [ ] Los hooks pre/post permiten bloquear tool calls por validaciones de negocio (SEC-01 cubre el bloqueo por rol/permisos)
 
 ---
 
@@ -319,3 +316,4 @@ de costos y experiencia de usuario a corto plazo.
 | 2026-04-01 | Fix: preferencias no se aplicaban (cache + prompt) | Roque98 |
 | 2026-04-01 | Fase 5: modelos actualizados a familia gpt-5.4 | Roque98 |
 | 2026-04-01 | Fase 5 completada — IntentClassifier + AgentOrchestrator | Roque98 |
+| 2026-04-02 | Fase 6 actualizada — permisos por rol delegados a SEC-01, hooks acotados a validaciones de negocio e integraciones externas | Roque98 |
