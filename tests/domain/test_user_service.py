@@ -11,7 +11,7 @@ import pytest
 from unittest.mock import MagicMock
 from datetime import datetime, timedelta
 
-from src.domain.auth.user_entity import TelegramUser, PermissionResult, Operation, RegistrationError
+from src.domain.auth.user_entity import TelegramUser, PermissionResult, Operation, RegistrationError  # noqa: F401
 from src.domain.auth.user_service import UserService
 
 
@@ -56,9 +56,10 @@ class TestTelegramUser:
         assert "Ana" in r
 
     def test_defaults(self):
+        """Defaults seguros: inactivo y bloqueado hasta confirmar desde BD."""
         user = TelegramUser({})
-        assert user.activo == 1
-        assert user.estado == "ACTIVO"
+        assert user.activo == 0          # default seguro
+        assert user.estado == "BLOQUEADO"  # default seguro
         assert user.es_principal is False
         assert user.verificado is False
 
@@ -275,40 +276,11 @@ class TestUserServiceResend:
         mock_repo.update_verification_code.assert_called_once()
 
 
-class TestUserServicePermissions:
+class TestUserServiceLogOperation:
+    """UserService.log_operation delega al repository."""
 
-    def test_get_user_operations_by_module(self, service, mock_repo):
-        ops = [
-            Operation({"Modulo": "Ventas", "comando": "/ventas", "Permitido": True}),
-            Operation({"Modulo": "Ventas", "comando": "/clientes", "Permitido": True}),
-            Operation({"Modulo": "RRHH", "comando": "/vacaciones", "Permitido": True}),
-        ]
-        mock_repo.get_user_operations.return_value = ops
-        result = service.get_user_operations_by_module(user_id=1)
-        assert "Ventas" in result
-        assert len(result["Ventas"]) == 2
-        assert "RRHH" in result
-
-    def test_get_command_operations_map(self, service, mock_repo):
-        ops = [
-            Operation({"comando": "/ventas", "Permitido": True}),
-            Operation({"comando": "/admin", "Permitido": False}),
-        ]
-        mock_repo.get_user_operations.return_value = ops
-        result = service.get_command_operations_map(user_id=1)
-        assert "/ventas" in result
-        assert "/admin" not in result  # no permitido, se excluye
-
-    def test_is_operation_critical_true(self, service, mock_repo):
-        ops = [Operation({"comando": "/delete", "Permitido": True, "nivelCriticidad": 3})]
-        mock_repo.get_user_operations.return_value = ops
-        assert service.is_operation_critical(user_id=1, comando="/delete") is True
-
-    def test_is_operation_critical_false(self, service, mock_repo):
-        ops = [Operation({"comando": "/ventas", "Permitido": True, "nivelCriticidad": 1})]
-        mock_repo.get_user_operations.return_value = ops
-        assert service.is_operation_critical(user_id=1, comando="/ventas") is False
-
-    def test_is_operation_critical_unknown_command(self, service, mock_repo):
-        mock_repo.get_user_operations.return_value = []
-        assert service.is_operation_critical(user_id=1, comando="/unknown") is False
+    def test_log_operation_delegated(self, service, mock_repo):
+        mock_repo.log_operation.return_value = True
+        result = service.log_operation(user_id=1, comando="/ia")
+        mock_repo.log_operation.assert_called_once_with(1, "/ia")
+        assert result is True

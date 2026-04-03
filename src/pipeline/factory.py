@@ -19,9 +19,12 @@ from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
 from src.agents.tools.preference_tool import SavePreferenceTool
 from src.agents.tools.save_memory_tool import SaveMemoryTool
+from src.agents.tools.reload_permissions_tool import ReloadPermissionsTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
+from src.domain.auth.permission_repository import PermissionRepository
+from src.domain.auth.permission_service import PermissionService
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
@@ -40,6 +43,7 @@ def create_tool_registry(
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
+    permission_service: Optional[Any] = None,
 ) -> ToolRegistry:
     """Crea y configura el registro de herramientas."""
     ToolRegistry.reset()
@@ -54,6 +58,7 @@ def create_tool_registry(
     registry.register(DateTimeTool())
     registry.register(SavePreferenceTool(db_manager=db_manager, memory_service=memory_service))
     registry.register(SaveMemoryTool(memory_service=memory_service))
+    registry.register(ReloadPermissionsTool(permission_service=permission_service))
 
     logger.info(f"ToolRegistry created with {len(registry)} tools")
     return registry
@@ -64,9 +69,10 @@ def create_react_agent(
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
+    permission_service: Optional[Any] = None,
 ) -> ReActAgent:
     """Crea el agente ReAct con sus dependencias."""
-    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service)
+    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service, permission_service)
     agent = ReActAgent(
         llm=llm_provider,
         tool_registry=tool_registry,
@@ -81,6 +87,7 @@ def create_orchestrator(
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
+    permission_service: Optional[Any] = None,
 ) -> AgentOrchestrator:
     """
     Crea el orquestador con sus tres proveedores LLM.
@@ -97,8 +104,8 @@ def create_orchestrator(
     data_llm   = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
 
     intent_classifier = IntentClassifier(llm=intent_llm)
-    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service)
-    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service)
+    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service, permission_service)
+    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service, permission_service)
 
     orchestrator = AgentOrchestrator(
         casual_agent=casual_agent,
@@ -115,13 +122,25 @@ def create_orchestrator(
     return orchestrator
 
 
+def create_permission_service(
+    db_manager: Optional[Any] = None,
+) -> PermissionService:
+    """Crea el servicio de permisos SEC-01."""
+    repository = PermissionRepository(db_manager=db_manager)
+    service = PermissionService(repository=repository)
+    logger.info("PermissionService created")
+    return service
+
+
 def create_memory_service(
     db_manager: Optional[Any] = None,
+    permission_service: Optional[Any] = None,
 ) -> MemoryService:
     """Crea el servicio de memoria."""
     repository = MemoryRepository(db_manager=db_manager)
     service = MemoryService(
         repository=repository,
+        permission_service=permission_service,
         cache_ttl_seconds=300,
         max_cache_size=1000,
         max_working_memory=10,
@@ -153,12 +172,14 @@ def create_main_handler(
         logger.warning(f"KnowledgeService creation failed, knowledge search disabled: {e}")
         knowledge_manager = None
 
-    memory_service = create_memory_service(db_manager=db)
+    permission_service = create_permission_service(db_manager=db)
+    memory_service = create_memory_service(db_manager=db, permission_service=permission_service)
 
     orchestrator = create_orchestrator(
         db_manager=db,
         knowledge_manager=knowledge_manager,
         memory_service=memory_service,
+        permission_service=permission_service,
     )
 
     obs_repo = ObservabilityRepository(db_manager=db)

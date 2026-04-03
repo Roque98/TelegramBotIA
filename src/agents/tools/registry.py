@@ -7,9 +7,12 @@ la descripción de herramientas para el prompt del LLM.
 
 import logging
 import threading
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from .base import BaseTool, ToolCategory
+from .base import BaseTool, ToolCategory, ToolResult
+
+if TYPE_CHECKING:
+    from src.agents.base.events import UserContext
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +112,17 @@ class ToolRegistry:
         """
         return [tool for tool in self._tools.values() if tool.category == category]
 
-    def get_tools_prompt(self, context_budget_used: float = 0.0) -> str:
+    def get_tools_prompt(
+        self,
+        context_budget_used: float = 0.0,
+        user_context: Optional["UserContext"] = None,
+    ) -> str:
         """
         Genera la descripción de herramientas para el prompt del LLM.
+
+        Si `user_context.permisos` está cargado, solo incluye las tools
+        donde `permisos.get("tool:<name>", False) == True`.
+        Sin permisos cargados: incluye todas (backward compat).
 
         Adapta el nivel de detalle según el presupuesto de contexto disponible:
         - < 90% usado: descripción completa con parámetros y ejemplos
@@ -120,16 +131,28 @@ class ToolRegistry:
 
         Args:
             context_budget_used: Fracción del contexto usada (0.0 – 1.0)
+            user_context: Contexto del usuario (con permisos precargados)
 
         Returns:
-            String formateado con todas las herramientas disponibles
+            String formateado con las herramientas disponibles para el usuario
         """
-        if not self._tools:
+        permisos: dict[str, bool] = getattr(user_context, "permisos", {}) if user_context else {}
+
+        # Filtrar herramientas según permisos (si hay permisos cargados)
+        if permisos:
+            visible_tools = {
+                name: tool for name, tool in self._tools.items()
+                if permisos.get(f"tool:{name}", False)
+            }
+        else:
+            visible_tools = self._tools
+
+        if not visible_tools:
             return "No tools available."
 
         # Modo solo nombres si el contexto está casi lleno
         if context_budget_used >= 0.95:
-            names = ", ".join(self._tools.keys())
+            names = ", ".join(visible_tools.keys())
             return f"## Available Tools\n{names}"
 
         lines = ["## Available Tools\n"]
@@ -138,7 +161,7 @@ class ToolRegistry:
 
         # Agrupar por categoría
         by_category: dict[ToolCategory, list[BaseTool]] = {}
-        for tool in self._tools.values():
+        for tool in visible_tools.values():
             if tool.category not in by_category:
                 by_category[tool.category] = []
             by_category[tool.category].append(tool)
@@ -159,6 +182,47 @@ class ToolRegistry:
                     lines.append("")
 
         return "\n".join(lines)
+
+    async def execute(
+        self,
+        tool_name: str,
+        action_input: dict,
+        user_context: Optional["UserContext"] = None,
+    ) -> ToolResult:
+        """
+        Ejecuta un tool con verificación de permisos (segunda línea de defensa).
+
+        Verifica `user_context.permisos` antes de ejecutar. Si el permiso
+        está denegado, retorna un ToolResult de error sin ejecutar el tool.
+        Si no hay permisos cargados, ejecuta sin restricción (backward compat).
+
+        Args:
+            tool_name: Nombre del tool a ejecutar
+            action_input: Parámetros del tool
+            user_context: Contexto del usuario con permisos precargados
+
+        Returns:
+            ToolResult con el resultado o error de permiso
+        """
+        tool = self._tools.get(tool_name)
+        if tool is None:
+            return ToolResult(success=False, data=None, error=f"Tool '{tool_name}' not found")
+
+        # Verificar permisos si están cargados
+        permisos: dict[str, bool] = getattr(user_context, "permisos", {}) if user_context else {}
+        if permisos and not permisos.get(f"tool:{tool_name}", False):
+            user_id = getattr(user_context, "user_id", "unknown") if user_context else "unknown"
+            logger.warning(
+                f"Permission denied: user={user_id} tool={tool_name} "
+                f"(possible prompt injection or bypass attempt)"
+            )
+            return ToolResult(
+                success=False,
+                data=None,
+                error="No tenés permiso para usar esta herramienta",
+            )
+
+        return await tool.execute(**action_input)
 
     def get_tool_names(self) -> list[str]:
         """

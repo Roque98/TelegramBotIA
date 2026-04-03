@@ -129,6 +129,12 @@ class UserContext(BaseModel):
     current_date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     # Notas temporales del agente durante el run actual (se borran al terminar)
     session_notes: list[str] = Field(default_factory=list)
+    # Contexto organizacional (SEC-01)
+    db_user_id: Optional[int] = None          # idUsuario de la tabla Usuarios
+    role_id: Optional[int] = None             # idRol del usuario
+    gerencia_ids: list[int] = Field(default_factory=list)
+    direccion_ids: list[int] = Field(default_factory=list)
+    permisos: dict[str, bool] = Field(default_factory=dict)  # {recurso: permitido}
 
     model_config = {"frozen": False}
 
@@ -198,6 +204,11 @@ class UserContext(BaseModel):
             user_lines.append(f"Preferencias del usuario:\n{pref_lines}")
         if self.long_term_summary:
             user_lines.append(f"Historial conocido: {self.long_term_summary}")
+        if self.permisos:
+            allowed_tools = [r for r, ok in self.permisos.items() if ok and r.startswith("tool:")]
+            if allowed_tools:
+                tool_names = ", ".join(t.removeprefix("tool:").replace("_", " ") for t in allowed_tools)
+                user_lines.append(f"Capacidades disponibles: {tool_names}")
         blocks.append("<memory type=\"user\">\n" + "\n".join(user_lines) + "\n</memory>")
 
         # --- conversation memory ---

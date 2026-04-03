@@ -161,7 +161,7 @@ class ReActAgent(BaseAgent):
             await emit(session_started_event(session_id, context.user_id, len(self.tools)))
 
             # Construir prompts base
-            system_prompt = build_system_prompt(self.tools.get_tools_prompt())
+            system_prompt = build_system_prompt(self.tools.get_tools_prompt(user_context=context))
             messages = [{"role": "system", "content": system_prompt}]
 
             while not scratchpad.is_full():
@@ -503,12 +503,6 @@ class ReActAgent(BaseAgent):
             ToolException: Si el tool falla
         """
         tool_name = action.value
-        tool = self.tools.get(tool_name)
-
-        if tool is None:
-            error_msg = f"Tool '{tool_name}' not found"
-            logger.error(error_msg)
-            return f"Error: {error_msg}"
 
         try:
             # Agregar user_id y user_context a action_input si están disponibles
@@ -518,7 +512,12 @@ class ReActAgent(BaseAgent):
                 action_input["user_context"] = context
 
             logger.debug(f"Executing tool: {tool_name} with {action_input}")
-            result: ToolResult = await tool.execute(**action_input)
+            # registry.execute() verifica permisos antes de delegar al tool
+            result: ToolResult = await self.tools.execute(
+                tool_name=tool_name,
+                action_input=action_input,
+                user_context=context,
+            )
 
             observation = result.to_observation()
             logger.debug(f"Tool result: {observation[:100]}...")

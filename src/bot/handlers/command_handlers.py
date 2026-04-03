@@ -328,6 +328,51 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Error consultando datos de costo.")
 
 
+async def recargar_permisos_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Manejar el comando /recargar_permisos.
+
+    Invalida el cache de permisos del usuario actual para que se recargue
+    en el próximo request. Disponible para cualquier usuario autenticado.
+    """
+    chat_id = update.effective_user.id
+    logger.info(f"Usuario {chat_id} ejecutó /recargar_permisos")
+
+    try:
+        from src.domain.auth.user_query_repository import UserQueryRepository
+        db_manager = context.bot_data.get("db_manager")
+        permission_service = context.bot_data.get("permission_service")
+
+        if not db_manager:
+            await update.message.reply_text("❌ Base de datos no disponible.")
+            return
+
+        # Obtener el idUsuario real (no el chat_id)
+        repo = UserQueryRepository(db_manager)
+        profile = await repo.get_profile_for_permissions(chat_id)
+
+        if not profile:
+            await update.message.reply_text(
+                "⚠️ No se encontró tu perfil. Asegúrate de estar registrado y verificado."
+            )
+            return
+
+        if permission_service:
+            permission_service.invalidate(profile["user_id"])
+            logger.info(f"Cache de permisos invalidado para user_id={profile['user_id']}")
+
+        await update.message.reply_text(
+            "✅ *Permisos recargados.*\n\n"
+            "Tu cache de permisos fue reiniciado. "
+            "Los cambios tendrán efecto en tu próxima consulta.",
+            parse_mode="Markdown",
+        )
+
+    except Exception as e:
+        logger.error(f"Error en /recargar_permisos para chat_id={chat_id}: {e}")
+        await update.message.reply_text("❌ Error al recargar permisos. Intenta de nuevo.")
+
+
 def register_command_handlers(application: Application) -> None:
     """
     Registrar todos los command handlers en la aplicación.
@@ -340,5 +385,6 @@ def register_command_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("cancel", cancel_command))
     application.add_handler(CommandHandler("costo", costo_command))
+    application.add_handler(CommandHandler("recargar_permisos", recargar_permisos_command))
 
     logger.info("Command handlers registrados exitosamente")

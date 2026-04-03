@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from telegram import Update
 from telegram.ext import MessageHandler, filters, ContextTypes, Application
 
-from src.domain.auth import UserService
+from src.domain.auth.user_query_repository import UserQueryRepository
 from src.utils.status_message import StatusMessage
 
 if TYPE_CHECKING:
@@ -43,78 +43,45 @@ class QueryHandler:
         start_time = time.time()
 
         # Obtener usuario autenticado del context (lo pone el middleware de auth)
-        telegram_user = context.user_data.get('telegram_user')
+        telegram_user = context.user_data.get("telegram_user")
 
         if not telegram_user:
-            db_manager = context.bot_data.get('db_manager')
-
+            db_manager = context.bot_data.get("db_manager")
             if not db_manager:
+                await update.message.reply_text("❌ Error de configuración del sistema.")
+                return
+
+            repo = UserQueryRepository(db_manager)
+            telegram_user = await repo.get_by_chat_id(chat_id)
+
+            if not telegram_user:
                 await update.message.reply_text(
-                    "❌ Error de configuración del sistema."
+                    "⚠️ No estás registrado en el sistema.\n\nUsa /register para registrarte."
                 )
                 return
 
-            with db_manager.get_session() as session:
-                user_service = UserService(session)
-                telegram_user = user_service.get_user_by_chat_id(chat_id)
+            if not telegram_user.is_verified:
+                await update.message.reply_text(
+                    "⚠️ Tu cuenta no está verificada.\n\n"
+                    "Consulta tu código en el Portal de Consola de Monitoreo.\n"
+                    "Luego usa: /verify <codigo>"
+                )
+                return
 
-                if not telegram_user:
-                    await update.message.reply_text(
-                        "⚠️ No estás registrado en el sistema.\n\n"
-                        "Por favor, usa /register para registrarte."
-                    )
-                    return
+            if not telegram_user.is_active:
+                await update.message.reply_text(
+                    "⚠️ Tu cuenta está inactiva. Contacta al administrador."
+                )
+                return
 
-                if not telegram_user.is_verified:
-                    await update.message.reply_text(
-                        "⚠️ Tu cuenta no está verificada.\n\n"
-                        "Consulta tu código de verificación en el Portal de Consola de Monitoreo.\n"
-                        "Luego usa: /verify <codigo>"
-                    )
-                    return
-
-                if not telegram_user.is_active:
-                    await update.message.reply_text(
-                        "⚠️ Tu cuenta está inactiva.\n\n"
-                        "Por favor, contacta al administrador."
-                    )
-                    return
-
-                context.user_data['telegram_user'] = telegram_user
+            context.user_data["telegram_user"] = telegram_user
 
         logger.info(
             f"Usuario {telegram_user.id_usuario} ({telegram_user.nombre_completo}): "
             f"{user_message[:50]}..."
         )
 
-        db_manager = context.bot_data.get('db_manager')
-
-        # Verificar permiso para consultas con IA
-        with db_manager.get_session() as session:
-            user_service = UserService(session)
-            permission = user_service.check_permission(
-                telegram_user.id_usuario,
-                '/ia'
-            )
-
-            if not permission.is_allowed:
-                user_service.log_operation(
-                    user_id=telegram_user.id_usuario,
-                    comando='/ia',
-                    telegram_chat_id=chat_id,
-                    telegram_username=user.username,
-                    parametros={'query': user_message[:100]},
-                    resultado='DENEGADO',
-                    mensaje_error=permission.mensaje
-                )
-
-                await update.message.reply_text(
-                    f"🚫 *Acceso Denegado*\n\n"
-                    f"No tienes permiso para realizar consultas con IA.\n\n"
-                    f"_{permission.mensaje}_",
-                    parse_mode='Markdown'
-                )
-                return
+        db_manager = context.bot_data.get("db_manager")
 
         async with StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...") as status:
             try:
@@ -128,24 +95,12 @@ class QueryHandler:
                 )
 
             except Exception as e:
+                duration_ms = int((time.time() - start_time) * 1000)
                 logger.error(
-                    f"Error procesando mensaje de usuario {telegram_user.id_usuario}: {e}",
+                    f"Error procesando mensaje de usuario {telegram_user.id_usuario} "
+                    f"({duration_ms}ms): {e}",
                     exc_info=True
                 )
-
-                duration_ms = int((time.time() - start_time) * 1000)
-                with db_manager.get_session() as session:
-                    user_service = UserService(session)
-                    user_service.log_operation(
-                        user_id=telegram_user.id_usuario,
-                        comando='/ia',
-                        telegram_chat_id=chat_id,
-                        telegram_username=user.username,
-                        parametros={'query': user_message[:200]},
-                        resultado='ERROR',
-                        mensaje_error=str(e),
-                        duracion_ms=duration_ms
-                    )
 
                 error_msg = (
                     "Lo siento, ocurrió un error al procesar tu consulta. "

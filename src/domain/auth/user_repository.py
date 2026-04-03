@@ -301,37 +301,6 @@ class UserRepository:
             logger.error(f"Error obteniendo estado de registro: {e}")
             raise
 
-    # -------------------------------------------------------------------------
-    # Consultas de permisos
-    # -------------------------------------------------------------------------
-
-    def check_permission(self, user_id: int, comando: str) -> PermissionResult:
-        try:
-            query = text("""
-                EXEC abcmasplus..sp_VerificarPermisoOperacion
-                    @idUsuario = :user_id, @comando = :comando
-            """)
-            result = self.session.execute(query, {"user_id": user_id, "comando": comando})
-            row = result.fetchone()
-            if row:
-                return PermissionResult(dict(zip(result.keys(), row)))
-            return PermissionResult({'TienePermiso': False, 'Mensaje': 'Operación no encontrada'})
-        except Exception as e:
-            logger.error(f"Error verificando permiso para usuario {user_id}, comando {comando}: {e}")
-            raise
-
-    def get_user_operations(self, user_id: int) -> List[Operation]:
-        try:
-            query = text("""
-                EXEC abcmasplus..sp_ObtenerOperacionesUsuario @idUsuario = :user_id
-            """)
-            result = self.session.execute(query, {"user_id": user_id})
-            rows = result.fetchall()
-            return [Operation(dict(zip(result.keys(), row))) for row in rows]
-        except Exception as e:
-            logger.error(f"Error obteniendo operaciones del usuario {user_id}: {e}")
-            raise
-
     def log_operation(
         self,
         user_id: int,

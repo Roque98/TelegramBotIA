@@ -34,6 +34,14 @@ class MemoryRepository:
                 SELECT
                     u.idUsuario AS Id_Usuario,
                     u.Nombre AS Nombre,
+                    u.idRol AS role_id,
+                    r.nombre AS role_name,
+                    STUFF((
+                        SELECT ',' + CAST(gu.idGerencia AS VARCHAR)
+                        FROM abcmasplus..GerenciasUsuarios gu
+                        WHERE gu.idUsuario = u.idUsuario
+                        FOR XML PATH('')
+                    ), 1, 1, '') AS gerencia_ids_csv,
                     ump.resumenContextoLaboral AS resumen_contexto_laboral,
                     ump.resumenTemasRecientes AS resumen_temas_recientes,
                     ump.resumenHistorialBreve AS resumen_historial_breve,
@@ -42,6 +50,7 @@ class MemoryRepository:
                     ump.preferencias AS preferencias
                 FROM abcmasplus..UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
+                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
                 LEFT JOIN abcmasplus..UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
             """
@@ -67,6 +76,12 @@ class MemoryRepository:
 
             display_name = preferences.get("alias") or row.get("Nombre", "Usuario")
 
+            gerencia_csv = row.get("gerencia_ids_csv")
+            gerencia_ids = [int(x) for x in gerencia_csv.split(",") if x] if gerencia_csv else []
+            direccion_ids: list[int] = []  # DireccionesUsuarios no existe en BD
+
+            role_name = row.get("role_name")
+
             profile = UserProfile(
                 user_id=user_id,
                 display_name=display_name,
@@ -74,6 +89,12 @@ class MemoryRepository:
                 interaction_count=row.get("num_interacciones", 0),
                 last_updated=row.get("ultima_actualizacion"),
                 preferences=preferences,
+                db_user_id=row.get("Id_Usuario"),
+                role_id=row.get("role_id"),
+                role_name=role_name,
+                roles=[role_name] if role_name else [],
+                gerencia_ids=gerencia_ids,
+                direccion_ids=direccion_ids,
             )
 
             self._profiles_cache[user_id] = profile
