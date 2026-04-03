@@ -23,7 +23,6 @@ plan/
 │   ├── PLAN_CAL_13_NOTIFICACIONES.md      # Notificaciones al admin
 │   ├── PLAN_CAL_14_STEMMER.md             # Stemmer NLP real
 │   ├── PLAN_CAL_15_FALLBACKS.md           # Fallbacks informativos
-│   ├── PLAN_CAL_16_POOL_CONEXIONES.md     # Pool de conexiones
 │   ├── PLAN_FUN_17_CACHE_LLM.md           # Cache para LLM
 │   ├── PLAN_FUN_18_STREAMING.md           # Streaming de respuestas
 │   ├── PLAN_FUN_19_RAG.md                 # RAG con vectores

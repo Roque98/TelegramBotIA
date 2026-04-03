@@ -43,7 +43,7 @@
 | 13 | [Notificaciones al admin](02-activos/PLAN_CAL_13_NOTIFICACIONES.md) | `bot/middleware/logging_middleware.py` | Pendiente |
 | 14 | [Stemmer NLP real](02-activos/PLAN_CAL_14_STEMMER.md) | `knowledge/knowledge_service.py` | Pendiente |
 | 15 | [Fallbacks informativos](02-activos/PLAN_CAL_15_FALLBACKS.md) | `bot/handlers/command_handlers.py` | Pendiente |
-| 16 | [Pool de conexiones](02-activos/PLAN_CAL_16_POOL_CONEXIONES.md) | `database/connection.py` | Pendiente |
+| 16 | [Pool de conexiones](03-ideas/PLAN_CAL_16_POOL_CONEXIONES.md) | `infra/database/connection.py` | Backlog |
 
 ---
 
