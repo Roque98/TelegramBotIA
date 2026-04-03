@@ -152,6 +152,25 @@ class MainHandler:
                 f"Error handling Telegram message: {e} ({elapsed:.0f}ms)",
                 exc_info=True,
             )
+            # Notificar al admin — error crítico no controlado en el pipeline
+            try:
+                from src.bot.notifications.admin_notifier import notify_admin
+                user_info = (
+                    str(update.effective_user.id)
+                    if update and update.effective_user
+                    else "desconocido"
+                )
+                asyncio.create_task(
+                    notify_admin(
+                        bot=context.bot,
+                        db_manager=context.bot_data.get("db_manager"),
+                        level="CRITICAL",
+                        error=e,
+                        user_info=user_info,
+                    )
+                )
+            except Exception:
+                pass
             return self._get_error_message()
 
         finally:
