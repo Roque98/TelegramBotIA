@@ -15,7 +15,7 @@
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ███░░░░░░░ 24% (11/46 tareas)
+**Progreso Total**: ███░░░░░░░ 26% (12/46 tareas)
 
 ---
 
@@ -292,10 +292,11 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Archivo: `src/domain/auth/constants.py`
   - `AccountState`, `OperationResult`, `EntityType`, `ResolutionType`
 
-- [ ] **Separar `UserRepository` en 3**
-  - `UserQueryRepository`: get_user_by_chat_id, get_user_by_id
-  - `TelegramAccountRepository`: registro, verificación, bloqueo
+- [x] **Separar `UserRepository` en 3**
+  - `UserQueryRepository`: get_by_chat_id, get_by_user_id, get_profile_for_permissions, update_last_activity
+  - `TelegramAccountRepository`: registro, verificación, bloqueo (todos async con db_manager)
   - `PermissionRepository`: consultas de permisos (ya definido arriba)
+  - `UserRepository` legacy se mantiene para backward compat hasta Fase 5
 
 - [x] **Tests de `PermissionService`**
   - Archivo: `tests/domain/test_permission_service.py`

@@ -8,6 +8,8 @@ from .user_service import UserService
 from .constants import AccountState, OperationResult, EntityType, ResolutionType, ResourceType
 from .permission_repository import PermissionRepository
 from .permission_service import PermissionService
+from .user_query_repository import UserQueryRepository
+from .telegram_account_repository import TelegramAccountRepository
 
 __all__ = [
     'TelegramUser',
@@ -23,4 +25,6 @@ __all__ = [
     'ResourceType',
     'PermissionRepository',
     'PermissionService',
+    'UserQueryRepository',
+    'TelegramAccountRepository',
 ]
