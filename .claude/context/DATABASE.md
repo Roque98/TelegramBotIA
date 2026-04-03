@@ -129,17 +129,9 @@ CREATE TABLE RolesCategoriesKnowledge (
 );
 ```
 
-#### RolesOperaciones
+#### ~~RolesOperaciones~~ *(legacy — pendiente DROP)*
 ```sql
--- Controla qué roles pueden ejecutar qué operaciones
-CREATE TABLE RolesOperaciones (
-    idRolOperacion INT PRIMARY KEY,
-    idRol INT FK NOT NULL,
-    idOperacion INT FK NOT NULL,
-    permitido BIT NOT NULL,
-    activo BIT NOT NULL,
-    UNIQUE (idRol, idOperacion)
-);
+-- Reemplazada por BotPermisos (SEC-01). Ver migration 21_DropLegacyPermisosTablas.sql
 ```
 
 #### Operaciones
@@ -271,17 +263,16 @@ WHEN NOT MATCHED THEN
 """
 ```
 
-### Verificar permisos
+### Verificar permisos (SEC-01)
 ```python
-# PermissionChecker.check_permission()
-query = """
-SELECT ro.permitido
-FROM RolesOperaciones ro
-JOIN Operaciones o ON ro.idOperacion = o.idOperacion
-JOIN Usuarios u ON u.rol = ro.idRol
-WHERE u.idUsuario = ? AND o.comando = ?
-  AND ro.activo = 1 AND o.activo = 1
-"""
+# PermissionService.can() — nuevo sistema
+permisos = await permission_service.get_all_for_user(
+    user_id=10, role_id=2, gerencia_ids=[1], direccion_ids=[]
+)
+tiene_permiso = permisos.get("tool:database_query", False)
+
+# Cache LRU TTL 60s por user_id
+# Invalidar: permission_service.invalidate(user_id)
 ```
 
 ---
@@ -318,13 +309,82 @@ class Settings(BaseSettings):
 
 ---
 
+## Sistema de Permisos SEC-01
+
+### Tablas nuevas (Migration 10–11)
+
+#### BotTipoEntidad — catálogo de tipos de entidad
+| nombre | prioridad | tipoResolucion | descripción |
+|--------|-----------|----------------|-------------|
+| usuario | 1 | definitivo | Override individual, pisa todo |
+| autenticado | 2 | permisivo | Cualquier usuario autenticado (filtrable por rol) |
+| gerencia | 3 | permisivo | Gerencia del usuario (filtrable por rol) |
+| direccion | 4 | permisivo | Dirección del usuario (filtrable por rol) |
+
+#### BotRecurso — catálogo de recursos controlables
+| recurso | tipoRecurso | esPublico |
+|---------|-------------|-----------|
+| `tool:database_query` | tool | 0 |
+| `tool:calculate` | tool | 0 |
+| `cmd:/ia` | cmd | 0 |
+| `cmd:/start` | cmd | 1 ← público |
+| `cmd:/recargar_permisos` | cmd | 1 ← público |
+| `tool:reload_permissions` | tool | 1 ← público |
+
+#### BotPermisos — reglas de acceso
+- `idTipoEntidad` → tipo de entidad (usuario/autenticado/gerencia/direccion)
+- `idEntidad` → ID del usuario/gerencia/dirección (0 para autenticado)
+- `idRecurso` → recurso a controlar
+- `idRolRequerido` → NULL = cualquier rol, valor = rol específico
+- `permitido` → 1=permitido, 0=denegado
+- `fechaExpiracion` → NULL=permanente
+
+### Jerarquía de resolución
+
+```
+1. esPublico=1 en BotRecurso → PERMITIDO inmediatamente
+2. Entrada 'definitivo' (usuario) → respuesta final
+3. Entre 'permisivo' → si ALGUNA permite, PERMITIDO
+4. Sin filas → DENEGADO (default deny)
+```
+
+### Cómo agregar un nuevo permiso
+
+```sql
+-- Permitir tool:nueva_tool para rol Gerente (idRol=2)
+INSERT INTO abcmasplus..BotRecurso (recurso, tipoRecurso, descripcion)
+VALUES ('tool:nueva_tool', 'tool', 'Descripción de la nueva tool');
+
+DECLARE @idRecurso INT = SCOPE_IDENTITY();
+DECLARE @idAutenticado INT = (SELECT idTipoEntidad FROM BotTipoEntidad WHERE nombre='autenticado');
+
+INSERT INTO abcmasplus..BotPermisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido)
+VALUES (@idAutenticado, 0, @idRecurso, 2, 1);
+```
+
+### Cómo denegar un recurso a un usuario específico
+
+```sql
+-- Denegar tool:database_query al usuario idUsuario=15 (override definitivo)
+DECLARE @idUsuario INT = (SELECT idTipoEntidad FROM BotTipoEntidad WHERE nombre='usuario');
+DECLARE @idRecurso INT = (SELECT idRecurso FROM BotRecurso WHERE recurso='tool:database_query');
+
+INSERT INTO abcmasplus..BotPermisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido)
+VALUES (@idUsuario, 15, @idRecurso, NULL, 0);
+-- El deny definitivo pisa cualquier allow de rol/gerencia
+```
+
+---
+
 ## Migraciones
 
 ```
 database/migrations/
-├── 001_create_knowledge_base_tables.sql
-├── 002_create_user_memory_profiles.sql
-└── 002_seed_knowledge_base.sql
+├── 09_PreMigracionCheck.sql          -- Verificación pre-migración
+├── 10_BotPermisos.sql                -- Crear BotTipoEntidad, BotRecurso, BotPermisos, BotPermisosAudit
+├── 11_BotPermisos_DatosIniciales.sql -- Datos iniciales por rol (1–8)
+├── 20_DropLegacyPermisosSPs.sql      -- DROP sp_VerificarPermisoOperacion, sp_ObtenerOperacionesUsuario
+└── 21_DropLegacyPermisosTablas.sql   -- DROP RolesOperaciones, RolesIA, GerenciasRolesIA
 ```
 
 ---

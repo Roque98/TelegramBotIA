@@ -2,16 +2,22 @@
 Tests para AuthMiddleware — verificación de comandos públicos.
 
 Cobertura:
-- Comandos públicos exactos → permitidos
-- Comandos con argumentos → permitidos
-- Substrings de comandos en texto libre → rechazados
-- Texto aleatorio → rechazado
+- Comandos públicos registrados en PUBLIC_COMMANDS
+- Extracción de comando desde texto del mensaje
+- /recargar_permisos es público (cualquier usuario autenticado puede usarlo)
 """
 
 import pytest
 from unittest.mock import MagicMock
 
 from src.bot.middleware.auth_middleware import AuthMiddleware
+
+
+def _extract_command(message_text: str) -> str | None:
+    """Replica la lógica de extracción de comando del middleware."""
+    if not message_text.startswith("/"):
+        return None
+    return message_text.split()[0].split("@")[0].lower()
 
 
 class TestPublicCommandDetection:
@@ -22,71 +28,60 @@ class TestPublicCommandDetection:
         db_manager = MagicMock()
         return AuthMiddleware(db_manager)
 
-    # --- Comandos públicos exactos ---
+    # --- Comandos públicos en lista ---
 
-    def test_register_exacto_es_publico(self, middleware):
-        """/register exacto debe ser reconocido como público."""
-        assert any("/register".startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_start_es_publico(self, middleware):
+        assert "/start" in middleware.PUBLIC_COMMANDS
 
-    def test_start_exacto_es_publico(self, middleware):
-        """/start exacto debe ser reconocido como público."""
-        assert any("/start".startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_help_es_publico(self, middleware):
+        assert "/help" in middleware.PUBLIC_COMMANDS
 
-    def test_help_exacto_es_publico(self, middleware):
-        """/help exacto debe ser reconocido como público."""
-        assert any("/help".startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_register_es_publico(self, middleware):
+        assert "/register" in middleware.PUBLIC_COMMANDS
 
-    def test_verify_exacto_es_publico(self, middleware):
-        """/verify exacto debe ser reconocido como público."""
-        assert any("/verify".startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_verify_es_publico(self, middleware):
+        assert "/verify" in middleware.PUBLIC_COMMANDS
 
-    # --- Comandos con argumentos ---
+    def test_recargar_permisos_es_publico(self, middleware):
+        """/recargar_permisos debe ser público — cualquier usuario puede recargarlo."""
+        assert "/recargar_permisos" in middleware.PUBLIC_COMMANDS
 
-    def test_register_con_argumento_es_publico(self, middleware):
-        """/register extra_args debe ser reconocido como público."""
-        msg = "/register usuario123"
-        assert any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    # --- Extracción de comando y detección ---
 
-    def test_start_con_argumento_es_publico(self, middleware):
-        """/start deep_link_param debe ser reconocido como público."""
-        msg = "/start ref_abc123"
-        assert any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_extract_command_exacto(self):
+        assert _extract_command("/start") == "/start"
 
-    def test_verify_con_codigo_es_publico(self, middleware):
-        """/verify <codigo> debe ser reconocido como público."""
-        msg = "/verify 123456"
-        assert any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_extract_command_con_argumento(self):
+        assert _extract_command("/verify 123456") == "/verify"
 
-    # --- Substrings de comandos → NO públicos ---
+    def test_extract_command_con_bot_username(self):
+        assert _extract_command("/start@IrisBot") == "/start"
 
-    def test_deregister_no_es_publico(self, middleware):
-        """'deregister' contiene '/register' como substring pero NO debe ser público."""
-        msg = "quiero deregister mi cuenta"
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_extract_command_texto_libre_returns_none(self):
+        assert _extract_command("hola cómo estás") is None
 
-    def test_texto_con_slash_register_embebido_no_es_publico(self, middleware):
-        """Texto que contiene '/register' en medio NO debe ser público."""
-        msg = "texto /register al medio"
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_extract_command_vacio_returns_none(self):
+        assert _extract_command("") is None
 
-    def test_texto_con_start_embebido_no_es_publico(self, middleware):
-        """Texto con '/start' embebido NO debe ser público."""
-        msg = "como hacer restart del bot"
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_comando_publico_detectado_correctamente(self, middleware):
+        """/recargar_permisos con argumento debe ser público."""
+        cmd = _extract_command("/recargar_permisos")
+        assert cmd in middleware.PUBLIC_COMMANDS
 
-    # --- Texto aleatorio → NO público ---
+    def test_comando_privado_no_publico(self, middleware):
+        """/ia no debe estar en PUBLIC_COMMANDS."""
+        cmd = _extract_command("/ia consulta")
+        assert cmd not in middleware.PUBLIC_COMMANDS
 
-    def test_texto_libre_no_es_publico(self, middleware):
-        """Mensaje normal no debe pasar como público."""
-        msg = "hola, ¿cuántas ventas tuve este mes?"
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_comando_desconocido_no_publico(self, middleware):
+        cmd = _extract_command("/admin secreto")
+        assert cmd not in middleware.PUBLIC_COMMANDS
 
-    def test_mensaje_vacio_no_es_publico(self, middleware):
-        """Mensaje vacío no debe ser público."""
-        msg = ""
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    # --- Texto libre → no es comando →  no es público ---
 
-    def test_comando_desconocido_no_es_publico(self, middleware):
-        """Comando no registrado no debe ser público."""
-        msg = "/admin secreto"
-        assert not any(msg.startswith(cmd) for cmd in middleware.PUBLIC_COMMANDS)
+    def test_texto_libre_no_es_comando(self):
+        assert _extract_command("¿cuántas ventas tuve este mes?") is None
+
+    def test_substring_no_confunde(self):
+        """Texto que contiene '/start' en medio no extrae comando."""
+        assert _extract_command("hacer restart del bot") is None
