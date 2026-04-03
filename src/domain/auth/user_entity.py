@@ -17,7 +17,7 @@ class TelegramUser:
         self.email = data.get('email')
         self.rol_id = data.get('idRol')
         self.rol_nombre = data.get('rolNombre')
-        self.activo = data.get('Activa', 1)
+        self.activo = data.get('Activa', 0)   # default seguro: inactivo hasta confirmar
         self.puesto = data.get('puesto')
         self.empresa = data.get('Empresa')
 
@@ -29,7 +29,7 @@ class TelegramUser:
         self.telegram_last_name = data.get('telegramLastName')
         self.alias = data.get('alias')
         self.es_principal = data.get('esPrincipal', False)
-        self.estado = data.get('estado', 'ACTIVO')
+        self.estado = data.get('estado', 'BLOQUEADO')  # default seguro: bloqueado hasta confirmar
         self.verificado = data.get('verificado', False)
         self.fecha_ultima_actividad = data.get('fechaUltimaActividad')
 

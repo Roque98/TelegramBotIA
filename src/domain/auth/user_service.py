@@ -9,11 +9,11 @@ import logging
 import random
 import string
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, Tuple
 
 from sqlalchemy.orm import Session
 
-from src.domain.auth.user_entity import TelegramUser, PermissionResult, Operation, RegistrationError
+from src.domain.auth.user_entity import TelegramUser, RegistrationError
 from src.domain.auth.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -176,34 +176,6 @@ class UserService:
         except Exception as e:
             logger.error(f"Error reenviando código: {e}")
             return (False, f"Error al reenviar código: {str(e)}", None)
-
-    # -------------------------------------------------------------------------
-    # Lógica de permisos
-    # -------------------------------------------------------------------------
-
-    def check_permission(self, user_id: int, comando: str) -> PermissionResult:
-        return self.repository.check_permission(user_id, comando)
-
-    def get_user_operations(self, user_id: int) -> List[Operation]:
-        return self.repository.get_user_operations(user_id)
-
-    def get_user_operations_by_module(self, user_id: int) -> Dict[str, List[Operation]]:
-        operations = self.repository.get_user_operations(user_id)
-        by_module: Dict[str, List[Operation]] = {}
-        for op in operations:
-            module_name = op.modulo or 'Sin Módulo'
-            if module_name not in by_module:
-                by_module[module_name] = []
-            by_module[module_name].append(op)
-        return by_module
-
-    def get_command_operations_map(self, user_id: int) -> Dict[str, Operation]:
-        operations = self.repository.get_user_operations(user_id)
-        return {op.comando: op for op in operations if op.comando and op.permitido}
-
-    def is_operation_critical(self, user_id: int, comando: str) -> bool:
-        operation = self.get_command_operations_map(user_id).get(comando)
-        return operation.nivel_criticidad >= 3 if operation else False
 
     def log_operation(self, user_id: int, comando: str, **kwargs) -> bool:
         return self.repository.log_operation(user_id, comando, **kwargs)
