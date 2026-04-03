@@ -41,8 +41,8 @@
 | 11 | [Cobertura de tests al 80%](02-activos/PLAN_CAL_11_TESTS.md) | `tests/` | Pendiente |
 | 12 | [Estadísticas reales](02-activos/PLAN_CAL_12_ESTADISTICAS.md) | `bot/handlers/command_handlers.py` | Pendiente |
 | 13 | [Notificaciones al admin](02-activos/PLAN_CAL_13_NOTIFICACIONES.md) | `bot/middleware/logging_middleware.py` | Pendiente |
-| 14 | [Stemmer NLP real](02-activos/PLAN_CAL_14_STEMMER.md) | `knowledge/knowledge_service.py` | Pendiente |
-| 15 | [Fallbacks informativos](02-activos/PLAN_CAL_15_FALLBACKS.md) | `bot/handlers/command_handlers.py` | Pendiente |
+| 14 | [Stemmer NLP real](03-ideas/PLAN_CAL_14_STEMMER.md) | `knowledge/knowledge_service.py` | Backlog |
+| 15 | [Fallbacks informativos](03-ideas/PLAN_CAL_15_FALLBACKS.md) | `bot/handlers/command_handlers.py` | Backlog |
 | 16 | [Pool de conexiones](03-ideas/PLAN_CAL_16_POOL_CONEXIONES.md) | `infra/database/connection.py` | Backlog |
 
 ---

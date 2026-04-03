@@ -21,8 +21,6 @@ plan/
 │   ├── PLAN_CAL_11_TESTS.md               # Cobertura tests al 80%
 │   ├── PLAN_CAL_12_ESTADISTICAS.md        # Estadisticas reales
 │   ├── PLAN_CAL_13_NOTIFICACIONES.md      # Notificaciones al admin
-│   ├── PLAN_CAL_14_STEMMER.md             # Stemmer NLP real
-│   ├── PLAN_CAL_15_FALLBACKS.md           # Fallbacks informativos
 │   ├── PLAN_FUN_17_CACHE_LLM.md           # Cache para LLM
 │   ├── PLAN_FUN_18_STREAMING.md           # Streaming de respuestas
 │   ├── PLAN_FUN_19_RAG.md                 # RAG con vectores
