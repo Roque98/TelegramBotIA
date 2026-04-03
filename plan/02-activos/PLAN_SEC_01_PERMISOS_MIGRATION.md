@@ -8,14 +8,14 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Nuevo Esquema BD | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Nuevo Esquema BD | ████████░░ 80% | 🔄 En progreso |
 | Fase 2: Capa de Dominio | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 3: UserContext con Roles y Gerencias | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/46 tareas)
+**Progreso Total**: █░░░░░░░░░ 9% (4/46 tareas)
 
 ---
 
@@ -235,24 +235,25 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 #### Tareas
 
-- [ ] **Script SQL: crear `BotTipoEntidad`, `BotRecurso`, `BotPermisos`, `BotPermisosAudit`**
+- [x] **Script SQL: crear `BotTipoEntidad`, `BotRecurso`, `BotPermisos`, `BotPermisosAudit`**
   - Archivo: `database/migrations/10_BotPermisos.sql`
   - Incluir índices y unique constraints
   - Idempotente (IF NOT EXISTS)
 
-- [ ] **Script SQL: insertar datos iniciales**
+- [x] **Script SQL: insertar datos iniciales**
   - Archivo: `database/migrations/11_BotPermisos_DatosIniciales.sql`
   - TipoEntidades, Recursos (tools + cmds), permisos por rol
+  - Usa MERGE — idempotente
 
-- [ ] **Script SQL: trigger de audit**
+- [x] **Script SQL: trigger de audit**
   - Archivo: `database/migrations/12_BotPermisos_Audit.sql`
   - Trigger AFTER INSERT/UPDATE/DELETE en `BotPermisos`
+  - Captura usuario con ORIGINAL_LOGIN()
 
-- [ ] **Script de verificación pre-migración**
+- [x] **Script de verificación pre-migración**
   - Archivo: `database/migrations/09_PreMigracionCheck.sql`
-  - Query: contar usuarios activos sin gerencia asignada (los sin gerencia solo tendrán permisos via `autenticado`)
-  - Query: verificar que todos los `idRol` en `Usuarios` tienen su fila correspondiente en los datos iniciales de `BotPermisos`
-  - Objetivo: confirmar que no hay roles en uso que no estén cubiertos por los datos iniciales
+  - Query: usuarios activos sin gerencia asignada
+  - Query: roles en uso vs datos iniciales
 
 - [ ] **Verificar en staging antes de prod**
 
