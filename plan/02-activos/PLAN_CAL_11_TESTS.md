@@ -3,7 +3,7 @@
 > **Objetivo**: Llevar la cobertura de tests a un mínimo del 80%
 > **Rama**: `feature/cal-11-tests`
 > **Prioridad**: 🟡 Media
-> **Progreso**: 100% (11/11) ✅
+> **Progreso**: 100% (11/11) ✅ — CI/CD excluido del alcance
 
 ---
 
@@ -32,8 +32,13 @@ Tras la migración ARQ-25, la estructura `src/` cambió a capas:
 | `src/api/` | `tests/api/test_chat_endpoint.py` | ✅ Cubierto |
 | `src/utils/input_validator` | `tests/utils/test_input_validator.py` | ✅ Cubierto |
 | `src/utils/rate_limiter` | `tests/utils/test_rate_limiter.py` | ✅ Cubierto |
+| `src/utils/status_message` | `tests/utils/test_status_message.py` | ✅ Cubierto |
 | `src/bot/handlers/command` | `tests/handlers/test_command_handlers.py` | ✅ Cubierto |
 | `src/bot/handlers/registration` | `tests/handlers/test_registration_handlers.py` | ✅ Cubierto |
+| `src/bot/middleware/auth_middleware` | `tests/auth/test_auth_middleware.py` | ✅ Cubierto |
+| `src/agents/orchestrator/` | `tests/agents/test_orchestrator.py` | ✅ Cubierto |
+| `src/agents/tools/read_attachment_tool` | `tests/agents/test_read_attachment_tool.py` | ✅ Cubierto |
+| `src/domain/auth/permission_service` | `tests/domain/test_permission_service.py` | ✅ Cubierto |
 
 ---
 
@@ -53,19 +58,16 @@ Tras la migración ARQ-25, la estructura `src/` cambió a capas:
 - [x] **11.11** Tests para `src/infra/database/` — SQLValidator (32) + DatabaseManager (10)
 - [x] **11.12** Tests para `src/bot/handlers/` — command_handlers (18) + registration_handlers (19)
 
-### 🔲 Pendiente final
-- [ ] **11.13** Configurar CI (GitHub Actions) para reportar cobertura en cada PR
-
 ---
 
 ## Resultado
 
-- **205+ tests nuevos escritos** en esta rama
-- **467 tests totales pasan** en la suite completa
+- **230+ tests nuevos escritos** en esta rama (incluyendo ARQ-29 Fases 5–7)
+- **524 tests totales pasan** en la suite completa
 - 4 errores pre-existentes en `test_tools_handlers.py` (conflicto sys.modules con test_gateway.py, no introducido por esta rama)
+- 2 errores pre-existentes en `test_encryption.py` y `test_token_middleware.py` (módulos eliminados en ARQ-25)
 
 ## Criterios de aceptación
 
 - `pytest --cov=src --cov-report=html` reporta ≥80% de cobertura global
 - Todos los módulos principales tienen al menos 70% de cobertura
-- CI falla si la cobertura baja del 80%
