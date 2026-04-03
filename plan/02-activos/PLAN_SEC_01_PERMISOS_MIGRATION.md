@@ -494,8 +494,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Remover importaciones y referencias en: `auth_middleware.py`, `user_service.py`, `query_handlers.py`
 
 - [ ] **Eliminar tablas legacy del código Python**
-  - Remover accesos directos a `RolesOperaciones`, `OperacionesIA`, `PerfilOperacion` desde el nuevo flujo
+  - Remover accesos directos a `RolesOperaciones` desde el nuevo flujo
   - Verificar que ningún repositorio nuevo las referencie
+  - Nota: `OperacionesIA` y `PerfilOperacion` no existen en BD (verificado en pre-migración)
 
 #### Tareas — Eliminación de Objetos BD
 
@@ -508,7 +509,8 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 - [ ] **Script: DROP tablas legacy de permisos**
   - Archivo: `database/migrations/21_DropLegacyPermisosTablas.sql`
-  - Tablas a evaluar para drop: `RolesOperaciones`, `OperacionesIA`, `PerfilOperacion`, `RolesIA`, `GerenciasRolesIA`
+  - Tablas confirmadas en BD: `RolesOperaciones`, `RolesIA`, `GerenciasRolesIA`
+  - `OperacionesIA` y `PerfilOperacion` no existen — ignorar
   - **Verificar antes de dropear**: que no tengan FK activas hacia otras tablas usadas
   - Mover data histórica relevante a tabla de archivo antes del drop si aplica
 

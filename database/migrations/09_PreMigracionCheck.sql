@@ -47,7 +47,7 @@ ORDER BY r.idRol;
 PRINT '';
 PRINT '3. Tablas legacy a eliminar en Fase 6:';
 SELECT
-    t.name AS tabla,
+    v.nombre AS tabla,
     CASE WHEN t.name IS NOT NULL THEN 'EXISTS' ELSE 'NOT FOUND' END AS estado
 FROM (VALUES
     ('RolesOperaciones'),
