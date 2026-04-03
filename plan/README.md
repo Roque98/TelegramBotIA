@@ -1,7 +1,7 @@
 # Planes del Proyecto Iris Bot
 
 > **Proyecto**: Iris - Bot conversacional con LLM
-> **Ultima actualizacion**: 2026-03-28
+> **Ultima actualizacion**: 2026-04-03
 
 ---
 
@@ -41,7 +41,7 @@ plan/
 | Metrica | Valor |
 |---------|-------|
 | Planes completados | 13 |
-| Planes activos | 20 |
+| Planes activos | 22 |
 | Ideas documentadas | 10 |
 | Backlog total | 26 mejoras |
 
@@ -71,7 +71,8 @@ plan/
 
 | Plan | Progreso | Rama | Tareas |
 |------|----------|------|--------|
-| [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 11% (3/28) | `feature/obs-27-observabilidad` | Logs, traces y métricas |
+| [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 82% (23/28) | `feature/obs-27-observabilidad` | Solo falta Fase 5: alertas |
+| [AgentOrchestrator](02-activos/PLAN_ARQ_30_ORCHESTRATOR.md) | 0% (0/18) | `feature/arq-30-orchestrator` | Tests, especialización tools, observabilidad |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
 | [Claude Code Patterns](02-activos/PLAN_ARQ_29_CLAUDE_CODE_PATTERNS.md) | 73% (22/30) | `develop` | Tool layer, events, cost, memory, archetypes |
 | [Migración Sistema de Permisos](02-activos/PLAN_SEC_01_PERMISOS_MIGRATION.md) | 0% (0/24) | `feature/sec-01-permisos` | Reemplazar SPs, roles en contexto, permisos en tools |

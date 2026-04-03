@@ -1,7 +1,7 @@
 # Plan: OBS-27 — Sistema de Observabilidad
 
 > **Estado**: 🟡 En progreso
-> **Última actualización**: 2026-04-03
+> **Última actualización**: 2026-03-31
 > **Rama Git**: `feature/obs-27-observabilidad`
 
 ## Resumen de Progreso
@@ -277,6 +277,16 @@ CREATE INDEX IX_TransactionLogs_createdAt ON abcmasplus..TransactionLogs (create
 | `tools_used` | Dict: {tool_name: count} | Qué tools usa más el agente |
 | `fallback_used` | Veces que se usó el agente de fallback | Cuándo falla ReAct |
 
+### Diferencia entre p50 y p95
+
+- **p50 (mediana)**: la mitad de los requests terminan en este tiempo o menos.
+  Si p50 = 2s, la experiencia "normal" es 2s.
+- **p95**: el 95% de los requests termina en este tiempo o menos.
+  Si p95 = 15s, 1 de cada 20 usuarios espera 15s — eso es un problema aunque p50 sea bueno.
+
+Los LLMs típicamente tienen p95 muy alto (timeouts, llamadas costosas). Medirlo permite
+detectar si el p95 sube con el tiempo (degradación gradual).
+
 ### Tareas
 
 - [x] **`MetricsCollector`** — ya existía en `src/infra/observability/metrics.py`
@@ -313,14 +323,10 @@ CREATE INDEX IX_TransactionLogs_createdAt ON abcmasplus..TransactionLogs (create
   - Archivo: `src/pipeline/handler.py`
 - [ ] **Crear `AlertService`** — evalúa condiciones y envía notificaciones
   - Archivo: `src/pipeline/alerts.py`
-  - Lógica: ventana deslizante de últimos N requests, umbrales configurables
 - [ ] **Integrar con notificaciones Telegram al admin** — reusar sistema de PLAN_CAL_13
-  - Depende de: `PLAN_CAL_13_NOTIFICACIONES.md` (ya completado)
-- [ ] **Health check endpoint en API** — `GET /health` responde con estado completo
-  - Archivo: `src/api/routes.py`
-  - Respuesta: `{"status": "ok", "llm": "ok", "db": "ok", "uptime_s": 3600}`
-- [ ] **Tests para AlertService** — verificar umbrales y notificaciones
-  - Archivo: `tests/pipeline/test_alerts.py`
+  - Depende de: `PLAN_CAL_13_NOTIFICACIONES.md`
+- [ ] **Health check endpoint en API** — `/health` responde con estado completo
+  - Archivo: `src/api/` (si existe)
 
 ---
 
@@ -352,18 +358,18 @@ Log de consola              SQL Server (abcmasplus)
                                        │
                                 MetricsCollector (en memoria, p50/p95)
                                        │
-                                 /stats en Telegram + AlertService
+                                 /stats en Telegram
 ```
 
 ---
 
 ## Criterios de Éxito
 
-- [x] Cada request genera exactamente **un log de consola** con el flujo completo
-- [x] Cada request genera exactamente **una fila** en `TransactionLogs`
-- [x] Puedo responder "¿cuánto tardó el LLM en promedio ayer?" con una query SQL
-- [x] Puedo responder "¿qué tools usa más el agente?" con una query SQL
-- [ ] El bot notifica automáticamente cuando hay errores consecutivos o latencia alta
+- [ ] Cada request genera exactamente **un log de consola** con el flujo completo
+- [ ] Cada request genera exactamente **una fila** en `TransactionLogs`
+- [ ] Puedo responder "¿cuánto tardó el LLM en promedio ayer?" con una query SQL
+- [ ] Puedo responder "¿qué tools usa más el agente?" con una query SQL
+- [ ] El bot notifica automáticamente cuando hay errores consecutivos
 
 ---
 
@@ -375,7 +381,6 @@ Log de consola              SQL Server (abcmasplus)
 | TransactionLogs crece sin control | Media | Bajo | Retención de 90 días con DELETE periódico |
 | Overhead de guardar traza impacta latencia | Baja | Bajo | Guardar en background task (asyncio.create_task) |
 | Métricas en memoria se pierden al reiniciar | Alta | Bajo | Son métricas "del ciclo de vida actual" — aceptable |
-| AlertService genera spam de notificaciones | Media | Medio | Cooldown entre alertas del mismo tipo (mín 15 min) |
 
 ---
 
@@ -386,4 +391,3 @@ Log de consola              SQL Server (abcmasplus)
 | 2026-03-31 | Creación del plan |
 | 2026-03-31 | Fase 1 parcialmente completada (fixes de sesión anterior) |
 | 2026-03-31 | Fases 1-4 completadas — errores en BD, /stats por usuario, historial sin truncado |
-| 2026-04-03 | Movido de 03-ideas a 02-activos — estado real 82%. Fase 5 detallada |
