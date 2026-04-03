@@ -47,9 +47,6 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "development"
 
-    # Admin
-    admin_chat_ids: list[int] = []  # IDs de Telegram con acceso a comandos admin
-
     # Retry Configuration
     retry_llm_max_attempts: int = 3
     retry_llm_min_wait: int = 2       # segundos

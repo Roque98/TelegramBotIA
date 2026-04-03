@@ -3,7 +3,7 @@
 > **Objetivo**: Notificar al admin por Telegram cuando ocurren errores críticos en el bot
 > **Rama**: `feature/cal-13-notificaciones`
 > **Prioridad**: 🟡 Media
-> **Progreso**: 0% (0/6)
+> **Progreso**: 100% (6/6) ✅
 
 ---
 
@@ -46,27 +46,27 @@ comando, y `admin_chat_ids` puede eliminarse de `settings.py`.
 
 ## Tareas
 
-- [ ] **13.1** Agregar `get_admin_chat_ids()` en `UserQueryRepository`
+- [x] **13.1** Agregar `get_admin_chat_ids()` en `UserQueryRepository`
   - Query: `UsuariosTelegram JOIN Usuarios WHERE idRol = 1 AND verificado = 1 AND activo = 1`
   - Retorna `list[int]` de `telegramChatId`
 
-- [ ] **13.2** Crear `src/bot/notifications/admin_notifier.py`
+- [x] **13.2** Crear `src/bot/notifications/admin_notifier.py`
   - `async def notify_admin(bot, message, level, db_manager)`
   - Obtiene los chat IDs vía `get_admin_chat_ids()`
   - Rate limiting: máx 1 notificación por tipo de error cada 5 minutos
 
-- [ ] **13.3** Implementar el TODO en `log_error` de `logging_middleware.py`
+- [x] **13.3** Implementar el TODO en `log_error` de `logging_middleware.py`
   - Formato del mensaje: timestamp, tipo de error, usuario afectado, traceback resumido
 
-- [ ] **13.4** Migrar `/costo` de `admin_chat_ids` → SEC-01
+- [x] **13.4** Migrar `/costo` de `admin_chat_ids` → SEC-01
   - Registrar `cmd:/costo` en BotPermisos para rol Administrador
   - Eliminar el check de `admin_chat_ids` en `command_handlers.py:290`
   - Eliminar `admin_chat_ids` de `settings.py`
 
-- [ ] **13.5** Script SQL para registrar `cmd:/costo` en BotRecurso/BotPermisos
+- [x] **13.5** Script SQL para registrar `cmd:/costo` en BotRecurso/BotPermisos
   - Similar a los scripts existentes en `scripts/sql/`
 
-- [ ] **13.6** Tests con mock del bot y mock de `get_admin_chat_ids()`
+- [x] **13.6** Tests con mock del bot y mock de `get_admin_chat_ids()`
 
 ---
 

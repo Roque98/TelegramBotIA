@@ -87,6 +87,33 @@ class UserQueryRepository:
             "direccion_ids": [],  # DireccionesUsuarios no existe en BD
         }
 
+    async def get_admin_chat_ids(self, admin_role_id: int = 1) -> list[int]:
+        """
+        Retorna los telegramChatId de usuarios con rol admin verificados y activos.
+
+        Se usa para enviar notificaciones críticas sin depender de admin_chat_ids
+        hardcodeados en settings. Se actualiza automáticamente cuando cambia el
+        equipo de admins en el sistema.
+
+        Args:
+            admin_role_id: idRol considerado administrador (default 1)
+
+        Returns:
+            Lista de chat IDs de Telegram
+        """
+        query = """
+            SELECT ut.telegramChatId
+            FROM abcmasplus..UsuariosTelegram ut
+            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
+            WHERE u.idRol = :role_id
+              AND u.Activa = 1
+              AND ut.verificado = 1
+              AND ut.activo = 1
+              AND ut.estado = 'ACTIVO'
+        """
+        rows = await self.db_manager.execute_query_async(query, {"role_id": admin_role_id})
+        return [row["telegramChatId"] for row in rows if row.get("telegramChatId")]
+
     async def update_last_activity(self, chat_id: int) -> None:
         """Actualiza fechaUltimaActividad del usuario."""
         query = """

@@ -284,14 +284,21 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Muestra tokens y costo USD acumulado del día/mes por usuario,
     extraído del campo parametros JSON de LogOperaciones.
     """
-    from src.config.settings import settings
-
     chat_id = update.effective_user.id
-    if settings.admin_chat_ids and chat_id not in settings.admin_chat_ids:
-        await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
-        return
-
     db_manager = context.bot_data.get("db_manager")
+
+    # Verificar que el usuario tenga rol Administrador en la BD
+    try:
+        from src.domain.auth.user_query_repository import UserQueryRepository
+        repo = UserQueryRepository(db_manager)
+        admin_ids = await repo.get_admin_chat_ids()
+        if admin_ids and chat_id not in admin_ids:
+            await update.message.reply_text("⛔ No tienes permiso para usar este comando.")
+            return
+    except Exception as e:
+        logger.error(f"Error verificando permisos de admin para /costo: {e}")
+        await update.message.reply_text("❌ Error verificando permisos.")
+        return
     if not db_manager:
         await update.message.reply_text("❌ Base de datos no disponible.")
         return
