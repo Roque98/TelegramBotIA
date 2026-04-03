@@ -68,13 +68,13 @@ class UserQueryRepository:
                 STUFF((
                     SELECT ',' + CAST(gu.idGerencia AS VARCHAR)
                     FROM abcmasplus..GerenciasUsuarios gu
-                    WHERE gu.idUsuario = u.idUsuario AND gu.activo = 1
+                    WHERE gu.idUsuario = u.idUsuario
                     FOR XML PATH('')
                 ), 1, 1, '')                                        AS gerencia_ids_csv,
                 STUFF((
                     SELECT ',' + CAST(du.idDireccion AS VARCHAR)
                     FROM abcmasplus..DireccionesUsuarios du
-                    WHERE du.idUsuario = u.idUsuario AND du.activo = 1
+                    WHERE du.idUsuario = u.idUsuario
                     FOR XML PATH('')
                 ), 1, 1, '')                                        AS direccion_ids_csv
             FROM abcmasplus..UsuariosTelegram ut
