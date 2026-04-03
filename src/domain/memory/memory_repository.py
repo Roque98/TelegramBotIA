@@ -42,12 +42,6 @@ class MemoryRepository:
                         WHERE gu.idUsuario = u.idUsuario
                         FOR XML PATH('')
                     ), 1, 1, '') AS gerencia_ids_csv,
-                    STUFF((
-                        SELECT ',' + CAST(du.idDireccion AS VARCHAR)
-                        FROM abcmasplus..DireccionesUsuarios du
-                        WHERE du.idUsuario = u.idUsuario
-                        FOR XML PATH('')
-                    ), 1, 1, '') AS direccion_ids_csv,
                     ump.resumenContextoLaboral AS resumen_contexto_laboral,
                     ump.resumenTemasRecientes AS resumen_temas_recientes,
                     ump.resumenHistorialBreve AS resumen_historial_breve,
@@ -83,9 +77,8 @@ class MemoryRepository:
             display_name = preferences.get("alias") or row.get("Nombre", "Usuario")
 
             gerencia_csv = row.get("gerencia_ids_csv")
-            direccion_csv = row.get("direccion_ids_csv")
             gerencia_ids = [int(x) for x in gerencia_csv.split(",") if x] if gerencia_csv else []
-            direccion_ids = [int(x) for x in direccion_csv.split(",") if x] if direccion_csv else []
+            direccion_ids: list[int] = []  # DireccionesUsuarios no existe en BD
 
             role_name = row.get("role_name")
 

@@ -70,13 +70,7 @@ class UserQueryRepository:
                     FROM abcmasplus..GerenciasUsuarios gu
                     WHERE gu.idUsuario = u.idUsuario
                     FOR XML PATH('')
-                ), 1, 1, '')                                        AS gerencia_ids_csv,
-                STUFF((
-                    SELECT ',' + CAST(du.idDireccion AS VARCHAR)
-                    FROM abcmasplus..DireccionesUsuarios du
-                    WHERE du.idUsuario = u.idUsuario
-                    FOR XML PATH('')
-                ), 1, 1, '')                                        AS direccion_ids_csv
+                ), 1, 1, '')                                        AS gerencia_ids_csv
             FROM abcmasplus..UsuariosTelegram ut
             INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
@@ -86,12 +80,11 @@ class UserQueryRepository:
             return None
         row = rows[0]
         gerencia_ids = [int(x) for x in row["gerencia_ids_csv"].split(",") if x] if row.get("gerencia_ids_csv") else []
-        direccion_ids = [int(x) for x in row["direccion_ids_csv"].split(",") if x] if row.get("direccion_ids_csv") else []
         return {
             "user_id": row["user_id"],
             "role_id": row["role_id"],
             "gerencia_ids": gerencia_ids,
-            "direccion_ids": direccion_ids,
+            "direccion_ids": [],  # DireccionesUsuarios no existe en BD
         }
 
     async def update_last_activity(self, chat_id: int) -> None:
