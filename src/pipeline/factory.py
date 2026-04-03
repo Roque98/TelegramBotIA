@@ -22,6 +22,8 @@ from src.agents.tools.save_memory_tool import SaveMemoryTool
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.domain.knowledge import KnowledgeService
 from src.config.settings import settings
+from src.domain.auth.permission_repository import PermissionRepository
+from src.domain.auth.permission_service import PermissionService
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
@@ -115,6 +117,16 @@ def create_orchestrator(
     return orchestrator
 
 
+def create_permission_service(
+    db_manager: Optional[Any] = None,
+) -> PermissionService:
+    """Crea el servicio de permisos SEC-01."""
+    repository = PermissionRepository(db_manager=db_manager)
+    service = PermissionService(repository=repository)
+    logger.info("PermissionService created")
+    return service
+
+
 def create_memory_service(
     db_manager: Optional[Any] = None,
 ) -> MemoryService:
@@ -153,6 +165,7 @@ def create_main_handler(
         logger.warning(f"KnowledgeService creation failed, knowledge search disabled: {e}")
         knowledge_manager = None
 
+    permission_service = create_permission_service(db_manager=db)
     memory_service = create_memory_service(db_manager=db)
 
     orchestrator = create_orchestrator(

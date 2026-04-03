@@ -9,13 +9,13 @@
 | Fase | Progreso | Estado |
 |------|----------|--------|
 | Fase 1: Nuevo Esquema BD | ██████████ 100% | ✅ Completada |
-| Fase 2: Capa de Dominio | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 2: Capa de Dominio | ██████████ 100% | ✅ Completada |
 | Fase 3: UserContext con Roles y Gerencias | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ██░░░░░░░░ 11% (5/46 tareas)
+**Progreso Total**: ███░░░░░░░ 24% (11/46 tareas)
 
 ---
 
@@ -271,7 +271,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 
 #### Tareas
 
-- [ ] **Crear `PermissionRepository`**
+- [x] **Crear `PermissionRepository`**
   - Archivo: `src/domain/auth/permission_repository.py`
   - `get_all_permissions(user_id, role_id, gerencia_ids, direccion_ids) -> list[dict]`
   - La query usa UNION de dos partes:
@@ -279,7 +279,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
     2. `SELECT recurso, 1 AS permitido FROM BotRecurso WHERE esPublico=1 AND activo=1` — siempre incluidos como `True`
   - Así `get_all_for_user()` retorna un dict completo que incluye recursos públicos, y `get_tools_prompt()` los muestra correctamente
 
-- [ ] **Crear `PermissionService`**
+- [x] **Crear `PermissionService`**
   - Archivo: `src/domain/auth/permission_service.py`
   - `can(user_id, recurso, context) -> bool` — método principal
   - `get_all_for_user(user_id, role_id, gerencia_ids, direccion_ids) -> dict[str, bool]`
@@ -288,7 +288,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `invalidate_all()` — forzar recarga de todo el cache (para admins)
   - Lee `tipoResolucion` de BD (no hardcodeado)
 
-- [ ] **Crear enums para magic strings**
+- [x] **Crear enums para magic strings**
   - Archivo: `src/domain/auth/constants.py`
   - `AccountState`, `OperationResult`, `EntityType`, `ResolutionType`
 
@@ -297,7 +297,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - `TelegramAccountRepository`: registro, verificación, bloqueo
   - `PermissionRepository`: consultas de permisos (ya definido arriba)
 
-- [ ] **Tests de `PermissionService`**
+- [x] **Tests de `PermissionService`**
   - Archivo: `tests/domain/test_permission_service.py`
   - Test: rol permite → OK
   - Test: usuario deniega sobre rol que permite → DENEGADO
@@ -308,7 +308,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Test: cache hit no hace query a BD
   - Test: `invalidate(user_id)` fuerza re-query en el siguiente acceso
 
-- [ ] **`create_permission_service()` en factory**
+- [x] **`create_permission_service()` en factory**
   - Archivo: `src/pipeline/factory.py`
   - Recibe `db_manager`, crea `PermissionRepository` y `PermissionService`
   - Llamado en `create_main_handler()` antes de crear `MemoryService`
