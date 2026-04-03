@@ -245,10 +245,9 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - TipoEntidades, Recursos (tools + cmds), permisos por rol
   - Usa MERGE — idempotente
 
-- [x] **Script SQL: trigger de audit**
+- [ ] ~~**Script SQL: trigger de audit**~~ — **diferido** (no es bloqueante para la migración)
   - Archivo: `database/migrations/12_BotPermisos_Audit.sql`
   - Trigger AFTER INSERT/UPDATE/DELETE en `BotPermisos`
-  - Captura usuario con ORIGINAL_LOGIN()
 
 - [x] **Script de verificación pre-migración**
   - Archivo: `database/migrations/09_PreMigracionCheck.sql`
@@ -260,7 +259,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
 #### Entregables
 - [ ] 4 tablas nuevas creadas
 - [ ] Datos iniciales por rol configurados
-- [ ] Trigger de audit activo
+- [ ] ~~Trigger de audit~~ — diferido
 - [ ] Todos los roles en uso cubiertos por datos iniciales de `BotPermisos`
 
 ---
