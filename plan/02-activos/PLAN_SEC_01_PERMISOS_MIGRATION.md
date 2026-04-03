@@ -8,14 +8,14 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Nuevo Esquema BD | ████████░░ 80% | 🔄 En progreso |
+| Fase 1: Nuevo Esquema BD | ██████████ 100% | ✅ Completada |
 | Fase 2: Capa de Dominio | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 3: UserContext con Roles y Gerencias | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Permisos en Tools del Agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Migrar Middleware y Handlers | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y Cleanup | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: █░░░░░░░░░ 9% (4/46 tareas)
+**Progreso Total**: ██░░░░░░░░ 11% (5/46 tareas)
 
 ---
 
@@ -254,7 +254,7 @@ Usando `tipoEntidad='autenticado'` con `idRolRequerido` para cada rol:
   - Query: usuarios activos sin gerencia asignada
   - Query: roles en uso vs datos iniciales
 
-- [ ] **Verificar en staging antes de prod**
+- [x] **Verificar en staging antes de prod**
 
 #### Entregables
 - [ ] 4 tablas nuevas creadas
