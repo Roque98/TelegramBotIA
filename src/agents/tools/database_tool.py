@@ -1,11 +1,13 @@
 """
-Database Tool - Herramienta para ejecutar consultas SQL.
+Database Tool - Herramienta para consultas de datos de negocio.
 
-Ejecuta consultas SQL SELECT validadas contra la base de datos.
-Usa SQLValidator existente para validación de seguridad.
+El agente describe en lenguaje natural qué datos necesita.
+DatabaseTool genera el SQL internamente usando gpt-5.4 y lo ejecuta.
+El loop ReAct (mini) nunca necesita escribir SQL.
 """
 
 import logging
+import re
 import time
 from typing import Any, Optional
 
@@ -13,129 +15,153 @@ from .base import BaseTool, ToolCategory, ToolDefinition, ToolParameter, ToolRes
 
 logger = logging.getLogger(__name__)
 
+SQL_GENERATION_PROMPT = """Eres un experto en SQL Server (T-SQL). Genera UNA consulta SELECT para responder la solicitud del usuario.
+
+REGLAS:
+- Solo SELECT, nunca INSERT/UPDATE/DELETE/DROP
+- Usa TOP para limitar resultados cuando sea apropiado
+- Usa alias descriptivos en español (AS total, AS nombre, etc.)
+- La base de datos es: abcmasplus
+- Si no tienes suficiente contexto del esquema, genera la consulta más razonable posible
+
+SOLICITUD: {description}
+
+Responde ÚNICAMENTE con la consulta SQL, sin explicaciones ni markdown."""
+
 
 class DatabaseTool(BaseTool):
     """
-    Herramienta para ejecutar consultas SQL en la base de datos.
+    Herramienta para consultar datos de negocio desde lenguaje natural.
 
-    Solo permite consultas SELECT validadas por seguridad.
-    Integra con el DatabaseManager y SQLValidator existentes.
+    El agente describe qué datos necesita en lenguaje natural.
+    DatabaseTool usa gpt-5.4 para generar el SQL y lo ejecuta.
 
     Example:
-        >>> tool = DatabaseTool(db_manager)
-        >>> result = await tool.execute(query="SELECT COUNT(*) FROM ventas")
+        >>> tool = DatabaseTool(db_manager, llm_provider)
+        >>> result = await tool.execute(description="cuántas ventas hubo ayer")
         >>> print(result.to_observation())
     """
 
     def __init__(
         self,
         db_manager: Any,
+        llm_provider: Any,
         sql_validator: Optional[Any] = None,
         max_results: int = 100,
     ):
-        """
-        Inicializa el DatabaseTool.
-
-        Args:
-            db_manager: Gestor de base de datos
-            sql_validator: Validador SQL (opcional, crea uno por defecto)
-            max_results: Número máximo de resultados a retornar
-        """
         self.db_manager = db_manager
+        self.llm_provider = llm_provider
         self.max_results = max_results
 
-        # Usar validador proporcionado o crear uno nuevo
         if sql_validator:
             self.sql_validator = sql_validator
         else:
             from src.infra.database.sql_validator import SQLValidator
             self.sql_validator = SQLValidator()
 
-        logger.info(f"DatabaseTool inicializado (max_results={max_results})")
+        logger.info(f"DatabaseTool inicializado (model={llm_provider.model}, max_results={max_results})")
 
     @property
     def definition(self) -> ToolDefinition:
-        """Definición de la herramienta para el prompt."""
         return ToolDefinition(
             name="database_query",
             description=(
-                "Execute a SQL SELECT query to retrieve data from the database. "
-                "Use this for questions about sales, users, products, or any business data."
+                "Consulta datos de negocio de la base de datos. "
+                "Describe en lenguaje natural qué datos necesitas: ventas, usuarios, productos, "
+                "reportes, estadísticas, facturación, stock o cualquier dato empresarial."
             ),
             category=ToolCategory.DATABASE,
             parameters=[
                 ToolParameter(
-                    name="query",
+                    name="description",
                     param_type="string",
-                    description="SQL SELECT query to execute",
+                    description="Descripción en lenguaje natural de los datos que necesitas",
                     required=True,
                     examples=[
-                        "SELECT COUNT(*) as total FROM ventas WHERE fecha = GETDATE()",
-                        "SELECT TOP 5 nombre, total FROM vendedores ORDER BY total DESC",
+                        "total de ventas de los últimos 7 días",
+                        "top 5 vendedores por monto este mes",
+                        "cantidad de usuarios activos por gerencia",
                     ],
                 ),
             ],
             examples=[
-                {"query": "SELECT COUNT(*) as total FROM ventas WHERE fecha >= DATEADD(day, -7, GETDATE())"},
-                {"query": "SELECT TOP 10 producto, SUM(cantidad) as total FROM ventas GROUP BY producto ORDER BY total DESC"},
+                {"description": "total de ventas de hoy comparado con ayer"},
+                {"description": "top 10 productos más vendidos este mes"},
             ],
-            returns="Query results as a list of records or error message",
+            returns="Resultados de la consulta como lista de registros",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
-        """
-        Ejecuta una consulta SQL.
-
-        Args:
-            query: Consulta SQL SELECT
-
-        Returns:
-            ToolResult con los datos o error
-        """
         start_time = time.perf_counter()
-        query = kwargs.get("query", "")
+        description = kwargs.get("description", "").strip()
 
-        # Validar parámetros
-        is_valid, error = self.validate_params(kwargs)
-        if not is_valid:
-            return ToolResult.error_result(error or "Invalid parameters")
+        if not description:
+            return ToolResult.error_result("Se requiere una descripción de los datos a consultar")
 
         try:
-            # Validar SQL por seguridad
-            is_safe, validation_error = self.sql_validator.validate(query)
+            # 1. Generar SQL con gpt-5.4
+            sql = await self._generate_sql(description)
+            if not sql:
+                return ToolResult.error_result("No se pudo generar una consulta SQL válida")
+
+            logger.info(f"SQL generado: {sql[:120]}...")
+
+            # 2. Validar seguridad
+            is_safe, validation_error = self.sql_validator.validate(sql)
             if not is_safe:
                 logger.warning(f"SQL validation failed: {validation_error}")
                 return ToolResult.error_result(
-                    f"SQL validation failed: {validation_error}",
-                    metadata={"query": query[:100]},
+                    f"La consulta generada no pasó validación de seguridad: {validation_error}",
+                    metadata={"sql": sql[:200]},
                 )
 
-            # Ejecutar query
-            logger.info(f"Executing SQL: {query[:100]}...")
-            results = await self._execute_query(query)
+            # 3. Ejecutar
+            results = await self._execute_query(sql)
 
-            # Limitar resultados
             if isinstance(results, list) and len(results) > self.max_results:
-                results = results[: self.max_results]
-                logger.info(f"Results truncated to {self.max_results}")
+                results = results[:self.max_results]
 
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.info(f"Query executed in {elapsed_ms:.2f}ms, {len(results) if isinstance(results, list) else 1} results")
+            logger.info(f"database_query: {elapsed_ms:.0f}ms, {len(results) if isinstance(results, list) else 1} resultados")
 
             return ToolResult.success_result(
                 data=results,
                 execution_time_ms=elapsed_ms,
-                metadata={"query": query[:100], "result_count": len(results) if isinstance(results, list) else 1},
+                metadata={
+                    "sql": sql[:200],
+                    "result_count": len(results) if isinstance(results, list) else 1,
+                },
             )
 
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"Database query error: {e}")
+            logger.error(f"DatabaseTool error: {e}")
             return ToolResult.error_result(
-                error=f"Database error: {str(e)}",
+                error=f"Error consultando datos: {str(e)}",
                 execution_time_ms=elapsed_ms,
-                metadata={"query": query[:100]},
             )
+
+    async def _generate_sql(self, description: str) -> Optional[str]:
+        """Genera SQL T-SQL a partir de una descripción en lenguaje natural."""
+        try:
+            messages = [
+                {"role": "system", "content": "Eres un experto en T-SQL para SQL Server. Solo respondes con SQL válido."},
+                {"role": "user", "content": SQL_GENERATION_PROMPT.format(description=description)},
+            ]
+            raw = await self.llm_provider.generate_messages(messages)
+            sql = self._extract_sql(raw.strip())
+            return sql
+        except Exception as e:
+            logger.error(f"SQL generation failed: {e}")
+            return None
+
+    def _extract_sql(self, text: str) -> str:
+        """Extrae el SQL limpio de la respuesta del LLM."""
+        # Quitar bloques markdown ```sql ... ```
+        match = re.search(r"```(?:sql)?\s*([\s\S]+?)```", text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return text.strip()
 
     async def _execute_query(self, query: str) -> list[dict[str, Any]]:
         """

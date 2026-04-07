@@ -28,10 +28,8 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     openai_api_key: str = ""
-    openai_model: str = "gpt-5.4-mini"       # modelo principal (legacy, usado si no hay orquestador)
-    openai_intent_model: str = "gpt-5.4-nano" # clasificación de intent (barato y rápido)
-    openai_casual_model: str = "gpt-5.4-mini" # conversación casual, preferencias
-    openai_data_model: str = "gpt-5.4"        # queries SQL complejas y síntesis de datos
+    openai_loop_model: str = "gpt-5.4-mini"  # ReAct loop: reasoning + tool selection
+    openai_data_model: str = "gpt-5.4"       # DatabaseTool: generación de SQL complejo
     anthropic_api_key: str = ""
 
     # Database

@@ -11,7 +11,6 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from src.agents.react.agent import ReActAgent
-from src.agents.orchestrator import AgentOrchestrator, IntentClassifier
 from src.agents.tools.registry import ToolRegistry
 from src.agents.tools.database_tool import DatabaseTool
 from src.agents.tools.knowledge_tool import KnowledgeTool
@@ -46,12 +45,13 @@ def create_tool_registry(
     memory_service: Optional[Any] = None,
     permission_service: Optional[Any] = None,
     bot_token: Optional[str] = None,
+    data_llm: Optional[Any] = None,
 ) -> ToolRegistry:
     """Crea y configura el registro de herramientas."""
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    registry.register(DatabaseTool(db_manager=db_manager))
+    registry.register(DatabaseTool(db_manager=db_manager, llm_provider=data_llm))
     if knowledge_manager is not None:
         registry.register(KnowledgeTool(knowledge_manager=knowledge_manager))
     else:
@@ -70,62 +70,37 @@ def create_tool_registry(
 
 
 def create_react_agent(
-    llm_provider: Any,
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
     memory_service: Optional[Any] = None,
     permission_service: Optional[Any] = None,
     bot_token: Optional[str] = None,
 ) -> ReActAgent:
-    """Crea el agente ReAct con sus dependencias."""
-    tool_registry = create_tool_registry(db_manager, knowledge_manager, memory_service, permission_service, bot_token)
-    agent = ReActAgent(
-        llm=llm_provider,
-        tool_registry=tool_registry,
-        max_iterations=10,
-        temperature=0.1,
-    )
-    logger.info(f"ReActAgent created (model={llm_provider.model})")
-    return agent
-
-
-def create_orchestrator(
-    db_manager: Optional[Any] = None,
-    knowledge_manager: Optional[Any] = None,
-    memory_service: Optional[Any] = None,
-    permission_service: Optional[Any] = None,
-) -> AgentOrchestrator:
     """
-    Crea el orquestador con sus tres proveedores LLM.
+    Crea el agente ReAct con sus dependencias.
 
-    - IntentClassifier usa gpt-5.4-nano (barato, solo clasifica)
-    - CasualAgent usa gpt-5.4-mini (conversación casual, preferencias)
-    - DataAgent usa gpt-5.4 (queries SQL complejas, síntesis de datos)
+    - loop_llm (gpt-5.4-mini): reasoning + selección de tools
+    - data_llm (gpt-5.4): generación de SQL dentro de DatabaseTool
     """
     if not settings.openai_api_key:
         raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
 
-    intent_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_intent_model)
-    casual_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_casual_model)
-    data_llm   = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+    loop_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_loop_model)
+    data_llm  = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
 
-    intent_classifier = IntentClassifier(llm=intent_llm)
-    casual_agent = create_react_agent(casual_llm, db_manager, knowledge_manager, memory_service, permission_service, settings.telegram_bot_token)
-    data_agent   = create_react_agent(data_llm,   db_manager, knowledge_manager, memory_service, permission_service, settings.telegram_bot_token)
-
-    orchestrator = AgentOrchestrator(
-        casual_agent=casual_agent,
-        data_agent=data_agent,
-        intent_classifier=intent_classifier,
+    tool_registry = create_tool_registry(
+        db_manager, knowledge_manager, memory_service, permission_service,
+        bot_token or settings.telegram_bot_token,
+        data_llm=data_llm,
     )
-
-    logger.info(
-        f"AgentOrchestrator created: "
-        f"intent={settings.openai_intent_model}, "
-        f"casual={settings.openai_casual_model}, "
-        f"data={settings.openai_data_model}"
+    agent = ReActAgent(
+        llm=loop_llm,
+        tool_registry=tool_registry,
+        max_iterations=10,
+        temperature=0.1,
     )
-    return orchestrator
+    logger.info(f"ReActAgent created (loop={settings.openai_loop_model}, data={settings.openai_data_model})")
+    return agent
 
 
 def create_permission_service(
@@ -155,13 +130,6 @@ def create_memory_service(
     return service
 
 
-def create_llm_provider() -> OpenAIProvider:
-    """Crea el proveedor de LLM según la configuración (legacy — usar create_orchestrator)."""
-    if not settings.openai_api_key:
-        raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
-    return OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_model)
-
-
 def create_main_handler(
     db_manager: Optional[Any] = None,
 ) -> MainHandler:
@@ -181,7 +149,7 @@ def create_main_handler(
     permission_service = create_permission_service(db_manager=db)
     memory_service = create_memory_service(db_manager=db, permission_service=permission_service)
 
-    orchestrator = create_orchestrator(
+    agent = create_react_agent(
         db_manager=db,
         knowledge_manager=knowledge_manager,
         memory_service=memory_service,
@@ -197,13 +165,13 @@ def create_main_handler(
         logger.info("SqlLogHandler wired to ObservabilityRepository")
 
     handler = MainHandler(
-        react_agent=orchestrator,
+        react_agent=agent,
         memory_service=memory_service,
         observability_repo=obs_repo,
         cost_repository=cost_repo,
     )
 
-    logger.info("MainHandler created with AgentOrchestrator + ObservabilityRepository")
+    logger.info("MainHandler created with ReActAgent + ObservabilityRepository")
     return handler
 
 

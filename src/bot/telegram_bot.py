@@ -60,7 +60,7 @@ class TelegramBot:
 
         logger.info(
             f"TelegramBot inicializado exitosamente con "
-            f"modelo: {settings.openai_model}"
+            f"modelo: {settings.openai_loop_model}"
         )
 
     def _setup_middleware(self):
@@ -108,7 +108,7 @@ class TelegramBot:
         logger.info("Bot iniciado y esperando mensajes...")
         logger.info(f"Configuración: {settings.environment}")
         logger.info(f"Base de datos: {settings.db_type}")
-        logger.info(f"Modelo LLM: {settings.openai_model}")
+        logger.info(f"Modelo LLM: {settings.openai_loop_model}")
 
         await self.application.run_polling(
             allowed_updates=Update.ALL_TYPES,
