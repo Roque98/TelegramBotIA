@@ -42,7 +42,7 @@ class ObservabilityRepository:
         """
         try:
             sql = """
-                INSERT INTO abcmasplus..TransactionLogs (
+                INSERT INTO abcmasplus..BotIAv2_TransactionLogs (
                     correlationId, userId, username, query, channel,
                     memoryMs, reactMs, saveMs, totalMs, success,
                     errorMessage, toolsUsed, stepsCount
@@ -92,7 +92,7 @@ class ObservabilityRepository:
         """
         try:
             sql = """
-                INSERT INTO abcmasplus..ApplicationLogs (
+                INSERT INTO abcmasplus..BotIAv2_ApplicationLogs (
                     correlationId, userId, level, event, message, module, durationMs, extra
                 ) VALUES (
                     :correlation_id, :user_id, :level, :event, :message, :module, :duration_ms, :extra

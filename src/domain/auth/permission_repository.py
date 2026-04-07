@@ -13,8 +13,8 @@ class PermissionRepository:
     Repositorio de permisos del nuevo sistema SEC-01.
 
     La query principal usa UNION de dos partes:
-    1. Filas de BotPermisos que aplican al usuario (por rol, gerencia, dirección, usuario)
-    2. Recursos con esPublico=1 de BotRecurso — siempre permitidos sin consultar BotPermisos
+    1. Filas de BotIAv2_Permisos que aplican al usuario (por rol, gerencia, dirección, usuario)
+    2. Recursos con esPublico=1 de BotIAv2_Recurso — siempre permitidos sin consultar BotIAv2_Permisos
     """
 
     def __init__(self, db_manager: Any) -> None:
@@ -38,9 +38,9 @@ class PermissionRepository:
 
         query = f"""
             SELECT br.recurso, bp.permitido, bte.tipoResolucion
-            FROM abcmasplus..BotPermisos bp
-            INNER JOIN abcmasplus..BotRecurso     br  ON bp.idRecurso    = br.idRecurso
-            INNER JOIN abcmasplus..BotTipoEntidad bte ON bp.idTipoEntidad = bte.idTipoEntidad
+            FROM abcmasplus..BotIAv2_Permisos bp
+            INNER JOIN abcmasplus..BotIAv2_Recurso     br  ON bp.idRecurso    = br.idRecurso
+            INNER JOIN abcmasplus..BotIAv2_TipoEntidad bte ON bp.idTipoEntidad = bte.idTipoEntidad
             WHERE bp.activo = 1
               AND br.activo = 1
               AND (bp.fechaExpiracion IS NULL OR bp.fechaExpiracion > GETDATE())
@@ -59,7 +59,7 @@ class PermissionRepository:
             UNION ALL
 
             SELECT br.recurso, 1 AS permitido, 'permisivo' AS tipoResolucion
-            FROM abcmasplus..BotRecurso br
+            FROM abcmasplus..BotIAv2_Recurso br
             WHERE br.esPublico = 1
               AND br.activo = 1
         """
@@ -75,7 +75,7 @@ class PermissionRepository:
         """Verifica si un recurso es público (shortcut sin cargar todo el contexto)."""
         query = """
             SELECT esPublico
-            FROM abcmasplus..BotRecurso
+            FROM abcmasplus..BotIAv2_Recurso
             WHERE recurso = :recurso AND activo = 1
         """
         rows = await self.db_manager.execute_query_async(query, {"recurso": recurso})

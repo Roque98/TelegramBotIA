@@ -125,8 +125,8 @@ class SavePreferenceTool(BaseTool):
             # Primero obtener preferencias actuales
             query_get = """
                 SELECT ump.preferencias
-                FROM abcmasplus..UserMemoryProfiles ump
-                INNER JOIN abcmasplus..UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
+                FROM abcmasplus..BotIAv2_UserMemoryProfiles ump
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -152,8 +152,8 @@ class SavePreferenceTool(BaseTool):
                 UPDATE ump
                 SET ump.preferencias = :preferences,
                     ump.ultimaActualizacion = GETDATE()
-                FROM abcmasplus..UserMemoryProfiles ump
-                INNER JOIN abcmasplus..UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
+                FROM abcmasplus..BotIAv2_UserMemoryProfiles ump
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id
                   AND ut.activo = 1
             """
@@ -161,9 +161,9 @@ class SavePreferenceTool(BaseTool):
             # Si no existe registro, crear uno
             if not results:
                 query_insert = """
-                    INSERT INTO abcmasplus..UserMemoryProfiles (idUsuario, preferencias, numInteracciones)
+                    INSERT INTO abcmasplus..BotIAv2_UserMemoryProfiles (idUsuario, preferencias, numInteracciones)
                     SELECT ut.idUsuario, :preferences, 0
-                    FROM abcmasplus..UsuariosTelegram ut
+                    FROM abcmasplus..BotIAv2_UsuariosTelegram ut
                     WHERE ut.telegramChatId = :user_id
                       AND ut.activo = 1
                 """

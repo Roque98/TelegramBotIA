@@ -4,25 +4,25 @@
 -- Ejecutar manualmente en SQL Server Management Studio.
 
 -- 1. Registrar en BotRecurso
-IF NOT EXISTS (SELECT 1 FROM abcmasplus..BotRecurso WHERE recurso = 'cmd:/costo')
+IF NOT EXISTS (SELECT 1 FROM abcmasplus..BotIAv2_Recurso WHERE recurso = 'cmd:/costo')
 BEGIN
-    INSERT INTO abcmasplus..BotRecurso
+    INSERT INTO abcmasplus..BotIAv2_Recurso
         (recurso, descripcion, tipoRecurso, esPublico, activo)
     VALUES
         ('cmd:/costo', 'Comando /costo — ver costo diario de tokens por usuario', 'cmd', 0, 1);
 END
 
 -- 2. Permiso para rol Administrador
-DECLARE @idRecurso    INT = (SELECT idRecurso    FROM abcmasplus..BotRecurso    WHERE recurso = 'cmd:/costo');
-DECLARE @idTipoEntidad INT = (SELECT idTipoEntidad FROM abcmasplus..BotTipoEntidad WHERE nombre  = 'autenticado');
+DECLARE @idRecurso    INT = (SELECT idRecurso    FROM abcmasplus..BotIAv2_Recurso    WHERE recurso = 'cmd:/costo');
+DECLARE @idTipoEntidad INT = (SELECT idTipoEntidad FROM abcmasplus..BotIAv2_TipoEntidad WHERE nombre  = 'autenticado');
 DECLARE @idRolAdmin   INT = (SELECT idRol         FROM abcmasplus..Roles          WHERE nombre  = 'Administrador');
 
 IF NOT EXISTS (
-    SELECT 1 FROM abcmasplus..BotPermisos
+    SELECT 1 FROM abcmasplus..BotIAv2_Permisos
     WHERE idRecurso = @idRecurso AND idRolRequerido = @idRolAdmin AND activo = 1
 )
 BEGIN
-    INSERT INTO abcmasplus..BotPermisos
+    INSERT INTO abcmasplus..BotIAv2_Permisos
         (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, activo)
     VALUES
         (@idTipoEntidad, 0, @idRecurso, @idRolAdmin, 1, 1);

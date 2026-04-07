@@ -19,7 +19,7 @@ class CostRepository:
     async def save_session(self, session: CostSession) -> None:
         """Persiste el costo de una sesión en CostSesiones."""
         query = """
-            INSERT INTO abcmasplus..CostSesiones (
+            INSERT INTO abcmasplus..BotIAv2_CostSesiones (
                 telegramChatId, modelo, inputTokens, outputTokens,
                 cacheReadTokens, llamadasLLM, costoUSD, pasos, fechaSesion
             ) VALUES (
@@ -49,8 +49,8 @@ class CostRepository:
                 SUM(cs.inputTokens)                                    AS input_tokens,
                 SUM(cs.outputTokens)                                   AS output_tokens,
                 SUM(cs.costoUSD)                                       AS costo_usd
-            FROM abcmasplus..CostSesiones cs
-            LEFT JOIN abcmasplus..UsuariosTelegram ut ON cs.telegramChatId = ut.telegramChatId
+            FROM abcmasplus..BotIAv2_CostSesiones cs
+            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON cs.telegramChatId = ut.telegramChatId
             LEFT JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             WHERE cs.fechaSesion >= CAST(:fecha AS DATE)
             GROUP BY cs.telegramChatId, u.Nombre, ut.telegramUsername

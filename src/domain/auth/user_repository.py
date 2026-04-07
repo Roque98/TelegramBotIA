@@ -36,7 +36,7 @@ class UserRepository:
                     ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
                     ut.telegramFirstName, ut.telegramLastName, ut.alias,
                     ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
                 LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
                 WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
@@ -60,7 +60,7 @@ class UserRepository:
                     ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
                 FROM abcmasplus..Usuarios u
                 LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-                LEFT JOIN abcmasplus..UsuariosTelegram ut
+                LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
                     ON u.idUsuario = ut.idUsuario AND ut.esPrincipal = 1 AND ut.activo = 1
                 WHERE u.idUsuario = :user_id
             """)
@@ -78,7 +78,7 @@ class UserRepository:
     def is_user_registered(self, chat_id: int) -> bool:
         try:
             query = text("""
-                SELECT COUNT(*) FROM abcmasplus..UsuariosTelegram
+                SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
                 WHERE telegramChatId = :chat_id AND activo = 1
             """)
             count = self.session.execute(query, {"chat_id": chat_id}).scalar()
@@ -91,7 +91,7 @@ class UserRepository:
         try:
             query = text("""
                 SELECT idUsuario, verificado, estado
-                FROM abcmasplus..UsuariosTelegram
+                FROM abcmasplus..BotIAv2_UsuariosTelegram
                 WHERE telegramChatId = :chat_id AND activo = 1
             """)
             result = self.session.execute(query, {"chat_id": chat_id})
@@ -104,7 +104,7 @@ class UserRepository:
     def update_last_activity(self, chat_id: int) -> bool:
         try:
             query = text("""
-                UPDATE abcmasplus..UsuariosTelegram
+                UPDATE abcmasplus..BotIAv2_UsuariosTelegram
                 SET fechaUltimaActividad = GETDATE()
                 WHERE telegramChatId = :chat_id AND activo = 1
             """)
@@ -143,7 +143,7 @@ class UserRepository:
                     idUsuarioTelegram, telegramChatId, telegramUsername,
                     alias, esPrincipal, estado, verificado,
                     fechaRegistro, fechaUltimaActividad
-                FROM abcmasplus..UsuariosTelegram
+                FROM abcmasplus..BotIAv2_UsuariosTelegram
                 WHERE idUsuario = :user_id AND activo = 1
                 ORDER BY esPrincipal DESC, fechaRegistro DESC
             """)
@@ -188,14 +188,14 @@ class UserRepository:
 
     def has_telegram_account(self, chat_id: int) -> bool:
         query = text("""
-            SELECT COUNT(*) FROM abcmasplus..UsuariosTelegram
+            SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE telegramChatId = :chat_id AND activo = 1
         """)
         return self.session.execute(query, {"chat_id": chat_id}).scalar() > 0
 
     def has_principal_account(self, user_id: int) -> bool:
         query = text("""
-            SELECT COUNT(*) FROM abcmasplus..UsuariosTelegram
+            SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE idUsuario = :user_id AND esPrincipal = 1 AND activo = 1
         """)
         return self.session.execute(query, {"user_id": user_id}).scalar() > 0
@@ -212,7 +212,7 @@ class UserRepository:
         alias: Optional[str] = None
     ) -> None:
         query = text("""
-            INSERT INTO abcmasplus..UsuariosTelegram (
+            INSERT INTO abcmasplus..BotIAv2_UsuariosTelegram (
                 idUsuario, telegramChatId, telegramUsername,
                 telegramFirstName, telegramLastName, alias,
                 esPrincipal, estado, codigoVerificacion,
@@ -235,7 +235,7 @@ class UserRepository:
         query = text("""
             SELECT idUsuarioTelegram, idUsuario, codigoVerificacion,
                    intentosVerificacion, fechaRegistro, verificado
-            FROM abcmasplus..UsuariosTelegram
+            FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE telegramChatId = :chat_id AND activo = 1
         """)
         result = self.session.execute(query, {"chat_id": chat_id})
@@ -244,7 +244,7 @@ class UserRepository:
 
     def mark_account_verified(self, chat_id: int) -> None:
         query = text("""
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET verificado = 1, fechaVerificacion = GETDATE(), codigoVerificacion = NULL
             WHERE telegramChatId = :chat_id
         """)
@@ -253,7 +253,7 @@ class UserRepository:
 
     def increment_verification_attempts(self, chat_id: int) -> None:
         query = text("""
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET intentosVerificacion = intentosVerificacion + 1
             WHERE telegramChatId = :chat_id
         """)
@@ -262,7 +262,7 @@ class UserRepository:
 
     def update_verification_code(self, chat_id: int, new_code: str) -> None:
         query = text("""
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET codigoVerificacion = :new_code,
                 intentosVerificacion = 0,
                 fechaRegistro = GETDATE()
@@ -274,7 +274,7 @@ class UserRepository:
     def block_account(self, chat_id: int) -> None:
         try:
             query = text("""
-                UPDATE abcmasplus..UsuariosTelegram
+                UPDATE abcmasplus..BotIAv2_UsuariosTelegram
                 SET estado = 'BLOQUEADO'
                 WHERE telegramChatId = :chat_id
             """)
@@ -290,7 +290,7 @@ class UserRepository:
             query = text("""
                 SELECT ut.verificado, ut.estado, ut.intentosVerificacion,
                        ut.fechaRegistro, u.Nombre, u.email
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
                 WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
             """)

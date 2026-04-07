@@ -2,7 +2,7 @@
 Script de prueba para verificar el flujo de memoria persistente.
 
 Este script:
-1. Verifica que la tabla UserMemoryProfiles existe
+1. Verifica que la tabla BotIAv2_UserMemoryProfiles existe
 2. Prueba el incremento de contador
 3. Simula el flujo completo de memoria
 
@@ -41,26 +41,26 @@ async def test_memory_flow():
         print(f"   ❌ Error de conexión: {e}")
         return
 
-    # 2. Verificar que tabla UserMemoryProfiles existe
-    print("\n2. Verificando tabla UserMemoryProfiles...")
+    # 2. Verificar que tabla BotIAv2_UserMemoryProfiles existe
+    print("\n2. Verificando tabla BotIAv2_UserMemoryProfiles...")
     try:
         with db_manager.get_session() as session:
             query = text("""
                 SELECT COUNT(*) as count
                 FROM INFORMATION_SCHEMA.TABLES
                 WHERE TABLE_SCHEMA = 'dbo'
-                  AND TABLE_NAME = 'UserMemoryProfiles'
+                  AND TABLE_NAME = 'BotIAv2_UserMemoryProfiles'
             """)
             result = session.execute(query).fetchone()
 
             if result.count == 1:
-                print(f"   ✅ Tabla UserMemoryProfiles existe")
+                print(f"   ✅ Tabla BotIAv2_UserMemoryProfiles existe")
 
                 # Obtener estructura de la tabla
                 structure_query = text("""
                     SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE
                     FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_NAME = 'UserMemoryProfiles'
+                    WHERE TABLE_NAME = 'BotIAv2_UserMemoryProfiles'
                     ORDER BY ORDINAL_POSITION
                 """)
                 columns = session.execute(structure_query).fetchall()
@@ -68,7 +68,7 @@ async def test_memory_flow():
                 for col in columns:
                     print(f"      - {col.COLUMN_NAME}: {col.DATA_TYPE} (NULL: {col.IS_NULLABLE})")
             else:
-                print(f"   ❌ Tabla UserMemoryProfiles NO existe")
+                print(f"   ❌ Tabla BotIAv2_UserMemoryProfiles NO existe")
                 print(f"   💡 Ejecuta: python scripts/migrate_users_to_memory.py")
                 return
     except Exception as e:
@@ -81,7 +81,7 @@ async def test_memory_flow():
         with db_manager.get_session() as session:
             query = text("""
                 SELECT COUNT(*) as count
-                FROM [dbo].[UserMemoryProfiles]
+                FROM [dbo].[BotIAv2_UserMemoryProfiles]
             """)
             result = session.execute(query).fetchone()
             print(f"   📊 Perfiles existentes: {result.count}")
@@ -97,7 +97,7 @@ async def test_memory_flow():
                             WHEN resumenContextoLaboral IS NOT NULL THEN 'SI'
                             ELSE 'NO'
                         END as tieneContexto
-                    FROM [dbo].[UserMemoryProfiles]
+                    FROM [dbo].[BotIAv2_UserMemoryProfiles]
                     ORDER BY numInteracciones DESC
                 """)
                 profiles = session.execute(sample_query).fetchall()
@@ -133,7 +133,7 @@ async def test_memory_flow():
         with db_manager.get_session() as session:
             verify_query = text("""
                 SELECT numInteracciones
-                FROM [dbo].[UserMemoryProfiles]
+                FROM [dbo].[BotIAv2_UserMemoryProfiles]
                 WHERE idUsuario = :user_id
             """)
             result = session.execute(verify_query, {"user_id": test_user_id}).fetchone()

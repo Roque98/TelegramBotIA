@@ -29,7 +29,7 @@ class UserQueryRepository:
                 ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
                 ut.telegramFirstName, ut.telegramLastName, ut.alias,
                 ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-            FROM abcmasplus..UsuariosTelegram ut
+            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
             INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
             WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
@@ -49,7 +49,7 @@ class UserQueryRepository:
                 ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
             FROM abcmasplus..Usuarios u
             LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-            LEFT JOIN abcmasplus..UsuariosTelegram ut
+            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
                 ON u.idUsuario = ut.idUsuario AND ut.esPrincipal = 1 AND ut.activo = 1
             WHERE u.idUsuario = :user_id
         """
@@ -71,7 +71,7 @@ class UserQueryRepository:
                     WHERE gu.idUsuario = u.idUsuario
                     FOR XML PATH('')
                 ), 1, 1, '')                                        AS gerencia_ids_csv
-            FROM abcmasplus..UsuariosTelegram ut
+            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
             INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
         """
@@ -103,7 +103,7 @@ class UserQueryRepository:
         """
         query = """
             SELECT ut.telegramChatId
-            FROM abcmasplus..UsuariosTelegram ut
+            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
             INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             WHERE u.idRol = :role_id
               AND u.Activa = 1
@@ -117,7 +117,7 @@ class UserQueryRepository:
     async def update_last_activity(self, chat_id: int) -> None:
         """Actualiza fechaUltimaActividad del usuario."""
         query = """
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET fechaUltimaActividad = GETDATE()
             WHERE telegramChatId = :chat_id AND activo = 1
         """

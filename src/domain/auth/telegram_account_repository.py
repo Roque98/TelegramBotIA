@@ -37,7 +37,7 @@ class TelegramAccountRepository:
 
     async def has_telegram_account(self, chat_id: int) -> bool:
         query = """
-            SELECT COUNT(*) AS cnt FROM abcmasplus..UsuariosTelegram
+            SELECT COUNT(*) AS cnt FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE telegramChatId = :chat_id AND activo = 1
         """
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
@@ -45,7 +45,7 @@ class TelegramAccountRepository:
 
     async def has_principal_account(self, user_id: int) -> bool:
         query = """
-            SELECT COUNT(*) AS cnt FROM abcmasplus..UsuariosTelegram
+            SELECT COUNT(*) AS cnt FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE idUsuario = :user_id AND esPrincipal = 1 AND activo = 1
         """
         rows = await self.db_manager.execute_query_async(query, {"user_id": user_id})
@@ -63,7 +63,7 @@ class TelegramAccountRepository:
         alias: Optional[str] = None,
     ) -> None:
         query = """
-            INSERT INTO abcmasplus..UsuariosTelegram (
+            INSERT INTO abcmasplus..BotIAv2_UsuariosTelegram (
                 idUsuario, telegramChatId, telegramUsername,
                 telegramFirstName, telegramLastName, alias,
                 esPrincipal, estado, codigoVerificacion,
@@ -91,7 +91,7 @@ class TelegramAccountRepository:
         query = """
             SELECT idUsuarioTelegram, idUsuario, codigoVerificacion,
                    intentosVerificacion, fechaRegistro, verificado
-            FROM abcmasplus..UsuariosTelegram
+            FROM abcmasplus..BotIAv2_UsuariosTelegram
             WHERE telegramChatId = :chat_id AND activo = 1
         """
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
@@ -99,7 +99,7 @@ class TelegramAccountRepository:
 
     async def mark_account_verified(self, chat_id: int) -> None:
         query = """
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET verificado = 1, fechaVerificacion = GETDATE(), codigoVerificacion = NULL
             WHERE telegramChatId = :chat_id
         """
@@ -107,7 +107,7 @@ class TelegramAccountRepository:
 
     async def increment_verification_attempts(self, chat_id: int) -> None:
         query = """
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET intentosVerificacion = intentosVerificacion + 1
             WHERE telegramChatId = :chat_id
         """
@@ -115,7 +115,7 @@ class TelegramAccountRepository:
 
     async def update_verification_code(self, chat_id: int, new_code: str) -> None:
         query = """
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET codigoVerificacion = :new_code,
                 intentosVerificacion = 0,
                 fechaRegistro = GETDATE()
@@ -126,7 +126,7 @@ class TelegramAccountRepository:
     async def block_account(self, chat_id: int) -> None:
         from .constants import AccountState
         query = """
-            UPDATE abcmasplus..UsuariosTelegram
+            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
             SET estado = :estado
             WHERE telegramChatId = :chat_id
         """
@@ -140,7 +140,7 @@ class TelegramAccountRepository:
         query = """
             SELECT ut.verificado, ut.estado, ut.intentosVerificacion,
                    ut.fechaRegistro, u.Nombre, u.email
-            FROM abcmasplus..UsuariosTelegram ut
+            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
             INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
             WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
         """

@@ -19,7 +19,7 @@ try:
     with db_manager.get_session() as session:
         result = session.execute(text("""
             SELECT COUNT(*) as count
-            FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+            FROM [abcmasplus].[dbo].[BotIAv2_UserMemoryProfiles]
         """)).fetchone()
         print(f"   OK - Tabla existe, {result.count} registros")
 except Exception as e:
@@ -58,7 +58,7 @@ try:
     with db_manager.get_session() as session:
         before = session.execute(text("""
             SELECT numInteracciones
-            FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+            FROM [abcmasplus].[dbo].[BotIAv2_UserMemoryProfiles]
             WHERE idUsuario = :uid
         """), {"uid": test_user_id}).fetchone()
 
@@ -75,7 +75,7 @@ try:
     with db_manager.get_session() as session:
         after = session.execute(text("""
             SELECT numInteracciones, fechaCreacion, ultimaActualizacion
-            FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+            FROM [abcmasplus].[dbo].[BotIAv2_UserMemoryProfiles]
             WHERE idUsuario = :uid
         """), {"uid": test_user_id}).fetchone()
 
@@ -99,14 +99,14 @@ try:
     with db_manager.get_session() as session:
         result = session.execute(text("""
             SELECT COUNT(*) as count
-            FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+            FROM [abcmasplus].[dbo].[BotIAv2_UserMemoryProfiles]
         """)).fetchone()
         print(f"   Total registros: {result.count}")
 
         if result.count > 0:
             top5 = session.execute(text("""
                 SELECT TOP 5 idUsuario, numInteracciones, fechaCreacion
-                FROM [abcmasplus].[dbo].[UserMemoryProfiles]
+                FROM [abcmasplus].[dbo].[BotIAv2_UserMemoryProfiles]
                 ORDER BY fechaCreacion DESC
             """)).fetchall()
             print(f"   Ultimos 5 perfiles:")

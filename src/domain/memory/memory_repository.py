@@ -48,10 +48,10 @@ class MemoryRepository:
                     ump.numInteracciones AS num_interacciones,
                     ump.ultimaActualizacion AS ultima_actualizacion,
                     ump.preferencias AS preferencias
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
                 INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
                 LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-                LEFT JOIN abcmasplus..UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
+                LEFT JOIN abcmasplus..BotIAv2_UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
@@ -111,7 +111,7 @@ class MemoryRepository:
 
         try:
             query = """
-                MERGE INTO abcmasplus..UserMemoryProfiles AS target
+                MERGE INTO abcmasplus..BotIAv2_UserMemoryProfiles AS target
                 USING (SELECT :user_id AS idUsuario) AS source
                 ON target.idUsuario = source.idUsuario
                 WHEN MATCHED THEN
@@ -142,12 +142,12 @@ class MemoryRepository:
         try:
             query = """
                 SELECT TOP (:limit)
-                    lo.idOperacion AS Comando,
-                    lo.parametros AS Parametros,
-                    lo.resultado AS Resultado,
+                    lo.comando      AS Comando,
+                    lo.parametros   AS Parametros,
+                    lo.resultado    AS Resultado,
                     lo.fechaEjecucion AS Fecha_Hora
-                FROM abcmasplus..LogOperaciones lo
-                INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                FROM abcmasplus..BotIAv2_LogOperaciones lo
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
                   AND lo.mensajeError IS NULL
                 ORDER BY lo.fechaEjecucion DESC
@@ -203,15 +203,15 @@ class MemoryRepository:
             resultado = response[:4000] if not error else "ERROR"
 
             query_sql = """
-                INSERT INTO abcmasplus..LogOperaciones (
-                    idUsuario, idOperacion, telegramChatId, telegramUsername,
+                INSERT INTO abcmasplus..BotIAv2_LogOperaciones (
+                    idUsuario, comando, telegramChatId, telegramUsername,
                     parametros, resultado, mensajeError, duracionMs, fechaEjecucion
                 )
                 SELECT
                     ut.idUsuario,
-                    (SELECT idOperacion FROM abcmasplus..Operaciones WHERE comando = :operation AND activo = 1),
+                    :operation,
                     :chat_id, :username, :params, :result, :error, :duration_ms, GETDATE()
-                FROM abcmasplus..UsuariosTelegram ut
+                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
                 WHERE ut.telegramChatId = :chat_id_lookup AND ut.activo = 1
             """
             await self.db_manager.execute_non_query_async(query_sql, {
@@ -245,8 +245,8 @@ class MemoryRepository:
                     MAX(lo.duracionMs)                                  AS max_ms,
                     MIN(lo.fechaEjecucion)                              AS primera,
                     MAX(lo.fechaEjecucion)                              AS ultima
-                FROM abcmasplus..LogOperaciones lo
-                INNER JOIN abcmasplus..UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                FROM abcmasplus..BotIAv2_LogOperaciones lo
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
