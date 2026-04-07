@@ -150,7 +150,7 @@ IF NOT EXISTS (
     [telegramChatId] bigint NULL,
     [telegramUsername] nvarchar(100) NULL,
     [parametros] nvarchar(MAX) NULL,
-    [resultado] nvarchar(50) NOT NULL,
+    [resultado] nvarchar(MAX) NULL,
     [mensajeError] nvarchar(MAX) NULL,
     [duracionMs] int NULL,
     [ipOrigen] nvarchar(50) NULL,
@@ -591,15 +591,6 @@ IF NOT EXISTS (
         AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
 ) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_IdUsuario] ON dbo.[BotIAv2_LogOperaciones] ([idUsuario] ASC);
 
-IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_BotIAv2_LogOperaciones_Resultado'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
-) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_Resultado] ON dbo.[BotIAv2_LogOperaciones] ([resultado] ASC);
 
 IF NOT EXISTS (
     SELECT
