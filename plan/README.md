@@ -72,6 +72,7 @@ plan/
 | Plan | Progreso | Rama | Tareas |
 |------|----------|------|--------|
 | [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 82% (23/28) | `feature/obs-27-observabilidad` | Solo falta Fase 5: alertas |
+| [Consolidar logs + respuesta agente](02-activos/PLAN_OBS_31_CONSOLIDAR_LOGS.md) | 0% (0/20) | `feature/obs-31-consolidar-logs` | Unificar LogOperaciones+TransactionLogs, guardar respuesta |
 | [AgentOrchestrator](02-activos/PLAN_ARQ_30_ORCHESTRATOR.md) | 0% (0/18) | `feature/arq-30-orchestrator` | Tests, especialización tools, observabilidad |
 | [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
 | [Claude Code Patterns](02-activos/PLAN_ARQ_29_CLAUDE_CODE_PATTERNS.md) | 73% (22/30) | `develop` | Tool layer, events, cost, memory, archetypes |
