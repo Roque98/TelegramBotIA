@@ -1,7 +1,7 @@
 # Plan: ARQ-35 Orchestrator con Agentes Dinámicos
 
 > **Estado**: 🟡 En progreso
-> **Última actualización**: 2026-04-09
+> **Última actualización**: 2026-04-09 (revisión 2)
 > **Rama Git**: `feature/arq-35-dynamic-orchestrator`
 
 ## Resumen de Progreso
@@ -15,7 +15,7 @@
 | Fase 5: Admin tooling y recarga | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y migración | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/27 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/31 tareas)
 
 ---
 
@@ -71,7 +71,9 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
 | `ReActAgent` | Cambio menor | Agregar `system_prompt_override: Optional[str] = None` en `__init__` |
 | `ToolRegistry` | Sin cambios | Sigue siendo el registro global |
 | `SEC-01 PermissionService` | Sin cambios | Sigue filtrando por usuario |
-| `pipeline/factory.py` | Cambio menor | Construir orchestrator en lugar de react_agent directo |
+| `pipeline/factory.py` | Cambio menor | Construir orchestrator + validación de startup |
+| `src/agents/base/agent.py` | Cambio menor | Agregar `routed_agent: Optional[str] = None` a `AgentResponse` |
+| `pipeline/handler.py` | Cambio menor | Leer `response.routed_agent` y pasarlo a observabilidad |
 
 ---
 
@@ -231,6 +233,11 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
   El trigger de BD garantiza que `version` cambia al editar el prompt,
   por lo que el cache invalida correctamente sin lógica adicional.
 
+- [ ] Definir `AgentBuilder.clear_instance_cache()` — limpia el dict de instancias cacheadas.
+  El `AgentConfigService` recibe una referencia al builder en su constructor y llama este
+  método dentro de `invalidate_cache()`, garantizando que ambos caches se limpian juntos
+  en un solo punto de invocación.
+
 ---
 
 ### Fase 4: Orchestrator N-way
@@ -283,10 +290,16 @@ cargados dinámicamente desde BD.
     y retorna `AgentResponse.error_response("Servicio temporalmente no disponible")`
   - Nunca falla silenciosamente ni produce una excepción no manejada hacia el usuario
 
-- [ ] Registrar `agenteNombre` en observabilidad: agregar columna `agenteNombre VARCHAR(100)`
-  a `BotIAv2_InteractionLogs` vía migration SQL. `MainHandler` la recibe en el
-  `AgentResponse` (`response.routed_agent`) y la pasa a `ObservabilityRepository`.
-  Sin esta columna el criterio de éxito "registrar el agente que respondió" no se cumple.
+- [ ] Agregar `routed_agent: Optional[str] = None` a `AgentResponse` en
+  `src/agents/base/agent.py`. Pydantic v2 rechaza atributos dinámicos no declarados —
+  sin esta tarea, `response.routed_agent = definition.nombre` en el orchestrator
+  falla silenciosamente o lanza `ValidationError`.
+
+- [ ] Registrar `agenteNombre` en observabilidad:
+  - Agregar columna `agenteNombre VARCHAR(100) NULL` a `BotIAv2_InteractionLogs` vía migration SQL
+  - Actualizar `ObservabilityRepository.save_interaction_log()` para recibir y persistir el campo
+  - Actualizar `MainHandler._process_event()` para leer `response.routed_agent` y
+    pasarlo a `save_interaction_log()` — este es el único cambio necesario en `MainHandler`
 
 - [ ] Actualizar `pipeline/factory.py`:
   - Construir `AgentConfigService(AgentConfigRepository(db))`
@@ -355,6 +368,12 @@ cargados dinámicamente desde BD.
   - Query de política → rutea a conocimiento agent → usa knowledge_search
   - Saludo → rutea a casual agent → finish directo sin tools
   - Query ambiguo → rutea a generalista → tiene todas las tools permitidas
+
+- [ ] Validación de startup en `pipeline/factory.py → create_main_handler()`:
+  después de construir `AgentConfigService`, verificar que hay al menos un agente activo
+  y un agente generalista. Si no, lanzar `RuntimeError` con mensaje explícito que impida
+  arrancar el bot en un estado inoperante. Mejor fallar en startup que dejar el sistema
+  enviando notificaciones de error al admin en cada request del día.
 
 - [ ] Limpiar archivos del ARQ-30 descartado si quedó código muerto.
 
