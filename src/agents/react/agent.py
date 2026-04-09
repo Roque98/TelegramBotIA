@@ -164,7 +164,10 @@ class ReActAgent(BaseAgent):
             await emit(session_started_event(session_id, context.user_id, len(self.tools)))
 
             # Construir prompts base
-            system_prompt = build_system_prompt(self.tools.get_tools_prompt(user_context=context))
+            system_prompt = build_system_prompt(
+                tools_description=self.tools.get_tools_prompt(user_context=context),
+                usage_hints=self.tools.get_usage_hints(user_context=context),
+            )
             messages = [{"role": "system", "content": system_prompt}]
 
             while not scratchpad.is_full():

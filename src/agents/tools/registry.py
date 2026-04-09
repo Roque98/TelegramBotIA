@@ -239,6 +239,42 @@ class ToolRegistry:
 
         return await tool.execute(**action_input)
 
+    def get_usage_hints(self, user_context: Optional["UserContext"] = None) -> str:
+        """
+        Genera la lista numerada de usage_hints para las tools visibles del usuario.
+
+        Solo incluye tools que tengan `usage_hint` definido y sean visibles
+        según los permisos del usuario (misma lógica que get_tools_prompt).
+
+        Args:
+            user_context: Contexto del usuario con permisos precargados
+
+        Returns:
+            String con hints numerados a partir de 2 (listo para inyectar en el prompt),
+            o cadena vacía si ninguna tool visible tiene usage_hint.
+        """
+        permisos: dict[str, bool] = getattr(user_context, "permisos", {}) if user_context else {}
+        permisos_loaded: bool = getattr(user_context, "permisos_loaded", False) if user_context else False
+
+        if permisos_loaded:
+            visible_tools = [
+                tool for name, tool in self._tools.items()
+                if permisos.get(f"tool:{name}", False)
+            ]
+        else:
+            _ALWAYS_VISIBLE = {"reload_permissions", "finish"}
+            visible_tools = [
+                tool for name, tool in self._tools.items()
+                if name in _ALWAYS_VISIBLE
+            ]
+
+        hints = [tool.definition.usage_hint for tool in visible_tools if tool.definition.usage_hint]
+
+        if not hints:
+            return ""
+
+        return "\n".join(f"{i + 2}. {hint}" for i, hint in enumerate(hints))
+
     def get_tool_names(self) -> list[str]:
         """
         Obtiene los nombres de todas las herramientas.

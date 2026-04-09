@@ -72,6 +72,7 @@ class ToolDefinition(BaseModel):
     parameters: list[ToolParameter] = Field(default_factory=list)
     examples: list[dict[str, Any]] = Field(default_factory=list)
     returns: str = "Resultado de la operación"
+    usage_hint: Optional[str] = None
 
     def to_prompt_format(self) -> str:
         """

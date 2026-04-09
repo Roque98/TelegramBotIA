@@ -23,7 +23,7 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 16 |
+| Planes completados | 17 |
 | Planes activos | 1 |
 | Ideas documentadas | 10 |
 
@@ -49,6 +49,7 @@ plan/
 | [Consolidar logs + InteractionSteps](01-completados/PLAN_OBS_31_CONSOLIDAR_LOGS.md) | 100% (27/27) | `develop` | 2026-04-08 |
 | [Observabilidad](01-completados/PLAN_OBS_27_OBSERVABILIDAD.md) | 100% (23/23) | `feature/obs-27-observabilidad` | 2026-04-08 |
 | [AgentOrchestrator](01-completados/PLAN_ARQ_30_ORCHESTRATOR.md) | Descartado | — | 2026-04-08 |
+| [ARQ-33 Dynamic Tool Hints](01-completados/PLAN_ARQ_33_DYNAMIC_HINTS.md) | 100% (13/13) | `develop` | 2026-04-08 |
 
 ---
 
@@ -57,7 +58,6 @@ plan/
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
-| [ARQ-33 Dynamic Tool Hints](02-activos/PLAN_ARQ_33_DYNAMIC_HINTS.md) | 0% (0/11) | `develop` | usage_hint por tool, registry dinámico, prompt sin hardcode |
 
 ---
 

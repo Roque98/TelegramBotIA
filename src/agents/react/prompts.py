@@ -56,12 +56,9 @@ Para responder consultas, sigue este proceso interno (NUNCA lo menciones al usua
 
 0. **Idioma y preferencias del usuario**: Revisa siempre el bloque `<memory type="user">`. Si el usuario tiene preferencias configuradas (idioma, formato, etc.), **SIEMPRE** respétalas. Si `idioma: inglés` está definido, responde en inglés aunque el usuario te escriba en español. Las preferencias del usuario tienen prioridad sobre tu configuración por defecto.
 1. **Para saludos y conversación casual**: Usa "finish" directamente sin herramientas
-2. **Para datos de negocio**: Cuando el usuario pregunte sobre ventas, usuarios, productos, reportes o cualquier dato de la empresa, esto es un REQUISITO BLOQUEANTE: debes llamar a "database_query" ANTES de generar cualquier respuesta. Está PROHIBIDO inventar o asumir datos numéricos sin consultar la base de datos.
-3. **Para políticas/procedimientos**: Usa "knowledge_search"
-4. **Para cálculos**: Usa "calculate"
-5. **Para fechas**: Usa "datetime"
-6. **Contexto conversacional**: Cuando el usuario dice algo ambiguo como "el proceso", "explícame", "dime más", SIEMPRE interpreta en el contexto de la conversación previa, NO en relación a tu funcionamiento interno
-7. **Cuando pregunten qué podés hacer**: Responde ÚNICAMENTE basándote en las herramientas listadas en la sección "## Available Tools" de este prompt. No menciones capacidades que no estén respaldadas por una herramienta disponible. Las herramientas disponibles ya reflejan los permisos del usuario.
+{usage_hints}
+- **Contexto conversacional**: Cuando el usuario dice algo ambiguo como "el proceso", "explícame", "dime más", SIEMPRE interpreta en el contexto de la conversación previa, NO en relación a tu funcionamiento interno
+- **Cuando pregunten qué podés hacer**: Responde ÚNICAMENTE basándote en las herramientas listadas en la sección "## Available Tools" de este prompt. No menciones capacidades que no estén respaldadas por una herramienta disponible. Las herramientas disponibles ya reflejan los permisos del usuario.
 
 ## Formato de Respuesta
 
@@ -87,12 +84,12 @@ SIEMPRE responde con este formato JSON:
 }}
 ```
 
-**Consulta de datos:**
+**Cálculo numérico:**
 ```json
 {{
-  "thought": "El usuario pregunta por ventas. Necesito consultar la base de datos.",
-  "action": "database_query",
-  "action_input": {{"query": "SELECT COUNT(*) as total FROM ventas WHERE fecha >= DATEADD(day, -1, GETDATE())"}},
+  "thought": "El usuario pide el 15% de 8450. Uso calculate para no inventar el resultado.",
+  "action": "calculate",
+  "action_input": {{"expression": "8450 * 0.15"}},
   "final_answer": null
 }}
 ```
@@ -152,17 +149,21 @@ Menciona que no pudiste completar toda la investigación si es relevante.
 Responde en formato JSON con action="finish":"""
 
 
-def build_system_prompt(tools_description: str) -> str:
+def build_system_prompt(tools_description: str, usage_hints: str = "") -> str:
     """
     Construye el system prompt con las herramientas disponibles.
 
     Args:
         tools_description: Descripción de herramientas del ToolRegistry
+        usage_hints: Instrucciones de uso generadas dinámicamente por el ToolRegistry
 
     Returns:
         System prompt completo
     """
-    return REACT_SYSTEM_PROMPT.format(tools_description=tools_description)
+    return REACT_SYSTEM_PROMPT.format(
+        tools_description=tools_description,
+        usage_hints=usage_hints,
+    )
 
 
 def build_user_prompt(

@@ -94,6 +94,7 @@ class DateTimeTool(BaseTool):
                 {"operation": "diff_days", "date": "2024-01-01", "date2": "2024-01-15"},
             ],
             returns="Date/time information or calculation result",
+            usage_hint="Para fechas, horas, diferencias de tiempo o cuando necesites la fecha actual para una consulta: usa `datetime`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

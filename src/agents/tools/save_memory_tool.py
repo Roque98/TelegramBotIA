@@ -70,6 +70,7 @@ class SaveMemoryTool(BaseTool):
                 {"scope": "user", "fact": "User prefers responses in Spanish with bullet points"},
             ],
             returns="Confirmation that the fact was saved",
+            usage_hint="Para recordar datos del usuario entre sesiones (hechos persistentes): usa `save_memory`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

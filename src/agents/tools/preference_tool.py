@@ -78,6 +78,7 @@ class SavePreferenceTool(BaseTool):
                     "action_input": {"key": "formato", "value": "conciso"},
                 },
             ],
+            usage_hint="Para guardar preferencias del usuario (alias, idioma, formato de respuesta): usa `save_preference`",
         )
 
     async def execute(

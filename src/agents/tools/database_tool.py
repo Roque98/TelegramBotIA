@@ -89,6 +89,11 @@ class DatabaseTool(BaseTool):
                 {"description": "top 10 productos más vendidos este mes"},
             ],
             returns="Resultados de la consulta como lista de registros",
+            usage_hint=(
+                "Para datos de negocio (ventas, reportes, usuarios, productos, stock, facturación): "
+                "usa `database_query`. **Obligatorio** antes de responder con cualquier cifra — "
+                "está PROHIBIDO inventar o asumir datos numéricos sin consultar la base de datos."
+            ),
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

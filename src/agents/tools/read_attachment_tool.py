@@ -55,6 +55,7 @@ class ReadAttachmentTool(BaseTool):
         ],
         returns="Contenido de texto del archivo, o descripción de sus metadatos si es binario.",
         examples=[{"file_id": "BQACAgIAAxkBAAIBd2..."}],
+        usage_hint="Para leer o analizar archivos adjuntos que el usuario envió en el chat: usa `read_attachment`",
     )
 
     def __init__(self, bot_token: str) -> None:

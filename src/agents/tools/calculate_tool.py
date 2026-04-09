@@ -194,6 +194,7 @@ class CalculateTool(BaseTool):
                 {"expression": "round(123.456, 2)"},
             ],
             returns="Numerical result of the calculation",
+            usage_hint="Para cálculos matemáticos (porcentajes, sumas, raíces, etc.): usa `calculate`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

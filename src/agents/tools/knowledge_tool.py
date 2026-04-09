@@ -82,6 +82,7 @@ class KnowledgeTool(BaseTool):
                 {"query": "política de trabajo remoto", "category": "politicas"},
             ],
             returns="Relevant knowledge entries with questions and answers",
+            usage_hint="Para políticas, procedimientos o preguntas sobre la empresa: usa `knowledge_search`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
