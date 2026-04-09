@@ -1,7 +1,7 @@
 # Plan: OBS-27 — Sistema de Observabilidad
 
-> **Estado**: 🟡 En progreso
-> **Última actualización**: 2026-04-03
+> **Estado**: ✅ Completado
+> **Última actualización**: 2026-04-08
 > **Rama Git**: `feature/obs-27-observabilidad`
 
 ## Resumen de Progreso
@@ -13,9 +13,12 @@
 | Fase 2: Logging estructurado | ██████████ 100% | ✅ Completada |
 | Fase 3: Transaction trace log | ██████████ 100% | ✅ Completada |
 | Fase 4: Métricas básicas | ██████████ 100% | ✅ Completada |
-| Fase 5: Alertas y health checks | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 5: Alertas y health checks | ░░░░░░░░░░ 0% | 🚫 Descartada — movida a backlog |
 
-**Progreso Total**: ████████░░ 82% (23/28 tareas)
+**Progreso Total**: ██████████ 100% (23/23 tareas activas)
+
+> **Nota**: Fase 5 (AlertService, /health endpoint) descartada — el core de observabilidad
+> está completo. Si se necesitan alertas en el futuro, ver backlog IDEAS_MEJORA_BOT.md.
 
 ---
 

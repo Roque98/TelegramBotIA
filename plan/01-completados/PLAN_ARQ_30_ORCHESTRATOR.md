@@ -1,19 +1,23 @@
 # Plan: ARQ-30 — Consolidar AgentOrchestrator
 
-> **Estado**: ⚪ No iniciado
-> **Última actualización**: 2026-04-03
+> **Estado**: 🚫 Descartado
+> **Última actualización**: 2026-04-08
 > **Rama Git**: `feature/arq-30-orchestrator`
 
 ## Resumen de Progreso
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Tests y validación de integración | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Especialización de tools por agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Observabilidad del orquestador | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 4: Limpieza y documentación | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Tests y validación de integración | ░░░░░░░░░░ 0% | 🚫 Descartada |
+| Fase 2: Especialización de tools por agente | ░░░░░░░░░░ 0% | 🚫 Descartada |
+| Fase 3: Observabilidad del orquestador | ░░░░░░░░░░ 0% | 🚫 Descartada |
+| Fase 4: Limpieza y documentación | ░░░░░░░░░░ 0% | 🚫 Descartada |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/18 tareas)
+**Progreso Total**: 0% — Descartado sin implementar
+
+> **Motivo**: El `AgentOrchestrator` existe en `src/agents/orchestrator/` pero nunca se conectó
+> al pipeline — `factory.py` usa `ReActAgent` directamente. No hay intención de activarlo,
+> por lo que consolidar algo que no está en uso no agrega valor.
 
 ---
 

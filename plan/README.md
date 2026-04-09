@@ -1,7 +1,7 @@
 # Planes del Proyecto Iris Bot
 
 > **Proyecto**: Iris - Bot conversacional con LLM
-> **Ultima actualizacion**: 2026-04-03
+> **Ultima actualizacion**: 2026-04-08
 
 ---
 
@@ -10,26 +10,9 @@
 ```
 plan/
 ├── README.md                              # Este indice
-├── BACKLOG.md                             # Lista completa de mejoras identificadas (23)
-├── 01-completados/                        # Planes finalizados (13)
-├── 02-activos/                            # Planes en progreso
-│   ├── PLAN_RETRY_RESILIENCE.md           # Retry con tenacity
-│   ├── PLAN_SEC_01_ENCRIPTACION.md        # Encriptacion segura
-│   ├── PLAN_SEC_02_RATE_LIMITING.md       # Rate limiting
-│   ├── PLAN_SEC_03_SQL_VALIDATOR.md       # SQL Validator robusto
-│   ├── PLAN_SEC_04_CORS.md                # CORS con restricciones
-│   ├── PLAN_CAL_11_TESTS.md               # Cobertura tests al 80%
-│   ├── PLAN_CAL_12_ESTADISTICAS.md        # Estadisticas reales
-│   ├── PLAN_CAL_13_NOTIFICACIONES.md      # Notificaciones al admin
-│   ├── PLAN_FUN_17_CACHE_LLM.md           # Cache para LLM
-│   ├── PLAN_FUN_18_STREAMING.md           # Streaming de respuestas
-│   ├── PLAN_FUN_19_RAG.md                 # RAG con vectores
-│   ├── PLAN_FUN_20_MULTI_AGENTE.md        # Multi-agente especialistas
-│   ├── PLAN_FUN_21_RETRY.md               # Retry con Tenacity
-│   ├── PLAN_FUN_22_DASHBOARD.md           # Dashboard de monitoreo
-│   ├── PLAN_FUN_23_MULTIMEDIA.md          # Soporte multimedia
-│   ├── PLAN_OBS_27_OBSERVABILIDAD.md      # Observabilidad (82%)
-│   └── PLAN_MIGRACION_TABLAS_IABOT.md     # Migración tablas
+├── 01-completados/                        # Planes finalizados (16)
+├── 02-activos/                            # Planes en progreso (1)
+│   └── PLAN_OBS_32_LOG_IMPROVEMENTS.md   # Mejoras al sistema de logs
 └── 03-ideas/                              # Ideas y propuestas
     └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
 ```
@@ -40,10 +23,9 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 13 |
-| Planes activos | 22 |
+| Planes completados | 16 |
+| Planes activos | 1 |
 | Ideas documentadas | 10 |
-| Backlog total | 26 mejoras |
 
 ---
 
@@ -65,18 +47,16 @@ plan/
 | [Docs Update](01-completados/PLAN_DOC_26_DOCS_UPDATE.md) | 100% | `develop` | — |
 | [Hot Reload dev](01-completados/PLAN_DEV_28_HOTRELOAD.md) | 100% (9/9) | `develop` | 2026-03-31 |
 | [Consolidar logs + InteractionSteps](01-completados/PLAN_OBS_31_CONSOLIDAR_LOGS.md) | 100% (27/27) | `develop` | 2026-04-08 |
+| [Observabilidad](01-completados/PLAN_OBS_27_OBSERVABILIDAD.md) | 100% (23/23) | `feature/obs-27-observabilidad` | 2026-04-08 |
+| [AgentOrchestrator](01-completados/PLAN_ARQ_30_ORCHESTRATOR.md) | Descartado | — | 2026-04-08 |
 
 ---
 
 ## Planes Activos (02-activos/)
 
-| Plan | Progreso | Rama | Tareas |
-|------|----------|------|--------|
-| [Observabilidad](02-activos/PLAN_OBS_27_OBSERVABILIDAD.md) | 82% (23/28) | `feature/obs-27-observabilidad` | Solo falta Fase 5: alertas |
-| [AgentOrchestrator](02-activos/PLAN_ARQ_30_ORCHESTRATOR.md) | 0% (0/18) | `feature/arq-30-orchestrator` | Tests, especialización tools, observabilidad |
-| [Retry Resilience](02-activos/PLAN_RETRY_RESILIENCE.md) | 0% (0/14) | `feature/retry-resilience` | Tenacity en LLM + BD |
-| [Claude Code Patterns](02-activos/PLAN_ARQ_29_CLAUDE_CODE_PATTERNS.md) | 73% (22/30) | `develop` | Tool layer, events, cost, memory, archetypes |
-| [Migración Sistema de Permisos](02-activos/PLAN_SEC_01_PERMISOS_MIGRATION.md) | 0% (0/24) | `feature/sec-01-permisos` | Reemplazar SPs, roles en contexto, permisos en tools |
+| Plan | Progreso | Rama | Pendiente |
+|------|----------|------|-----------|
+| [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
 
 ---
 
