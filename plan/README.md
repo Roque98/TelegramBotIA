@@ -24,7 +24,7 @@ plan/
 | Metrica | Valor |
 |---------|-------|
 | Planes completados | 17 |
-| Planes activos | 1 |
+| Planes activos | 2 |
 | Ideas documentadas | 10 |
 
 ---
@@ -58,6 +58,7 @@ plan/
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
+| [DOC-34 Reescritura completa de docs](02-activos/PLAN_DOC_34_DOCS_REWRITE.md) | 0% | `develop` | Pendiente iniciar |
 
 ---
 
