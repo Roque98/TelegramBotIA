@@ -85,6 +85,46 @@ class ObservabilityRepository:
             logger.error(f"Error saving interaction: {e}")
             return False
 
+    async def save_steps(
+        self,
+        correlation_id: str,
+        steps: list[dict[str, Any]],
+    ) -> bool:
+        """
+        Persiste los pasos del loop ReAct en BotIAv2_InteractionSteps.
+
+        Cada paso es un dict con: stepNum, tipo, nombre, entrada, salida,
+        tokensIn, tokensOut, duracionMs.
+        """
+        if not steps:
+            return True
+        try:
+            sql = """
+                INSERT INTO abcmasplus..BotIAv2_InteractionSteps (
+                    correlationId, stepNum, tipo, nombre,
+                    entrada, salida, tokensIn, tokensOut, duracionMs
+                ) VALUES (
+                    :correlation_id, :step_num, :tipo, :nombre,
+                    :entrada, :salida, :tokens_in, :tokens_out, :duracion_ms
+                )
+            """
+            for step in steps:
+                await self.db_manager.execute_non_query_async(sql, {
+                    "correlation_id": correlation_id[:50] if correlation_id else None,
+                    "step_num": step["stepNum"],
+                    "tipo": step["tipo"],
+                    "nombre": step.get("nombre"),
+                    "entrada": step.get("entrada"),
+                    "salida": step.get("salida"),
+                    "tokens_in": step.get("tokensIn"),
+                    "tokens_out": step.get("tokensOut"),
+                    "duracion_ms": step.get("duracionMs", 0),
+                })
+            return True
+        except Exception as e:
+            logger.error(f"Error saving steps: {e}")
+            return False
+
     def save_log_sync(
         self,
         level: str,

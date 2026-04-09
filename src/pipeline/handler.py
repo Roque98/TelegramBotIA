@@ -328,8 +328,10 @@ class MainHandler:
                     if s.get("action") not in (None, "finish")
                 })
 
+            correlation_id = event.correlation_id or ""
+
             await self.observability_repo.save_interaction(
-                correlation_id=event.correlation_id or "",
+                correlation_id=correlation_id,
                 user_id=event.user_id,
                 username=event.metadata.get("username"),
                 query=event.text,
@@ -343,6 +345,11 @@ class MainHandler:
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
             )
+
+            # Persistir pasos del loop ReAct
+            step_traces = (response.data or {}).get("step_traces")
+            if step_traces:
+                await self.observability_repo.save_steps(correlation_id, step_traces)
 
             # Actualizar contador de interacciones en perfil
             await self.memory.repository.increment_interaction_count(event.user_id)

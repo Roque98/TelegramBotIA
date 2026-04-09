@@ -138,6 +138,26 @@ ELSE PRINT 'Tabla BotIAv2_knowledge_entries ya existe, saltando.';
 
 -- BotIAv2_LogOperaciones eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
 
+IF OBJECT_ID('dbo.[BotIAv2_InteractionSteps]', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.[BotIAv2_InteractionSteps] (
+        [idStep]        bigint          IDENTITY(1, 1) NOT NULL,
+        [correlationId] nvarchar(50)    NOT NULL,
+        [stepNum]       int             NOT NULL,
+        [tipo]          nvarchar(20)    NOT NULL,
+        [nombre]        nvarchar(100)   NULL,
+        [entrada]       nvarchar(MAX)   NULL,
+        [salida]        nvarchar(MAX)   NULL,
+        [tokensIn]      int             NULL,
+        [tokensOut]     int             NULL,
+        [duracionMs]    int             NOT NULL,
+        [fechaInicio]   datetime        NOT NULL    DEFAULT (getdate()),
+        CONSTRAINT [PK_BotIAv2_InteractionSteps] PRIMARY KEY CLUSTERED ([idStep] ASC)
+    )
+    PRINT 'Tabla BotIAv2_InteractionSteps creada.'
+END
+ELSE PRINT 'Tabla BotIAv2_InteractionSteps ya existe, saltando.'
+
 IF OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
@@ -523,6 +543,19 @@ IF NOT EXISTS (
         AND object_id = OBJECT_ID('dbo.[BotIAv2_knowledge_entries]')
 ) CREATE NONCLUSTERED INDEX [idx_knowledge_entries_question] ON dbo.[BotIAv2_knowledge_entries] ([question] ASC);
 
+-- Índices BotIAv2_InteractionSteps
+IF NOT EXISTS (
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionSteps_CorrelationId'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionSteps]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionSteps_CorrelationId] ON dbo.[BotIAv2_InteractionSteps] ([correlationId] ASC, [stepNum] ASC);
+
+IF NOT EXISTS (
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionSteps_FechaInicio'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionSteps]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionSteps_FechaInicio] ON dbo.[BotIAv2_InteractionSteps] ([fechaInicio] DESC);
+
 -- Índices BotIAv2_InteractionLogs
 IF NOT EXISTS (
     SELECT * FROM sys.indexes
@@ -781,69 +814,3 @@ ORDER BY
 
 END
 GO
-
--- ============================================================
--- MIGRACIÓN OBS-31: Tablas legacy → BotIAv2_InteractionLogs
--- Ejecutar DESPUÉS de desplegar el código Python actualizado.
--- ============================================================
-
--- PASO 1: Migrar datos históricos de LogOperaciones
--- (best-effort: migra los campos que coinciden)
-IF OBJECT_ID('dbo.[BotIAv2_LogOperaciones]', 'U') IS NOT NULL
-    AND OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NOT NULL
-BEGIN
-    INSERT INTO dbo.[BotIAv2_InteractionLogs] (
-        idUsuario, telegramChatId, telegramUsername,
-        comando, query, respuesta, mensajeError, duracionMs, fechaEjecucion
-    )
-    SELECT
-        lo.idUsuario,
-        ut.telegramChatId,
-        ut.telegramUsername,
-        lo.comando,
-        JSON_VALUE(lo.parametros, '$.query'),
-        lo.resultado,
-        lo.mensajeError,
-        lo.duracionMs,
-        lo.fechaEjecucion
-    FROM dbo.[BotIAv2_LogOperaciones] lo
-    INNER JOIN dbo.[BotIAv2_UsuariosTelegram] ut ON lo.idUsuario = ut.idUsuario;
-
-    PRINT 'Migración LogOperaciones → InteractionLogs completada.';
-END
-
--- PASO 2: Migrar datos históricos de TransactionLogs
-IF OBJECT_ID('dbo.[BotIAv2_TransactionLogs]', 'U') IS NOT NULL
-    AND OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NOT NULL
-BEGIN
-    -- Actualizar filas ya migradas de LogOperaciones con tiempos desglosados
-    -- donde coincida telegramChatId + fecha aproximada (±1 segundo)
-    UPDATE il
-    SET
-        il.correlationId  = tl.correlationId,
-        il.memoryMs       = tl.memoryMs,
-        il.reactMs        = tl.reactMs,
-        il.saveMs         = tl.saveMs,
-        il.toolsUsadas    = tl.toolsUsed,
-        il.stepsTomados   = tl.stepsCount,
-        il.channel        = tl.channel
-    FROM dbo.[BotIAv2_InteractionLogs] il
-    INNER JOIN dbo.[BotIAv2_TransactionLogs] tl
-        ON il.telegramChatId = CAST(tl.userId AS bigint)
-        AND ABS(DATEDIFF(SECOND, il.fechaEjecucion, tl.createdAt)) <= 1;
-
-    PRINT 'Migración TransactionLogs → InteractionLogs completada.';
-END
-
--- PASO 3: DROP tablas legacy
-IF OBJECT_ID('dbo.[BotIAv2_LogOperaciones]', 'U') IS NOT NULL
-BEGIN
-    DROP TABLE dbo.[BotIAv2_LogOperaciones];
-    PRINT 'Tabla BotIAv2_LogOperaciones eliminada.';
-END
-
-IF OBJECT_ID('dbo.[BotIAv2_TransactionLogs]', 'U') IS NOT NULL
-BEGIN
-    DROP TABLE dbo.[BotIAv2_TransactionLogs];
-    PRINT 'Tabla BotIAv2_TransactionLogs eliminada.';
-END

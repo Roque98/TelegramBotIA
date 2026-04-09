@@ -1,6 +1,6 @@
-# Plan: OBS-31 — Consolidar tablas de log y guardar respuesta del agente
+# Plan: OBS-31 — Consolidar logs + trazabilidad de pasos del agente
 
-> **Estado**: 🔵 Pendiente
+> **Estado**: 🟡 En progreso
 > **Última actualización**: 2026-04-08
 > **Rama Git**: `feature/obs-31-consolidar-logs`
 
@@ -8,104 +8,92 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Nueva tabla unificada en BD | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Actualizar ObservabilityRepository | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Actualizar MemoryRepository | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 4: Guardar respuesta del agente | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 5: Actualizar /stats y limpiar código | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: InteractionLogs (tabla unificada) | ██████████ 100% | ✅ Completada |
+| Fase 2: ObservabilityRepository | ██████████ 100% | ✅ Completada |
+| Fase 3: MemoryRepository | ██████████ 100% | ✅ Completada |
+| Fase 4: Guardar respuesta del agente | ██████████ 100% | ✅ Completada |
+| Fase 5: Limpiar código legacy | ██████████ 100% | ✅ Completada |
+| Fase 6: InteractionSteps (trazabilidad por paso) | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/20 tareas)
+**Progreso Total**: ████████░░ 75% (20/27 tareas)
 
 ---
 
 ## Descripción
 
-Actualmente hay dos tablas que registran el mismo evento (un request del usuario):
+`BotIAv2_InteractionLogs` reemplazó a `LogOperaciones` + `TransactionLogs`:
+una fila por request con query, respuesta, tiempos desglosados, tools y correlationId.
 
-- **`BotIAv2_LogOperaciones`** — escrita por `MemoryRepository.save_interaction()`: guarda query, respuesta, error, duración
-- **`BotIAv2_TransactionLogs`** — escrita por `ObservabilityRepository.save_transaction()`: guarda tiempos desglosados (memory_ms, react_ms, save_ms), tools usadas, steps
-
-Son dos filas por request con datos solapados. El objetivo es unificarlas en una sola tabla `BotIAv2_InteractionLogs` que contenga todo, y además guardar la **respuesta final del ReAct agent** (actualmente no se persiste).
-
-`BotIAv2_ApplicationLogs` **no se toca** — tiene sentido separada porque captura logs del sistema (WARNING/ERROR de cualquier módulo).
+La Fase 6 agrega `BotIAv2_InteractionSteps`: una fila por **paso** del loop ReAct,
+que permite reconstruir el trace completo de un request: qué prompt se envió,
+qué respondió el LLM, qué tool se llamó con qué parámetros, cuánto tardó cada uno.
 
 ---
 
-## Diseño de la tabla unificada
+## Diseño de BotIAv2_InteractionSteps
 
 ```sql
-BotIAv2_InteractionLogs
-├── idLog             bigint IDENTITY PK
-├── correlationId     nvarchar(50)       -- trazabilidad entre tablas
-├── idUsuario         int FK → Usuarios
-├── telegramChatId    bigint
-├── telegramUsername  nvarchar(100)
-├── comando           nvarchar(100)      -- /ia, /start, etc.
-├── query             nvarchar(500)      -- pregunta del usuario
-├── respuesta         nvarchar(MAX)      -- respuesta final del agente  ← NUEVO
-├── mensajeError      nvarchar(MAX)
-├── toolsUsadas       nvarchar(MAX)      -- JSON: ["calculate","datetime"]
-├── stepsTomados      int
-├── memoryMs          int
-├── reactMs           int
-├── saveMs            int
-├── duracionMs        int                -- total
-├── channel           nvarchar(50)       -- telegram, api, etc.
-└── fechaEjecucion    datetime DEFAULT GETDATE()
+BotIAv2_InteractionSteps
+├── idStep        bigint IDENTITY PK
+├── correlationId nvarchar(50)   -- FK a InteractionLogs
+├── stepNum       int            -- orden: 1, 2, 3...
+├── tipo          nvarchar(20)   -- 'llm_call' | 'tool_call'
+├── nombre        nvarchar(100)  -- modelo (gpt-5-mini) o tool (calculate)
+├── entrada       nvarchar(MAX)  -- prompt enviado al LLM / params de la tool (JSON)
+├── salida        nvarchar(MAX)  -- respuesta raw del LLM / resultado de la tool
+├── tokensIn      int NULL       -- solo llm_call
+├── tokensOut     int NULL       -- solo llm_call
+├── duracionMs    int
+└── fechaInicio   datetime DEFAULT GETDATE()
+```
+
+**Reconstrucción de un request completo:**
+```sql
+SELECT s.stepNum, s.tipo, s.nombre, s.entrada, s.salida,
+       s.tokensIn, s.tokensOut, s.duracionMs
+FROM BotIAv2_InteractionSteps s
+WHERE s.correlationId = 'abc123'
+ORDER BY s.stepNum
 ```
 
 ---
 
-## Fase 1: Nueva tabla en BD
+## Fase 6: InteractionSteps
 
-- [ ] Agregar `BotIAv2_InteractionLogs` al `database/database.sql` con el DDL completo
-- [ ] Agregar índices: `correlationId`, `telegramChatId`, `fechaEjecucion`, `idUsuario`
-- [ ] Escribir script de migración para mover datos históricos de `LogOperaciones` + `TransactionLogs` a la nueva tabla (best-effort, los campos que coincidan)
-- [ ] Marcar `BotIAv2_LogOperaciones` y `BotIAv2_TransactionLogs` como deprecated en el DDL (comentario)
+### BD
+- [ ] Agregar `BotIAv2_InteractionSteps` al `database/database.sql`
+- [ ] Índices: `correlationId`, `fechaInicio`
 
-## Fase 2: Actualizar ObservabilityRepository
+### ReActAgent (`src/agents/react/agent.py`)
+- [ ] En `execute()`: mantener lista `step_traces` durante el loop
+- [ ] Instrumentar llamada LLM: capturar `entrada` (user_prompt), `salida` (response_text raw),
+      tokens del `cost_tracker`, duración
+- [ ] Instrumentar tool call: capturar `entrada` (action_input JSON), `salida` (observation),
+      duración
+- [ ] Incluir `step_traces` en `response.data["step_traces"]`
 
-- [ ] Reemplazar `save_transaction()` para escribir en `BotIAv2_InteractionLogs`
-- [ ] Eliminar el INSERT a `BotIAv2_TransactionLogs`
-- [ ] Agregar campo `respuesta` al método (recibe la respuesta final del agente)
-- [ ] Mantener compatibilidad de firma para no romper el handler
+### ObservabilityRepository (`src/infra/observability/sql_repository.py`)
+- [ ] Agregar `save_steps(correlation_id, steps)` que inserta en batch en `InteractionSteps`
 
-## Fase 3: Actualizar MemoryRepository
-
-- [ ] Eliminar `save_interaction()` (reemplazada por el nuevo método de ObservabilityRepository)
-- [ ] Actualizar `get_recent_messages()` para leer de `BotIAv2_InteractionLogs` (campos `query` y `respuesta`)
-- [ ] Actualizar `get_user_stats()` para leer de `BotIAv2_InteractionLogs`
-- [ ] Actualizar `get_interaction_count()` e `increment_interaction_count()`
-
-## Fase 4: Guardar respuesta del agente
-
-- [ ] Identificar dónde `MainHandler` tiene la respuesta final del agente antes de enviarla a Telegram
-- [ ] Pasar esa respuesta al llamado de `save_transaction()` / `ObservabilityRepository`
-- [ ] Verificar en BD que `respuesta` se persiste correctamente con texto completo (nvarchar MAX)
-- [ ] Validar que no se duplica la escritura (actualmente `save_interaction` + `save_transaction` escriben en paralelo)
-
-## Fase 5: Actualizar /stats y limpiar
-
-- [ ] Actualizar query de `get_user_stats()` apuntando a `BotIAv2_InteractionLogs`
-- [ ] Dropear `BotIAv2_LogOperaciones` y `BotIAv2_TransactionLogs` del `database.sql` (o moverlas a sección legacy)
-- [ ] Eliminar referencias muertas en `memory_repository.py` y `sql_repository.py`
-- [ ] Verificar que `/stats` sigue funcionando correctamente
+### MainHandler (`src/pipeline/handler.py`)
+- [ ] En `_save_interaction()`: leer `step_traces` de `response.data` y llamar `save_steps()`
 
 ---
 
-## Archivos afectados
+## Archivos afectados (Fase 6)
 
 | Archivo | Cambio |
 |---------|--------|
-| `database/database.sql` | Nueva tabla, script migración, eliminar tablas viejas |
-| `src/infra/observability/sql_repository.py` | `save_transaction()` apunta a nueva tabla, recibe `respuesta` |
-| `src/domain/memory/memory_repository.py` | Eliminar `save_interaction()`, actualizar queries |
-| `src/pipeline/handler.py` | Pasar respuesta final al método de observabilidad |
+| `database/database.sql` | Nueva tabla BotIAv2_InteractionSteps |
+| `src/agents/react/agent.py` | Instrumentar loop para capturar step_traces |
+| `src/infra/observability/sql_repository.py` | Agregar save_steps() |
+| `src/pipeline/handler.py` | Llamar save_steps() con step_traces |
 
 ---
 
 ## Notas
 
-- `BotIAv2_ApplicationLogs` no se modifica — captura logs del sistema, no del usuario
-- La migración de datos históricos es best-effort: `LogOperaciones` tiene `resultado` (respuesta) y `duracionMs`; `TransactionLogs` tiene los tiempos desglosados. Se pueden unir por `telegramChatId` + `fechaEjecucion` aproximada
-- El campo `respuesta` en `InteractionLogs` resuelve el problema de no tener persistida la respuesta del agente para análisis y auditoría
+- `entrada` y `salida` truncadas a 4000 chars para evitar filas gigantes
+- Para llm_call: `entrada` = último user_prompt (no el system prompt — es estático)
+- Los tokens se leen del `cost_tracker.turns[-1]` justo después del LLM call
+- `BotIAv2_ApplicationLogs` no se modifica

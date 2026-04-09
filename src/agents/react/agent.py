@@ -129,6 +129,8 @@ class ReActAgent(BaseAgent):
         start_time = time.perf_counter()
         scratchpad = Scratchpad(max_steps=self.max_iterations)
         session_id = str(uuid.uuid4())
+        step_traces: list[dict[str, Any]] = []
+        step_num = 0
 
         # Activar cost tracker para este request
         cost_tracker = CostTracker()
@@ -165,13 +167,29 @@ class ReActAgent(BaseAgent):
             messages = [{"role": "system", "content": system_prompt}]
 
             while not scratchpad.is_full():
-                # 1. Generar siguiente paso
+                # 1. Generar siguiente paso (LLM call)
+                t_llm = time.perf_counter()
                 react_response = await self._generate_step(
                     query=query,
                     context=context,
                     scratchpad=scratchpad,
                     messages=messages,
                 )
+                llm_ms = int((time.perf_counter() - t_llm) * 1000)
+
+                # Registrar step de LLM call
+                step_num += 1
+                last_turn = cost_tracker.turns[-1] if cost_tracker.turns else None
+                step_traces.append({
+                    "stepNum": step_num,
+                    "tipo": "llm_call",
+                    "nombre": getattr(self.llm, "model", "unknown"),
+                    "entrada": (messages[-2]["content"] if len(messages) >= 2 else "")[:4000],
+                    "salida": (messages[-1]["content"] if messages else "")[:4000],
+                    "tokensIn": last_turn.input_tokens if last_turn else None,
+                    "tokensOut": last_turn.output_tokens if last_turn else None,
+                    "duracionMs": llm_ms,
+                })
 
                 await emit(thought_generated_event(session_id, react_response.thought))
 
@@ -204,16 +222,33 @@ class ReActAgent(BaseAgent):
                         data={
                             "scratchpad": scratchpad.to_dict(),
                             "cost": cost_tracker.get_summary(),
+                            "step_traces": step_traces,
                         },
                     )
 
                 # 3. Ejecutar tool
                 await emit(tool_called_event(session_id, react_response.action.value, len(scratchpad) + 1))
+                t_tool = time.perf_counter()
                 observation = await self._execute_tool(
                     action=react_response.action,
                     action_input=react_response.action_input,
                     context=context,
                 )
+                tool_ms = int((time.perf_counter() - t_tool) * 1000)
+
+                # Registrar step de tool call
+                step_num += 1
+                step_traces.append({
+                    "stepNum": step_num,
+                    "tipo": "tool_call",
+                    "nombre": react_response.action.value,
+                    "entrada": json.dumps(react_response.action_input)[:4000],
+                    "salida": observation[:4000],
+                    "tokensIn": None,
+                    "tokensOut": None,
+                    "duracionMs": tool_ms,
+                })
+
                 await emit(observation_received_event(session_id, react_response.action.value, not observation.startswith("Error")))
 
                 # Registrar uso de tool
@@ -260,6 +295,7 @@ class ReActAgent(BaseAgent):
                 data={
                     "scratchpad": scratchpad.to_dict(),
                     "cost": cost_tracker.get_summary(),
+                    "step_traces": step_traces,
                 },
             )
 
