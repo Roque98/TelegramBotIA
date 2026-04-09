@@ -116,7 +116,7 @@ BEGIN
         query               NVARCHAR(1000)  NULL,           -- texto de la consulta (truncado)
         agenteSeleccionado  VARCHAR(100)    NOT NULL,
         confianza           DECIMAL(5,4)    NULL,           -- 0.0–1.0; NULL si no disponible
-        alternativas        NVARCHAR(500)   NULL,           -- JSON: [{"agente":"x","score":0.3}]
+        alternativas        NVARCHAR(500)   NULL,           -- JSON: [{"agente":"x","score": 0.3}]
         classifyMs          INT             NOT NULL,
         usedFallback        BIT             NOT NULL DEFAULT 0,
         fechaCreacion       DATETIME2               DEFAULT GETDATE()
