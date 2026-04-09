@@ -60,17 +60,15 @@ Scopes del proyecto:
 - Hacer push automáticamente después de cada commit
 - Rama actual: seguir GitFlow (feature/*, develop, etc.)
 
-## Documentación OneNote
+## Documentación
 
-### Actualización Automática
-- **Actualizar el documento OneNote** después de completar cada fase o milestone significativo
-- Archivo actual: `docs/onenote/2024-02-13_iris-bot-react-migration.md`
-- Actualizar: avance, actividades realizadas, commits, tests
+La documentación del proyecto está en `docs/` con dos enfoques:
+- `docs/uso/` — Para usuarios, admins e integradores
+- `docs/codigo/` — Para desarrolladores
+- `docs/dev/` — Para configurar el entorno
 
-### Cuándo actualizar
-- Al completar una fase del plan
-- Al agregar nuevos componentes significativos
-- Al cambiar el estado del proyecto
+Al agregar nuevas features significativas, actualizar el archivo relevante de `docs/codigo/`
+o `docs/uso/` según corresponda.
 
 ---
 

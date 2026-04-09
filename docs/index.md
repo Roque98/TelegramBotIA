@@ -1,80 +1,51 @@
-# Documentación — IRIS Bot
+# Iris Bot — Documentación
 
-> **Última actualización:** 2026-03-28
-> **Arquitectura:** ReAct Agent activo
+Iris Bot (Amber) es un asistente virtual para Telegram impulsado por LLM. Permite a los empleados
+de la empresa hacer consultas en lenguaje natural sobre datos de negocio, políticas internas y
+procedimientos, sin necesidad de conocer SQL ni sistemas internos.
 
----
+## Stack tecnológico
 
-## Inicio rápido
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env   # editar con tus credenciales
-python main.py         # bot Telegram
-python src/api/chat_endpoint.py  # API REST (opcional)
-```
-
----
-
-## `docs/api/` — API REST e integración
-
-| Documento | Descripción |
-|-----------|-------------|
-| [CHAT_API_GUIDE.md](api/CHAT_API_GUIDE.md) | Guía completa de integración con el API REST |
-| [API_ENDPOINTS.md](api/API_ENDPOINTS.md) | Especificación de endpoints |
-| [ENCRYPTION_COMPATIBILITY.md](api/ENCRYPTION_COMPATIBILITY.md) | Encriptación AES compatible con C# legacy |
-| [GENERAR_TOKENS_PLATAFORMA.md](api/GENERAR_TOKENS_PLATAFORMA.md) | Cómo generar tokens desde tu plataforma C# |
-| [USO_DESENCRIPTACION.md](api/USO_DESENCRIPTACION.md) | Script CLI para encriptar/desencriptar |
+| Componente | Tecnología |
+|------------|------------|
+| Interfaz principal | Telegram Bot API |
+| Interfaz secundaria | REST API (Flask) |
+| Agente LLM | ReAct (Think-Act-Observe) |
+| Modelos LLM | GPT-5.4-mini (loop) / GPT-5.4 (datos) |
+| Base de datos | SQL Server (`abcmasplus`) |
+| Lenguaje | Python 3.11+ async/await |
+| Validación | Pydantic v2 |
 
 ---
 
-## `docs/modulos/` — Módulos del bot
+## Enfoques de documentación
 
-| Documento | Descripción |
-|-----------|-------------|
-| [SISTEMA_AUTENTICACION.md](modulos/SISTEMA_AUTENTICACION.md) | Registro, verificación y permisos por rol |
-| [KNOWLEDGE_BASE_PERMISSIONS.md](modulos/KNOWLEDGE_BASE_PERMISSIONS.md) | Control de acceso a la base de conocimiento |
-| [GUIA_KEYBOARDS.md](modulos/GUIA_KEYBOARDS.md) | Keyboards de Telegram (reply e inline) |
+### [Uso](uso/README.md) — Para usuarios, administradores e integradores
 
----
+Para quienes operan o consumen el sistema sin necesidad de leer código:
 
-## `docs/desarrollador/` — Para contribuidores
+- [Qué puede hacer el bot](uso/que-puede-hacer.md)
+- [Guía de usuario Telegram](uso/guia-usuario-telegram.md)
+- [Guía de administrador](uso/guia-administrador.md)
+- [Guía del API REST](uso/guia-api.md)
+- [Configuración y despliegue](uso/configuracion.md)
 
-| Documento | Descripción |
-|-----------|-------------|
-| [GUIA_DESARROLLADOR.md](desarrollador/GUIA_DESARROLLADOR.md) | Guía completa del proyecto |
-| [ESTRUCTURA_PROYECTO.md](desarrollador/ESTRUCTURA_PROYECTO.md) | Árbol de directorios y módulos |
-| [DIAGRAMA_FLUJO_ACTUAL.md](desarrollador/DIAGRAMA_FLUJO_ACTUAL.md) | Flujos de la arquitectura ReAct |
-| [QUICK_START_TOOLS.md](desarrollador/QUICK_START_TOOLS.md) | Cómo usar y crear tools |
-| [TESTING_TOOLS.md](desarrollador/TESTING_TOOLS.md) | Guía de testing con pytest |
-| [PROMPTS_BEST_PRACTICES.md](desarrollador/PROMPTS_BEST_PRACTICES.md) | Buenas prácticas para el system prompt |
-| [COMMIT_GUIDELINES.md](desarrollador/COMMIT_GUIDELINES.md) | Convenciones de commits |
-| [GITFLOW.md](desarrollador/GITFLOW.md) | Estrategia de branches y versionado |
+### [Código](codigo/README.md) — Para desarrolladores y mantenedores
 
----
+Para quienes entienden, mantienen o extienden el código:
 
-## `docs/onenote/` — Historial de progreso
+- [Arquitectura](codigo/arquitectura.md)
+- [Flujos del sistema](codigo/flujos.md)
+- [Agente ReAct](codigo/agente-react.md)
+- [Sistema de tools](codigo/tools.md)
+- [Pipeline y factory](codigo/pipeline.md)
+- [Dominio](codigo/dominio.md)
+- [Infraestructura](codigo/infraestructura.md)
+- [Base de datos](codigo/base-de-datos.md)
+- [Cómo extender el sistema](codigo/como-extender.md)
 
-Snapshots de avance del proyecto en cada milestone.
+### [Dev](dev/README.md) — Para configurar el entorno de desarrollo
 
----
-
-## Contexto vivo (`.claude/context/`)
-
-Archivos que Claude lee al inicio de cada sesión — siempre actualizados con el código real:
-
-| Archivo | Qué contiene |
-|---------|-------------|
-| [INDEX.md](../.claude/context/INDEX.md) | Índice de módulos y flujo general |
-| [ARCHITECTURE.md](../.claude/context/ARCHITECTURE.md) | Capas, patrones y flujos detallados |
-| [AGENTS.md](../.claude/context/AGENTS.md) | ReActAgent y contratos base |
-| [TOOLS.md](../.claude/context/TOOLS.md) | 5 tools disponibles |
-| [HANDLERS.md](../.claude/context/HANDLERS.md) | Comandos Telegram registrados |
-| [MEMORY.md](../.claude/context/MEMORY.md) | Sistema de memoria y contexto |
-| [PROMPTS.md](../.claude/context/PROMPTS.md) | System prompt y schemas |
-
----
-
-## `docs/archivo/` — Histórico
-
-Documentos de versiones anteriores del proyecto (arquitectura pre-ReAct, planes completados, etc.).
+- [Setup local](dev/setup.md)
+- [GitFlow del proyecto](dev/gitflow.md)
+- [Testing](dev/testing.md)

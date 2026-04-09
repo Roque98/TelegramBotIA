@@ -10,7 +10,7 @@
 ```
 plan/
 ├── README.md                              # Este indice
-├── 01-completados/                        # Planes finalizados (16)
+├── 01-completados/                        # Planes finalizados (18)
 ├── 02-activos/                            # Planes en progreso (1)
 │   └── PLAN_OBS_32_LOG_IMPROVEMENTS.md   # Mejoras al sistema de logs
 └── 03-ideas/                              # Ideas y propuestas
@@ -23,8 +23,8 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 17 |
-| Planes activos | 2 |
+| Planes completados | 18 |
+| Planes activos | 1 |
 | Ideas documentadas | 10 |
 
 ---
@@ -50,6 +50,7 @@ plan/
 | [Observabilidad](01-completados/PLAN_OBS_27_OBSERVABILIDAD.md) | 100% (23/23) | `feature/obs-27-observabilidad` | 2026-04-08 |
 | [AgentOrchestrator](01-completados/PLAN_ARQ_30_ORCHESTRATOR.md) | Descartado | — | 2026-04-08 |
 | [ARQ-33 Dynamic Tool Hints](01-completados/PLAN_ARQ_33_DYNAMIC_HINTS.md) | 100% (13/13) | `develop` | 2026-04-08 |
+| [DOC-34 Reescritura de documentación](01-completados/PLAN_DOC_34_DOCS_REWRITE.md) | 100% (26/26) | `develop` | 2026-04-08 |
 
 ---
 
@@ -58,7 +59,6 @@ plan/
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
-| [DOC-34 Reescritura completa de docs](02-activos/PLAN_DOC_34_DOCS_REWRITE.md) | 0% | `develop` | Pendiente iniciar |
 
 ---
 
