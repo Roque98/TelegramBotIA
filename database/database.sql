@@ -4,6 +4,105 @@ IF NOT EXISTS (
     FROM
         sys.tables
     WHERE
+        name = 'BotIAv2_AgenteDef'
+) BEGIN CREATE TABLE dbo.[BotIAv2_AgenteDef] (
+    [idAgente] int IDENTITY(1, 1) NOT NULL,
+    [nombre] varchar(100) NOT NULL,
+    [descripcion] varchar(500) NOT NULL,
+    [systemPrompt] nvarchar(MAX) NOT NULL,
+    [temperatura] decimal(3, 2) NULL DEFAULT ((0.1)),
+    [maxIteraciones] int NULL DEFAULT ((10)),
+    [modeloOverride] varchar(100) NULL,
+    [esGeneralista] bit NULL DEFAULT ((0)),
+    [activo] bit NULL DEFAULT ((1)),
+    [version] int NULL DEFAULT ((1)),
+    [fechaActualizacion] datetime2(7) NULL DEFAULT (getdate()),
+    CONSTRAINT [PK__BotIAv2___F7F25B738C47F396] PRIMARY KEY CLUSTERED ([idAgente] ASC),
+    CONSTRAINT [UQ__BotIAv2___72AFBCC6ED777828] UNIQUE ([nombre])
+);
+
+PRINT 'Tabla BotIAv2_AgenteDef creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_AgenteDef ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
+        name = 'BotIAv2_AgentePromptHistorial'
+) BEGIN CREATE TABLE dbo.[BotIAv2_AgentePromptHistorial] (
+    [idHistorial] int IDENTITY(1, 1) NOT NULL,
+    [idAgente] int NOT NULL,
+    [systemPrompt] nvarchar(MAX) NOT NULL,
+    [version] int NOT NULL,
+    [razonCambio] varchar(500) NULL,
+    [modificadoPor] varchar(100) NULL,
+    [fechaCreacion] datetime2(7) NULL DEFAULT (getdate()),
+    CONSTRAINT [PK__BotIAv2___4712FB33B743D78D] PRIMARY KEY CLUSTERED ([idHistorial] ASC),
+    CONSTRAINT [FK__BotIAv2_A__idAge__49E3F248] FOREIGN KEY ([idAgente]) REFERENCES dbo.[BotIAv2_AgenteDef] ([idAgente])
+);
+
+PRINT 'Tabla BotIAv2_AgentePromptHistorial creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_AgentePromptHistorial ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
+        name = 'BotIAv2_AgenteTools'
+) BEGIN CREATE TABLE dbo.[BotIAv2_AgenteTools] (
+    [idAgenteTools] int IDENTITY(1, 1) NOT NULL,
+    [idAgente] int NOT NULL,
+    [nombreTool] varchar(100) NOT NULL,
+    [activo] bit NULL DEFAULT ((1)),
+    CONSTRAINT [PK__BotIAv2___E96EA149B9742CC2] PRIMARY KEY CLUSTERED ([idAgenteTools] ASC),
+    CONSTRAINT [UQ__BotIAv2___C1CE4013F8AEFC40] UNIQUE ([idAgente], [nombreTool]),
+    CONSTRAINT [FK__BotIAv2_A__idAge__46136164] FOREIGN KEY ([idAgente]) REFERENCES dbo.[BotIAv2_AgenteDef] ([idAgente])
+);
+
+PRINT 'Tabla BotIAv2_AgenteTools creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_AgenteTools ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
+        name = 'BotIAv2_AgentRouting'
+) BEGIN CREATE TABLE dbo.[BotIAv2_AgentRouting] (
+    [idRouting] int IDENTITY(1, 1) NOT NULL,
+    [correlationId] varchar(50) NOT NULL,
+    [query] nvarchar(1000) NULL,
+    [agenteSeleccionado] varchar(100) NOT NULL,
+    [confianza] decimal(5, 4) NULL,
+    [alternativas] nvarchar(500) NULL,
+    [classifyMs] int NOT NULL,
+    [usedFallback] bit NOT NULL DEFAULT ((0)),
+    [fechaCreacion] datetime2(7) NULL DEFAULT (getdate()),
+    CONSTRAINT [PK__BotIAv2___99D02BFDFBE12ADE] PRIMARY KEY CLUSTERED ([idRouting] ASC)
+);
+
+PRINT 'Tabla BotIAv2_AgentRouting creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_AgentRouting ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
         name = 'BotIAv2_ApplicationLogs'
 ) BEGIN CREATE TABLE dbo.[BotIAv2_ApplicationLogs] (
     [id] bigint IDENTITY(1, 1) NOT NULL,
@@ -71,6 +170,7 @@ IF NOT EXISTS (
     [costoUSD] decimal(12, 8) NOT NULL DEFAULT ((0)),
     [pasos] int NOT NULL DEFAULT ((0)),
     [fechaSesion] datetime NOT NULL DEFAULT (getdate()),
+    [correlationId] nvarchar(50) NULL,
     CONSTRAINT [PK__CostSesi__53FA232497854BCB] PRIMARY KEY CLUSTERED ([idCosto] ASC)
 );
 
@@ -78,6 +178,76 @@ PRINT 'Tabla BotIAv2_CostSesiones creada.';
 
 END
 ELSE PRINT 'Tabla BotIAv2_CostSesiones ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
+        name = 'BotIAv2_InteractionLogs'
+) BEGIN CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
+    [idLog] bigint IDENTITY(1, 1) NOT NULL,
+    [correlationId] nvarchar(50) NULL,
+    [idUsuario] int NULL,
+    [telegramChatId] bigint NULL,
+    [telegramUsername] nvarchar(100) NULL,
+    [comando] nvarchar(100) NULL,
+    [query] nvarchar(500) NULL,
+    [respuesta] nvarchar(MAX) NULL,
+    [mensajeError] nvarchar(MAX) NULL,
+    [toolsUsadas] nvarchar(MAX) NULL,
+    [stepsTomados] int NULL,
+    [memoryMs] int NULL,
+    [reactMs] int NULL,
+    [saveMs] int NULL,
+    [duracionMs] int NULL,
+    [channel] nvarchar(50) NULL DEFAULT ('telegram'),
+    [fechaEjecucion] datetime NOT NULL DEFAULT (getdate()),
+    [exitoso] bit NOT NULL DEFAULT ((1)),
+    [agenteNombre] varchar(100) NULL,
+    [totalInputTokens] int NULL,
+    [totalOutputTokens] int NULL,
+    [llmIteraciones] int NULL,
+    [usedFallback] bit NOT NULL DEFAULT ((0)),
+    [classifyMs] int NULL,
+    [agentConfidence] decimal(5, 4) NULL,
+    [costUSD] decimal(10, 6) NULL,
+    CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC)
+);
+
+PRINT 'Tabla BotIAv2_InteractionLogs creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_InteractionLogs ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.tables
+    WHERE
+        name = 'BotIAv2_InteractionSteps'
+) BEGIN CREATE TABLE dbo.[BotIAv2_InteractionSteps] (
+    [idStep] bigint IDENTITY(1, 1) NOT NULL,
+    [correlationId] nvarchar(50) NOT NULL,
+    [stepNum] int NOT NULL,
+    [tipo] nvarchar(20) NOT NULL,
+    [nombre] nvarchar(100) NULL,
+    [entrada] nvarchar(MAX) NULL,
+    [salida] nvarchar(MAX) NULL,
+    [tokensIn] int NULL,
+    [tokensOut] int NULL,
+    [duracionMs] int NOT NULL,
+    [fechaInicio] datetime NOT NULL DEFAULT (getdate()),
+    [costoUSD] decimal(10, 8) NULL,
+    CONSTRAINT [PK_BotIAv2_InteractionSteps] PRIMARY KEY CLUSTERED ([idStep] ASC)
+);
+
+PRINT 'Tabla BotIAv2_InteractionSteps creada.';
+
+END
+ELSE PRINT 'Tabla BotIAv2_InteractionSteps ya existe, saltando.';
 
 IF NOT EXISTS (
     SELECT
@@ -135,56 +305,6 @@ PRINT 'Tabla BotIAv2_knowledge_entries creada.';
 
 END
 ELSE PRINT 'Tabla BotIAv2_knowledge_entries ya existe, saltando.';
-
--- BotIAv2_LogOperaciones eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
-
-IF OBJECT_ID('dbo.[BotIAv2_InteractionSteps]', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.[BotIAv2_InteractionSteps] (
-        [idStep]        bigint          IDENTITY(1, 1) NOT NULL,
-        [correlationId] nvarchar(50)    NOT NULL,
-        [stepNum]       int             NOT NULL,
-        [tipo]          nvarchar(20)    NOT NULL,
-        [nombre]        nvarchar(100)   NULL,
-        [entrada]       nvarchar(MAX)   NULL,
-        [salida]        nvarchar(MAX)   NULL,
-        [tokensIn]      int             NULL,
-        [tokensOut]     int             NULL,
-        [duracionMs]    int             NOT NULL,
-        [fechaInicio]   datetime        NOT NULL    DEFAULT (getdate()),
-        CONSTRAINT [PK_BotIAv2_InteractionSteps] PRIMARY KEY CLUSTERED ([idStep] ASC)
-    )
-    PRINT 'Tabla BotIAv2_InteractionSteps creada.'
-END
-ELSE PRINT 'Tabla BotIAv2_InteractionSteps ya existe, saltando.'
-
-IF OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
-        [idLog]             bigint          IDENTITY(1, 1) NOT NULL,
-        [correlationId]     nvarchar(50)    NULL,
-        [idUsuario]         int             NOT NULL,
-        [telegramChatId]    bigint          NULL,
-        [telegramUsername]  nvarchar(100)   NULL,
-        [comando]           nvarchar(100)   NULL,
-        [query]             nvarchar(500)   NULL,
-        [respuesta]         nvarchar(MAX)   NULL,
-        [mensajeError]      nvarchar(MAX)   NULL,
-        [toolsUsadas]       nvarchar(MAX)   NULL,
-        [stepsTomados]      int             NULL,
-        [memoryMs]          int             NULL,
-        [reactMs]           int             NULL,
-        [saveMs]            int             NULL,
-        [duracionMs]        int             NULL,
-        [channel]           nvarchar(50)    NULL        DEFAULT ('telegram'),
-        [agenteNombre]      varchar(100)    NULL,       -- ARQ-35: agente que respondió
-        [fechaEjecucion]    datetime        NOT NULL    DEFAULT (getdate()),
-        CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC),
-        CONSTRAINT [FK_BotIAv2_InteractionLogs_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
-    )
-    PRINT 'Tabla BotIAv2_InteractionLogs creada.'
-END
-ELSE PRINT 'Tabla BotIAv2_InteractionLogs ya existe, saltando.'
 
 IF NOT EXISTS (
     SELECT
@@ -358,8 +478,6 @@ PRINT 'Tabla BotIAv2_TipoEntidad creada.';
 END
 ELSE PRINT 'Tabla BotIAv2_TipoEntidad ya existe, saltando.';
 
--- BotIAv2_TransactionLogs eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
-
 IF NOT EXISTS (
     SELECT
         *
@@ -433,6 +551,26 @@ PRINT 'Tabla BotIAv2_UsuariosTelegram creada.';
 
 END
 ELSE PRINT 'Tabla BotIAv2_UsuariosTelegram ya existe, saltando.';
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.indexes
+    WHERE
+        name = 'IX_AgentRouting_Agente'
+        AND object_id = OBJECT_ID('dbo.[BotIAv2_AgentRouting]')
+) CREATE NONCLUSTERED INDEX [IX_AgentRouting_Agente] ON dbo.[BotIAv2_AgentRouting] ([agenteSeleccionado] ASC, [fechaCreacion] DESC);
+
+IF NOT EXISTS (
+    SELECT
+        *
+    FROM
+        sys.indexes
+    WHERE
+        name = 'IX_AgentRouting_CorrelationId'
+        AND object_id = OBJECT_ID('dbo.[BotIAv2_AgentRouting]')
+) CREATE NONCLUSTERED INDEX [IX_AgentRouting_CorrelationId] ON dbo.[BotIAv2_AgentRouting] ([correlationId] ASC);
 
 IF NOT EXISTS (
     SELECT
@@ -544,45 +682,6 @@ IF NOT EXISTS (
         AND object_id = OBJECT_ID('dbo.[BotIAv2_knowledge_entries]')
 ) CREATE NONCLUSTERED INDEX [idx_knowledge_entries_question] ON dbo.[BotIAv2_knowledge_entries] ([question] ASC);
 
--- Índices BotIAv2_InteractionSteps
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionSteps_CorrelationId'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionSteps]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionSteps_CorrelationId] ON dbo.[BotIAv2_InteractionSteps] ([correlationId] ASC, [stepNum] ASC);
-
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionSteps_FechaInicio'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionSteps]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionSteps_FechaInicio] ON dbo.[BotIAv2_InteractionSteps] ([fechaInicio] DESC);
-
--- Índices BotIAv2_InteractionLogs
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionLogs_ChatId'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_ChatId] ON dbo.[BotIAv2_InteractionLogs] ([telegramChatId] ASC);
-
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionLogs_CorrelationId'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_CorrelationId] ON dbo.[BotIAv2_InteractionLogs] ([correlationId] ASC);
-
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionLogs_FechaEjecucion'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_FechaEjecucion] ON dbo.[BotIAv2_InteractionLogs] ([fechaEjecucion] DESC);
-
-IF NOT EXISTS (
-    SELECT * FROM sys.indexes
-    WHERE name = 'IX_InteractionLogs_IdUsuario'
-      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_IdUsuario] ON dbo.[BotIAv2_InteractionLogs] ([idUsuario] ASC);
-
-
 IF NOT EXISTS (
     SELECT
         *
@@ -674,8 +773,6 @@ IF NOT EXISTS (
         name = 'idx_table_documentation_active'
         AND object_id = OBJECT_ID('dbo.[BotIAv2_table_documentation]')
 ) CREATE NONCLUSTERED INDEX [idx_table_documentation_active] ON dbo.[BotIAv2_table_documentation] ([active] ASC);
-
--- Índices IX_TransactionLogs_* eliminados — tabla reemplazada por BotIAv2_InteractionLogs (OBS-31)
 
 IF NOT EXISTS (
     SELECT
@@ -815,93 +912,464 @@ ORDER BY
 
 END
 GO
+    IF OBJECT_ID('dbo.[BotIAv2_sp_UltimaInteraccion]', 'P') IS NOT NULL DROP PROCEDURE dbo.[BotIAv2_sp_UltimaInteraccion];
+
+GO
+    CREATE PROCEDURE dbo.BotIAv2_sp_UltimaInteraccion AS BEGIN
+SET
+    NOCOUNT ON;
+
+-- Obtener el último correlationId insertado     DECLARE @lastCorrelationId NVARCHAR(100);      SELECT TOP 1 @lastCorrelationId = il.correlationId     FROM abcmasplus..BotIAv2_InteractionLogs il     ORDER BY il.fechaEjecucion DESC;      IF @lastCorrelationId IS NULL     BEGIN         RAISERROR('No se encontraron registros en BotIAv2_InteractionLogs.', 16, 1);         RETURN;     END;      -- 1. Última interacción (vista general)     SELECT         il.correlationId,         il.telegramUsername,         il.query,         il.respuesta,         il.exitoso,         il.agenteNombre,         il.stepsTomados,         il.llmIteraciones,         il.memoryMs,         il.reactMs,         il.duracionMs,         il.classifyMs,         il.agentConfidence,         il.usedFallback,         il.totalInputTokens,         il.totalOutputTokens,         il.costUSD,         il.toolsUsadas,         il.mensajeError,         il.channel,         il.fechaEjecucion     FROM abcmasplus..BotIAv2_InteractionLogs il     WHERE il.correlationId = @lastCorrelationId     ORDER BY il.fechaEjecucion DESC;      -- 2. Decisión de ruteo (OBS-36)     SELECT         ar.agenteSeleccionado,         ar.confianza,         ar.alternativas,         ar.classifyMs,         ar.usedFallback,         ar.fechaCreacion     FROM abcmasplus..BotIAv2_AgentRouting ar     WHERE ar.correlationId = @lastCorrelationId;      -- 3. Steps del último registro     SELECT *     FROM abcmasplus..BotIAv2_InteractionSteps s     WHERE s.correlationId = @lastCorrelationId     ORDER BY s.stepNum;      -- 4. Costo del último registro (detalle por sesión)     SELECT ut.telegramUsername, cs.*     FROM abcmasplus..BotIAv2_CostSesiones cs     LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut         ON cs.telegramChatId = ut.telegramChatId     WHERE cs.correlationId = @lastCorrelationId     ORDER BY cs.fechaSesion DESC;      -- 5. Validación: suma de InteractionSteps vs suma de CostSesiones     SELECT         s.sumStepsUSD,         cs.sumCostSesionesUSD,         s.sumStepsUSD - cs.sumCostSesionesUSD          AS diferencia,         CASE             WHEN ABS(s.sumStepsUSD - cs.sumCostSesionesUSD) < 0.000001             THEN 'OK'             ELSE 'DISCREPANCIA'         END                                             AS estatus     FROM (         SELECT ISNULL(SUM(costoUSD), 0) AS sumStepsUSD         FROM abcmasplus..BotIAv2_InteractionSteps         WHERE correlationId = @lastCorrelationId     ) s     CROSS JOIN (         SELECT ISNULL(SUM(costoUSD), 0) AS sumCostSesionesUSD         FROM abcmasplus..BotIAv2_CostSesiones         WHERE correlationId = @lastCorrelationId     ) cs;  END;  GO
 
 -- ============================================================
--- SP: BotIAv2_sp_UltimaInteraccion
--- Muestra el detalle completo de la última interacción registrada
--- y valida que el costo de InteractionSteps coincida con CostSesiones.
--- Fix: validación usa subqueries separadas para evitar fan trap (producto cartesiano).
+-- DATOS INICIALES (seed data)
+-- Idempotente: usa IF NOT EXISTS en cada bloque.
+-- Ejecutar después de crear todas las tablas.
 -- ============================================================
 
-USE abcmasplus;
-GO
+-- ------------------------------------------------------------
+-- 1. BotIAv2_TipoEntidad — tipos de resolución de permisos
+--    prioridad define el orden de evaluación (menor = más específico)
+-- ------------------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_TipoEntidad WHERE nombre = 'usuario')
+    INSERT INTO dbo.BotIAv2_TipoEntidad (nombre, prioridad, tipoResolucion, descripcion)
+    VALUES ('usuario', 1, 'definitivo', 'Permiso específico por usuario — máxima prioridad');
 
-IF OBJECT_ID('dbo.BotIAv2_sp_UltimaInteraccion', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.BotIAv2_sp_UltimaInteraccion;
-GO
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_TipoEntidad WHERE nombre = 'direccion')
+    INSERT INTO dbo.BotIAv2_TipoEntidad (nombre, prioridad, tipoResolucion, descripcion)
+    VALUES ('direccion', 2, 'definitivo', 'Permiso por dirección organizacional');
 
-CREATE PROCEDURE dbo.BotIAv2_sp_UltimaInteraccion
-AS
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_TipoEntidad WHERE nombre = 'gerencia')
+    INSERT INTO dbo.BotIAv2_TipoEntidad (nombre, prioridad, tipoResolucion, descripcion)
+    VALUES ('gerencia', 3, 'definitivo', 'Permiso por gerencia organizacional');
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_TipoEntidad WHERE nombre = 'autenticado')
+    INSERT INTO dbo.BotIAv2_TipoEntidad (nombre, prioridad, tipoResolucion, descripcion)
+    VALUES ('autenticado', 4, 'permisivo', 'Permiso para cualquier usuario autenticado con rol opcional');
+
+PRINT 'BotIAv2_TipoEntidad: datos iniciales cargados.';
+
+-- ------------------------------------------------------------
+-- 2. BotIAv2_Recurso — catálogo de tools y comandos del bot
+-- ------------------------------------------------------------
+
+-- Tools del catálogo (controladas por factory.py)
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:database_query')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:database_query', 'tool', 'Consultas SQL en lenguaje natural a bases de datos', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:knowledge_search')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:knowledge_search', 'tool', 'Búsqueda en base de conocimiento institucional', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:calculate')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:calculate', 'tool', 'Evaluación de expresiones matemáticas', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:datetime')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:datetime', 'tool', 'Consultas de fecha, hora y cálculos temporales', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:save_preference')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:save_preference', 'tool', 'Guardar preferencias del usuario en BD', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:save_memory')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:save_memory', 'tool', 'Persistir datos en memoria de trabajo del usuario', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:reload_permissions')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:reload_permissions', 'tool', 'Recargar permisos del usuario desde BD', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:reload_agent_config')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:reload_agent_config', 'tool', 'Recargar configuración de agentes desde BD (solo admin)', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:read_attachment')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('tool:read_attachment', 'tool', 'Leer archivos adjuntos enviados por el usuario', 0, 1);
+
+-- Comandos del bot
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/start')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/start', 'cmd', 'Bienvenida al bot', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/help')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/help', 'cmd', 'Guía de uso del bot', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/register')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/register', 'cmd', 'Registro de cuenta de usuario', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/verify')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/verify', 'cmd', 'Verificación de cuenta por código', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/stats')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/stats', 'cmd', 'Estadísticas de uso del usuario', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/costo')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/costo', 'cmd', 'Reporte de costos LLM (solo admin)', 0, 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/recargar_permisos')
+    INSERT INTO dbo.BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico, activo)
+    VALUES ('cmd:/recargar_permisos', 'cmd', 'Forzar recarga de permisos del usuario actual', 0, 1);
+
+PRINT 'BotIAv2_Recurso: datos iniciales cargados.';
+
+-- ------------------------------------------------------------
+-- 3. BotIAv2_Permisos — permisos base para todos los usuarios autenticados
+--    Otorga acceso a tools y comandos esenciales para cualquier usuario con cuenta.
+--    Los permisos restrictivos (admin, roles específicos) se agregan por proyecto.
+-- ------------------------------------------------------------
+DECLARE @idAuth INT = (SELECT idTipoEntidad FROM dbo.BotIAv2_TipoEntidad WHERE nombre = 'autenticado');
+
+-- Tools disponibles para todos los autenticados
+DECLARE @tools_base TABLE (recurso VARCHAR(100));
+INSERT INTO @tools_base VALUES
+    ('tool:database_query'),
+    ('tool:knowledge_search'),
+    ('tool:calculate'),
+    ('tool:datetime'),
+    ('tool:save_preference'),
+    ('tool:save_memory'),
+    ('tool:reload_permissions'),
+    ('tool:read_attachment');
+
+INSERT INTO dbo.BotIAv2_Permisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, descripcion)
+SELECT
+    @idAuth,
+    0,                      -- idEntidad=0 → aplica a cualquier usuario autenticado
+    r.idRecurso,
+    NULL,                   -- sin restricción de rol
+    1,
+    'Acceso base para usuarios autenticados'
+FROM dbo.BotIAv2_Recurso r
+INNER JOIN @tools_base t ON r.recurso = t.recurso
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.BotIAv2_Permisos p
+    WHERE p.idTipoEntidad = @idAuth
+      AND p.idEntidad = 0
+      AND p.idRecurso = r.idRecurso
+      AND p.idRolRequerido IS NULL
+);
+
+-- Comandos disponibles para todos los autenticados
+DECLARE @cmds_base TABLE (recurso VARCHAR(100));
+INSERT INTO @cmds_base VALUES
+    ('cmd:/stats'),
+    ('cmd:/recargar_permisos');
+
+INSERT INTO dbo.BotIAv2_Permisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, descripcion)
+SELECT
+    @idAuth,
+    0,
+    r.idRecurso,
+    NULL,
+    1,
+    'Acceso base para usuarios autenticados'
+FROM dbo.BotIAv2_Recurso r
+INNER JOIN @cmds_base c ON r.recurso = c.recurso
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.BotIAv2_Permisos p
+    WHERE p.idTipoEntidad = @idAuth
+      AND p.idEntidad = 0
+      AND p.idRecurso = r.idRecurso
+      AND p.idRolRequerido IS NULL
+);
+
+-- tool:reload_agent_config y cmd:/costo — solo para rol Admin (idRol=1)
+-- Ajustar idRolRequerido según el idRol de Admin en la tabla Roles del proyecto.
+DECLARE @idRecursoReloadAgent INT = (SELECT idRecurso FROM dbo.BotIAv2_Recurso WHERE recurso = 'tool:reload_agent_config');
+DECLARE @idRecursoCosto       INT = (SELECT idRecurso FROM dbo.BotIAv2_Recurso WHERE recurso = 'cmd:/costo');
+
+IF @idRecursoReloadAgent IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM dbo.BotIAv2_Permisos WHERE idRecurso = @idRecursoReloadAgent AND idRolRequerido = 1
+)
+    INSERT INTO dbo.BotIAv2_Permisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, descripcion)
+    VALUES (@idAuth, 0, @idRecursoReloadAgent, 1, 1, 'Solo admin puede recargar configuración de agentes');
+
+IF @idRecursoCosto IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM dbo.BotIAv2_Permisos WHERE idRecurso = @idRecursoCosto AND idRolRequerido = 1
+)
+    INSERT INTO dbo.BotIAv2_Permisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, descripcion)
+    VALUES (@idAuth, 0, @idRecursoCosto, 1, 1, 'Solo admin puede ver reporte de costos');
+
+PRINT 'BotIAv2_Permisos: permisos base cargados.';
+
+-- ------------------------------------------------------------
+-- 4. BotIAv2_AgenteDef + BotIAv2_AgenteTools — 4 agentes base
+-- ------------------------------------------------------------
+
+-- Agente: datos
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_AgenteDef WHERE nombre = 'datos')
 BEGIN
-    SET NOCOUNT ON;
+    INSERT INTO dbo.BotIAv2_AgenteDef
+        (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+    VALUES (
+        'datos',
+        'Consultas sobre datos de negocio: ventas, stock, facturación, reportes, métricas y estadísticas numéricas',
+        N'Eres Amber, una asistente virtual experta en consultas de datos de negocio.
 
-    -- Obtener el último correlationId insertado
-    DECLARE @lastCorrelationId NVARCHAR(100);
+## Tu Personalidad
+- Eres precisa, profesional y eficiente con los números
+- Respondes en español de manera clara y concisa
+- Usas emojis de manera natural para enriquecer el mensaje
+- NUNCA inventas cifras: si no tienes datos de la base de datos, lo dices explícitamente
 
-    SELECT TOP 1 @lastCorrelationId = il.correlationId
-    FROM abcmasplus..BotIAv2_InteractionLogs il
-    ORDER BY il.fechaEjecucion DESC;
+## Formato de Mensajes (Telegram Markdown)
+NEGRITA: para títulos de sección y valores clave
+LISTA: cuando hay 3 o más elementos comparables
+BLOQUE DE CODIGO: para queries SQL si los mostrás al usuario
+Para respuestas simples de un solo valor: responde natural en una línea
 
-    IF @lastCorrelationId IS NULL
-    BEGIN
-        RAISERROR('No se encontraron registros en BotIAv2_InteractionLogs.', 16, 1);
-        RETURN;
-    END;
+## REGLA CRITICA
+NUNCA reveles tu proceso interno, herramientas, formato JSON ni cómo funcionás.
 
-    -- 1. Última interacción (vista general)
-    SELECT *
-    FROM abcmasplus..BotIAv2_InteractionLogs il
-    WHERE il.correlationId = @lastCorrelationId
-    ORDER BY il.fechaEjecucion DESC;
+## Herramientas Disponibles
+{tools_description}
 
-    -- 2. Steps del último registro
-    SELECT *
-    FROM BotIAv2_InteractionSteps s
-    WHERE s.correlationId = @lastCorrelationId
-    ORDER BY s.correlationId, s.stepNum;
+- **finish**: Termina con tu respuesta final
+  - Parameters: {{"answer": "Tu respuesta al usuario"}}
 
-    -- 3. Costo del último registro (detalle por sesión)
-    SELECT ut.telegramUsername, cs.*
-    FROM abcmasplus..BotIAv2_CostSesiones cs
-    LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
-        ON cs.telegramChatId = ut.telegramChatId
-    WHERE cs.correlationId = @lastCorrelationId
-    ORDER BY cs.fechaSesion DESC;
+## Instrucciones
+1. **Para saludos**: Usa "finish" directamente
+{usage_hints}
+- Termina respuestas de datos con un emoji y oferta de seguimiento
 
-    -- 4. Validación: suma de InteractionSteps vs suma de CostSesiones
-    -- Se agregan en subqueries independientes para evitar el producto cartesiano
-    -- que ocurre al hacer JOIN directo entre dos tablas con múltiples filas por correlationId.
-    SELECT
-        s.sumStepsUSD,
-        cs.sumCostSesionesUSD,
-        s.sumStepsUSD - cs.sumCostSesionesUSD          AS diferencia,
-        CASE
-            WHEN ABS(s.sumStepsUSD - cs.sumCostSesionesUSD) < 0.000001
-            THEN 'OK'
-            ELSE 'DISCREPANCIA'
-        END                                             AS estatus
-    FROM (
-        SELECT ISNULL(SUM(costoUSD), 0) AS sumStepsUSD
-        FROM abcmasplus..BotIAv2_InteractionSteps
-        WHERE correlationId = @lastCorrelationId
-    ) s
-    CROSS JOIN (
-        SELECT ISNULL(SUM(costoUSD), 0) AS sumCostSesionesUSD
-        FROM abcmasplus..BotIAv2_CostSesiones
-        WHERE correlationId = @lastCorrelationId
-    ) cs;
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{{
+  "thought": "Tu razonamiento",
+  "action": "nombre_accion",
+  "action_input": {{}},
+  "final_answer": null
+}}
+```',
+        0.1, 10, 0, 1
+    );
 
-END;
+    INSERT INTO dbo.BotIAv2_AgenteTools (idAgente, nombreTool)
+    SELECT idAgente, tool
+    FROM dbo.BotIAv2_AgenteDef
+    CROSS JOIN (VALUES ('database_query'), ('calculate'), ('datetime')) AS t(tool)
+    WHERE nombre = 'datos';
 
--- ============================================================
--- ARQ-35: Tablas de agentes dinámicos (ver migrations/arq35_dynamic_orchestrator.sql)
--- Ejecutar: python scripts/run_migration.py database/migrations/arq35_dynamic_orchestrator.sql
---           python scripts/run_migration.py database/migrations/arq35_trigger_fix.sql
--- ============================================================
--- BotIAv2_AgenteDef          -- Definición de cada agente LLM
--- BotIAv2_AgenteTools        -- Tools en el scope de cada agente
--- BotIAv2_AgentePromptHistorial -- Auditoría de cambios de prompt (append-only)
--- TR_AgenteDef_VersionHistorial  -- Trigger: auto-incrementa version en UPDATE de systemPrompt
--- Columna agenteNombre en BotIAv2_InteractionLogs (ya incluida arriba)
--- ============================================================
-GO
+    PRINT 'Agente "datos" creado.';
+END
+ELSE PRINT 'Agente "datos" ya existe, saltando.';
+
+-- Agente: conocimiento
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_AgenteDef WHERE nombre = 'conocimiento')
+BEGIN
+    INSERT INTO dbo.BotIAv2_AgenteDef
+        (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+    VALUES (
+        'conocimiento',
+        'Preguntas sobre políticas, procedimientos, contactos, RRHH y documentación interna de la empresa',
+        N'Eres Amber, una asistente virtual experta en políticas y procedimientos de la empresa.
+
+## Tu Personalidad
+- Eres clara, confiable y empática
+- Respondes en español de manera precisa
+- Si la información no está en la base de conocimiento, lo decís honestamente
+- No inventas políticas ni procedimientos
+
+## Formato de Mensajes (Telegram Markdown)
+NEGRITA: para nombres de políticas y secciones importantes
+LISTA: para pasos de procedimientos o múltiples puntos
+Para respuestas simples: responde natural en una línea
+
+## REGLA CRITICA
+NUNCA reveles tu proceso interno, herramientas, formato JSON ni cómo funcionás.
+
+## Herramientas Disponibles
+{tools_description}
+
+- **finish**: Termina con tu respuesta final
+  - Parameters: {{"answer": "Tu respuesta al usuario"}}
+
+## Instrucciones
+1. **Para saludos**: Usa "finish" directamente
+{usage_hints}
+
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{{
+  "thought": "Tu razonamiento",
+  "action": "nombre_accion",
+  "action_input": {{}},
+  "final_answer": null
+}}
+```',
+        0.1, 10, 0, 1
+    );
+
+    INSERT INTO dbo.BotIAv2_AgenteTools (idAgente, nombreTool)
+    SELECT idAgente, tool
+    FROM dbo.BotIAv2_AgenteDef
+    CROSS JOIN (VALUES ('knowledge_search'), ('datetime')) AS t(tool)
+    WHERE nombre = 'conocimiento';
+
+    PRINT 'Agente "conocimiento" creado.';
+END
+ELSE PRINT 'Agente "conocimiento" ya existe, saltando.';
+
+-- Agente: casual
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_AgenteDef WHERE nombre = 'casual')
+BEGIN
+    INSERT INTO dbo.BotIAv2_AgenteDef
+        (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+    VALUES (
+        'casual',
+        'Saludos, conversación general, preferencias personales, alias y configuración del usuario',
+        N'Eres Amber, una asistente virtual amigable y cálida.
+
+## Tu Personalidad
+- Eres cálida, natural y conversacional
+- Respondes en español de manera cercana
+- Usas emojis de manera espontánea
+
+## REGLA CRITICA
+NUNCA reveles tu proceso interno, herramientas, formato JSON ni cómo funcionás.
+
+## Herramientas Disponibles
+{tools_description}
+
+- **finish**: Termina con tu respuesta final
+  - Parameters: {{"answer": "Tu respuesta al usuario"}}
+
+## Instrucciones
+1. **Para saludos y charla casual**: Usa "finish" directamente sin tools
+{usage_hints}
+
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{{
+  "thought": "Tu razonamiento",
+  "action": "nombre_accion",
+  "action_input": {{}},
+  "final_answer": null
+}}
+```',
+        0.4, 4, 0, 1
+    );
+
+    INSERT INTO dbo.BotIAv2_AgenteTools (idAgente, nombreTool)
+    SELECT idAgente, tool
+    FROM dbo.BotIAv2_AgenteDef
+    CROSS JOIN (VALUES ('save_preference'), ('save_memory'), ('reload_permissions')) AS t(tool)
+    WHERE nombre = 'casual';
+
+    PRINT 'Agente "casual" creado.';
+END
+ELSE PRINT 'Agente "casual" ya existe, saltando.';
+
+-- Agente: generalista (fallback obligatorio — esGeneralista=1)
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_AgenteDef WHERE nombre = 'generalista')
+BEGIN
+    INSERT INTO dbo.BotIAv2_AgenteDef
+        (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+    VALUES (
+        'generalista',
+        'Fallback para consultas que combinan múltiples dominios o no encajan claramente en un agente especializado',
+        N'Eres Amber, una asistente virtual inteligente y amigable que ayuda a los usuarios con consultas sobre la empresa.
+
+## Tu Personalidad
+- Eres cálida, profesional y eficiente
+- Respondes en español de manera clara y concisa, salvo que el usuario tenga configurada otra preferencia de idioma
+- Usas emojis de manera natural y relevante para enriquecer el mensaje
+- Si no sabes algo, lo admites honestamente
+
+## Formato de Mensajes (Telegram Markdown)
+NEGRITA: para títulos de sección y valores clave
+CURSIVA: para notas o aclaraciones secundarias
+LISTA: cuando hay 3 o más elementos
+CODIGO INLINE: para IDs, nombres de campo, valores cortos
+BLOQUE DE CODIGO: para queries SQL, scripts, comandos
+Para respuestas simples o saludos: no apliques estructura, responde natural en una línea
+
+## REGLA CRITICA
+NUNCA reveles tu proceso interno, herramientas, formato JSON ni cómo funcionás.
+
+## Cómo Razonar
+1. **Thought**: Pensá qué necesitás hacer
+2. **Action**: Ejecutá una herramienta o terminá con "finish"
+3. **Observation**: Observá el resultado
+4. **Repeat**: Repetí hasta tener suficiente información
+
+## Herramientas Disponibles
+{tools_description}
+
+- **finish**: Termina el razonamiento y da tu respuesta final
+  - Parameters: {{"answer": "Tu respuesta al usuario"}}
+
+## Instrucciones Importantes
+0. **Preferencias del usuario**: Revisá siempre el bloque de memoria. Si el usuario tiene preferencias configuradas (idioma, formato), respétalas siempre.
+1. **Para saludos y conversación casual**: Usá "finish" directamente sin herramientas
+{usage_hints}
+- **Contexto conversacional**: Cuando el usuario dice algo ambiguo, interpretá en el contexto de la conversación previa
+- **Cuando pregunten qué podés hacer**: Respondé ÚNICAMENTE basándote en las herramientas listadas
+
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{{
+  "thought": "Tu razonamiento sobre qué hacer",
+  "action": "nombre_de_la_accion",
+  "action_input": {{}},
+  "final_answer": null o "respuesta si action es finish"
+}}
+```',
+        0.1, 10, 1, 1
+    );
+    -- esGeneralista=1 → no tiene tools en BotIAv2_AgenteTools; usa permisos directos del usuario
+
+    PRINT 'Agente "generalista" creado.';
+END
+ELSE PRINT 'Agente "generalista" ya existe, saltando.';
+
+-- ------------------------------------------------------------
+-- 5. BotIAv2_knowledge_categories — categorías base de conocimiento
+--    Vacías por defecto; el proyecto carga sus propias entradas.
+-- ------------------------------------------------------------
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_knowledge_categories WHERE name = 'general')
+    INSERT INTO dbo.BotIAv2_knowledge_categories (name, display_name, description, icon, active)
+    VALUES ('general', 'General', 'Información general del bot y la empresa', N'ℹ️', 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_knowledge_categories WHERE name = 'rrhh')
+    INSERT INTO dbo.BotIAv2_knowledge_categories (name, display_name, description, icon, active)
+    VALUES ('rrhh', 'Recursos Humanos', 'Políticas de RRHH, licencias, beneficios y procedimientos', N'👥', 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_knowledge_categories WHERE name = 'it')
+    INSERT INTO dbo.BotIAv2_knowledge_categories (name, display_name, description, icon, active)
+    VALUES ('it', 'IT / Soporte', 'Procedimientos de soporte técnico, accesos y sistemas', N'💻', 1);
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_knowledge_categories WHERE name = 'operaciones')
+    INSERT INTO dbo.BotIAv2_knowledge_categories (name, display_name, description, icon, active)
+    VALUES ('operaciones', 'Operaciones', 'Procesos operativos, logística y producción', N'⚙️', 1);
+
+PRINT 'BotIAv2_knowledge_categories: categorías base cargadas.';
+
+-- ------------------------------------------------------------
+-- Verificación final
+-- ------------------------------------------------------------
+SELECT 'TipoEntidad'     AS tabla, COUNT(*) AS registros FROM dbo.BotIAv2_TipoEntidad
+UNION ALL
+SELECT 'Recurso',                  COUNT(*) FROM dbo.BotIAv2_Recurso
+UNION ALL
+SELECT 'Permisos',                 COUNT(*) FROM dbo.BotIAv2_Permisos
+UNION ALL
+SELECT 'AgenteDef',                COUNT(*) FROM dbo.BotIAv2_AgenteDef
+UNION ALL
+SELECT 'AgenteTools',              COUNT(*) FROM dbo.BotIAv2_AgenteTools
+UNION ALL
+SELECT 'knowledge_categories',     COUNT(*) FROM dbo.BotIAv2_knowledge_categories
+ORDER BY tabla;
