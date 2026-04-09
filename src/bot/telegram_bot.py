@@ -9,6 +9,7 @@ from telegram import Update
 from telegram.ext import Application
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
+from src.infra.database.registry import DatabaseRegistry
 from src.pipeline import create_main_handler
 from .handlers import (
     register_command_handlers,
@@ -33,8 +34,11 @@ class TelegramBot:
         """Inicializar el bot."""
         logger.info("Inicializando TelegramBot...")
 
-        # Inicializar gestor de base de datos
+        # Inicializar gestor de base de datos principal
         self.db_manager = DatabaseManager()
+
+        # DB-37: registry de múltiples conexiones (lazy — conecta al primer uso)
+        self.db_registry = DatabaseRegistry.from_settings()
 
         # Inicializar MainHandler (ReActAgent + MemoryService)
         logger.info("Inicializando MainHandler (ReAct)...")
@@ -122,5 +126,6 @@ class TelegramBot:
 
         # Cerrar conexiones de base de datos
         self.db_manager.close()
+        self.db_registry.close_all()
 
         logger.info("Bot detenido exitosamente")

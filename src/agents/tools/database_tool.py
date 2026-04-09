@@ -4,14 +4,21 @@ Database Tool - Herramienta para consultas de datos de negocio.
 El agente describe en lenguaje natural qué datos necesita.
 DatabaseTool genera el SQL internamente usando gpt-5.4 y lo ejecuta.
 El loop ReAct (mini) nunca necesita escribir SQL.
+
+Soporta múltiples bases de datos vía DatabaseRegistry (DB-37).
+El agente puede indicar el alias de conexión con el parámetro `db`.
 """
 
 import logging
 import re
 import time
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from .base import BaseTool, ToolCategory, ToolDefinition, ToolParameter, ToolResult
+
+if TYPE_CHECKING:
+    from src.infra.database.registry import DatabaseRegistry
+    from src.infra.database.connection import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +28,7 @@ REGLAS:
 - Solo SELECT, nunca INSERT/UPDATE/DELETE/DROP
 - Usa TOP para limitar resultados cuando sea apropiado
 - Usa alias descriptivos en español (AS total, AS nombre, etc.)
-- La base de datos es: abcmasplus
+- La base de datos destino es: {db_name}
 - Si no tienes suficiente contexto del esquema, genera la consulta más razonable posible
 
 SOLICITUD: {description}
@@ -36,20 +43,23 @@ class DatabaseTool(BaseTool):
     El agente describe qué datos necesita en lenguaje natural.
     DatabaseTool usa gpt-5.4 para generar el SQL y lo ejecuta.
 
+    Acepta tanto un DatabaseRegistry (multi-DB, DB-37) como un DatabaseManager
+    legacy (single-DB), para backward-compat total.
+
     Example:
-        >>> tool = DatabaseTool(db_manager, llm_provider)
-        >>> result = await tool.execute(description="cuántas ventas hubo ayer")
+        >>> tool = DatabaseTool(db_manager=registry, llm_provider=llm)
+        >>> result = await tool.execute(description="cuántas ventas hubo ayer", db="ventas")
         >>> print(result.to_observation())
     """
 
     def __init__(
         self,
-        db_manager: Any,
+        db_manager: Union["DatabaseRegistry", "DatabaseManager", Any],
         llm_provider: Any,
         sql_validator: Optional[Any] = None,
         max_results: int = 100,
     ):
-        self.db_manager = db_manager
+        self._db_source = db_manager   # DatabaseRegistry o DatabaseManager legacy
         self.llm_provider = llm_provider
         self.max_results = max_results
 
@@ -59,10 +69,41 @@ class DatabaseTool(BaseTool):
             from src.infra.database.sql_validator import SQLValidator
             self.sql_validator = SQLValidator()
 
-        logger.info(f"DatabaseTool inicializado (model={llm_provider.model}, max_results={max_results})")
+        # Detectar modo para logging
+        from src.infra.database.registry import DatabaseRegistry
+        is_registry = isinstance(db_manager, DatabaseRegistry)
+        logger.info(
+            f"DatabaseTool inicializado "
+            f"(model={llm_provider.model}, max_results={max_results}, "
+            f"mode={'registry' if is_registry else 'legacy'})"
+        )
+
+    def _get_available_dbs(self) -> list[str]:
+        """Retorna los alias de conexión disponibles."""
+        from src.infra.database.registry import DatabaseRegistry
+        if isinstance(self._db_source, DatabaseRegistry):
+            return self._db_source.get_aliases()
+        return ["core"]
+
+    def _resolve_manager(self, db_alias: str) -> Any:
+        """
+        Resuelve el DatabaseManager para el alias pedido.
+
+        Acepta DatabaseRegistry (multi-DB) o DatabaseManager legacy.
+        """
+        from src.infra.database.registry import DatabaseRegistry
+        if isinstance(self._db_source, DatabaseRegistry):
+            return self._db_source.get(db_alias)
+        # Legacy: siempre usa el manager único
+        return self._db_source
 
     @property
     def definition(self) -> ToolDefinition:
+        available = self._get_available_dbs()
+        db_hint = ""
+        if len(available) > 1:
+            db_hint = f" Bases de datos disponibles: {', '.join(available)} (default: core)."
+
         return ToolDefinition(
             name="database_query",
             description=(
@@ -83,6 +124,15 @@ class DatabaseTool(BaseTool):
                         "cantidad de usuarios activos por gerencia",
                     ],
                 ),
+                ToolParameter(
+                    name="db",
+                    param_type="string",
+                    description=(
+                        f"Alias de la base de datos a consultar.{db_hint}"
+                    ),
+                    required=False,
+                    examples=available,
+                ),
             ],
             examples=[
                 {"description": "total de ventas de hoy comparado con ayer"},
@@ -92,24 +142,38 @@ class DatabaseTool(BaseTool):
             usage_hint=(
                 "Para datos de negocio (ventas, reportes, usuarios, productos, stock, facturación): "
                 "usa `database_query`. **Obligatorio** antes de responder con cualquier cifra — "
-                "está PROHIBIDO inventar o asumir datos numéricos sin consultar la base de datos."
+                f"está PROHIBIDO inventar o asumir datos numéricos sin consultar la base de datos."
+                + (f" Conexiones disponibles: {', '.join(available)}." if len(available) > 1 else "")
             ),
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
         start_time = time.perf_counter()
         description = kwargs.get("description", "").strip()
+        db_alias = (kwargs.get("db") or "core").strip().lower()
 
         if not description:
             return ToolResult.error_result("Se requiere una descripción de los datos a consultar")
 
+        # Validar alias antes de generar SQL
+        available = self._get_available_dbs()
+        if db_alias not in available:
+            return ToolResult.error_result(
+                f"Base de datos '{db_alias}' no disponible. "
+                f"Opciones: {', '.join(available)}"
+            )
+
         try:
-            # 1. Generar SQL con gpt-5.4
-            sql = await self._generate_sql(description)
+            # Resolver el manager para este alias
+            manager = self._resolve_manager(db_alias)
+
+            # 1. Generar SQL con gpt-5.4 (pasando el nombre de la BD)
+            db_name = self._get_db_name(db_alias)
+            sql = await self._generate_sql(description, db_name=db_name)
             if not sql:
                 return ToolResult.error_result("No se pudo generar una consulta SQL válida")
 
-            logger.info(f"SQL generado: {sql[:120]}...")
+            logger.info(f"SQL generado [{db_alias}]: {sql[:120]}...")
 
             # 2. Validar seguridad
             is_safe, validation_error = self.sql_validator.validate(sql)
@@ -120,38 +184,60 @@ class DatabaseTool(BaseTool):
                     metadata={"sql": sql[:200]},
                 )
 
-            # 3. Ejecutar
-            results = await self._execute_query(sql)
+            # 3. Ejecutar contra el manager correcto
+            results = await self._execute_query(sql, manager=manager)
 
             if isinstance(results, list) and len(results) > self.max_results:
                 results = results[:self.max_results]
 
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.info(f"database_query: {elapsed_ms:.0f}ms, {len(results) if isinstance(results, list) else 1} resultados")
+            logger.info(
+                f"database_query [{db_alias}]: {elapsed_ms:.0f}ms, "
+                f"{len(results) if isinstance(results, list) else 1} resultados"
+            )
 
             return ToolResult.success_result(
                 data=results,
                 execution_time_ms=elapsed_ms,
                 metadata={
                     "sql": sql[:200],
+                    "db": db_alias,
                     "result_count": len(results) if isinstance(results, list) else 1,
                 },
             )
 
+        except KeyError as e:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            return ToolResult.error_result(
+                error=str(e),
+                execution_time_ms=elapsed_ms,
+            )
         except Exception as e:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(f"DatabaseTool error: {e}")
+            logger.error(f"DatabaseTool error [{db_alias}]: {e}")
             return ToolResult.error_result(
                 error=f"Error consultando datos: {str(e)}",
                 execution_time_ms=elapsed_ms,
             )
 
-    async def _generate_sql(self, description: str) -> Optional[str]:
+    def _get_db_name(self, alias: str) -> str:
+        """Retorna el nombre de la BD para el alias (para inyectar en el prompt SQL)."""
+        from src.infra.database.registry import DatabaseRegistry
+        if isinstance(self._db_source, DatabaseRegistry):
+            configs = self._db_source._configs
+            if alias in configs:
+                return configs[alias].name or alias
+        return alias
+
+    async def _generate_sql(self, description: str, db_name: str = "abcmasplus") -> Optional[str]:
         """Genera SQL T-SQL a partir de una descripción en lenguaje natural."""
         try:
             messages = [
                 {"role": "system", "content": "Eres un experto en T-SQL para SQL Server. Solo respondes con SQL válido."},
-                {"role": "user", "content": SQL_GENERATION_PROMPT.format(description=description)},
+                {"role": "user", "content": SQL_GENERATION_PROMPT.format(
+                    description=description,
+                    db_name=db_name,
+                )},
             ]
             raw = await self.llm_provider.generate_messages(messages)
             sql = self._extract_sql(raw.strip())
@@ -168,20 +254,22 @@ class DatabaseTool(BaseTool):
             return match.group(1).strip()
         return text.strip()
 
-    async def _execute_query(self, query: str) -> list[dict[str, Any]]:
+    async def _execute_query(self, query: str, manager: Any = None) -> list[dict[str, Any]]:
         """
-        Ejecuta la query contra la base de datos.
+        Ejecuta la query contra el manager indicado (o el legacy si no se pasa).
 
         Args:
             query: Consulta SQL validada
+            manager: DatabaseManager a usar. Si es None, usa self._db_source (legacy).
 
         Returns:
             Lista de resultados como diccionarios
         """
-        if not hasattr(self.db_manager, "execute_query_async"):
+        target = manager if manager is not None else self._db_source
+        if not hasattr(target, "execute_query_async"):
             raise ValueError("DatabaseManager does not have execute_query_async method")
 
-        results = await self.db_manager.execute_query_async(query)
+        results = await target.execute_query_async(query)
 
         # Convertir a lista de dicts si es necesario
         if results is None:

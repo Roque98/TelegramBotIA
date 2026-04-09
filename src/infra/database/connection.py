@@ -3,7 +3,7 @@ Gestión de conexiones a la base de datos.
 """
 import asyncio
 import logging
-from typing import List, Dict, Any, Generator
+from typing import TYPE_CHECKING, List, Dict, Any, Generator, Optional
 from contextlib import contextmanager
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker, Session
@@ -12,15 +12,33 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError as SQ
 from src.config.settings import settings
 from src.utils.retry import db_retry
 
+if TYPE_CHECKING:
+    from src.config.settings import DbConnectionConfig
+
 logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
     """Gestor de conexiones y operaciones de base de datos."""
 
-    def __init__(self):
-        """Inicializar el gestor de base de datos."""
-        self.database_url = settings.database_url
+    def __init__(self, config: Optional["DbConnectionConfig"] = None):
+        """
+        Inicializar el gestor de base de datos.
+
+        Args:
+            config: Configuración de conexión. Si es None, usa la conexión
+                    principal definida en settings (comportamiento original).
+        """
+        if config is not None:
+            self.database_url = config.database_url
+            self._alias = config.alias
+            self._host = config.host
+            self._db_type = config.db_type
+        else:
+            self.database_url = settings.database_url
+            self._alias = "core"
+            self._host = settings.db_host
+            self._db_type = settings.db_type
 
         # Para operaciones síncronas con configuración optimizada
         self.engine = create_engine(
@@ -37,7 +55,7 @@ class DatabaseManager:
         )
         self.SessionLocal = sessionmaker(bind=self.engine)
 
-        logger.info(f"Conectado a base de datos: {settings.db_type} en {settings.db_host}")
+        logger.info(f"DatabaseManager '{self._alias}': {self._db_type} en {self._host}")
 
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:

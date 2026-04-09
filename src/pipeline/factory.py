@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from src.agents.react.agent import ReActAgent
 from src.agents.tools.registry import ToolRegistry
 from src.agents.tools.database_tool import DatabaseTool
+from src.infra.database.registry import DatabaseRegistry
 from src.agents.tools.knowledge_tool import KnowledgeTool
 from src.agents.tools.calculate_tool import CalculateTool
 from src.agents.tools.datetime_tool import DateTimeTool
@@ -53,12 +54,15 @@ def create_tool_registry(
     bot_token: Optional[str] = None,
     data_llm: Optional[Any] = None,
     agent_config_service: Optional[Any] = None,
+    db_registry: Optional[DatabaseRegistry] = None,
 ) -> ToolRegistry:
     """Crea y configura el registro de herramientas."""
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    registry.register(DatabaseTool(db_manager=db_manager, llm_provider=data_llm))
+    # Preferir DatabaseRegistry (multi-DB) sobre db_manager legacy
+    db_source = db_registry if db_registry is not None else db_manager
+    registry.register(DatabaseTool(db_manager=db_source, llm_provider=data_llm))
     if knowledge_manager is not None:
         registry.register(KnowledgeTool(knowledge_manager=knowledge_manager))
     else:
@@ -216,6 +220,9 @@ def create_main_handler(
     from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
 
+    # DB-37: DatabaseRegistry para multi-conexión
+    db_registry = DatabaseRegistry.from_settings()
+
     try:
         knowledge_manager = KnowledgeService(db_manager=db)
         logger.info(
@@ -243,6 +250,7 @@ def create_main_handler(
         bot_token=settings.telegram_bot_token,
         data_llm=data_llm,
         agent_config_service=None,  # Se inyecta abajo
+        db_registry=db_registry,    # DB-37: multi-database registry
     )
 
     # Crear orquestador dinámico
