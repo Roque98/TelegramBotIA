@@ -40,7 +40,11 @@ class AgentResponse(BaseModel):
     steps_taken: int = 1
     metadata: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    routed_agent: Optional[str] = None  # Nombre del agente seleccionado por el orquestador
+    routed_agent: Optional[str] = None        # Nombre del agente seleccionado por el orquestador
+    classify_ms: Optional[int] = None         # Latencia del IntentClassifier (ms)
+    agent_confidence: Optional[float] = None  # Confianza del clasificador (0.0–1.0)
+    used_fallback: bool = False               # True si se usó generalista como fallback
+    llm_iteraciones: Optional[int] = None     # Iteraciones LLM dentro del loop ReAct
 
     model_config = {"frozen": False}
 

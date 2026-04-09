@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from src.agents.react.agent import ReActAgent
 from src.agents.tools.registry import ToolRegistry
 from src.config.settings import settings
+from src.infra.observability import get_metrics
 
 if TYPE_CHECKING:
     from src.domain.agent_config.agent_config_entity import AgentDefinition
@@ -58,12 +59,15 @@ class AgentBuilder:
         """
         key = (definition.id, definition.version)
         with self._lock:
-            if key not in self._cache:
-                self._cache[key] = self._do_build(definition)
-                logger.debug(
-                    f"AgentBuilder: instancia construida para "
-                    f"agente='{definition.nombre}' v{definition.version}"
-                )
+            if key in self._cache:
+                get_metrics().record_cache_hit()
+                return self._cache[key]
+            get_metrics().record_cache_miss()
+            self._cache[key] = self._do_build(definition)
+            logger.debug(
+                f"AgentBuilder: instancia construida para "
+                f"agente='{definition.nombre}' v{definition.version}"
+            )
             return self._cache[key]
 
     def _do_build(self, definition: "AgentDefinition") -> ReActAgent:

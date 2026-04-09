@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from .agent_config_entity import AgentDefinition
 from .agent_config_repository import AgentConfigRepository
+from src.infra.observability import get_metrics
 
 if TYPE_CHECKING:
     from src.agents.factory.agent_builder import AgentBuilder
@@ -42,8 +43,10 @@ class AgentConfigService:
         """Retorna agentes activos desde cache o BD."""
         with self._lock:
             if self._cache is not None and (time.monotonic() - self._cache_ts) < self._ttl:
+                get_metrics().record_cache_hit()
                 return self._cache
 
+            get_metrics().record_cache_miss()
             agents = self._repo.get_all_active()
             valid = []
             for agent in agents:

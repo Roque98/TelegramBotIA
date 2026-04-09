@@ -331,6 +331,13 @@ class MainHandler:
 
             correlation_id = event.correlation_id or ""
 
+            # Calcular tokens y costo agregados desde step_traces
+            step_traces = (response.data or {}).get("step_traces") or []
+            total_in = sum(s.get("tokensIn") or 0 for s in step_traces)
+            total_out = sum(s.get("tokensOut") or 0 for s in step_traces)
+            total_cost = sum(s.get("costoUSD") or 0.0 for s in step_traces)
+            llm_iters = sum(1 for s in step_traces if s.get("tipo") == "llm_call")
+
             await self.observability_repo.save_interaction(
                 correlation_id=correlation_id,
                 user_id=event.user_id,
@@ -346,12 +353,30 @@ class MainHandler:
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
                 agente_nombre=response.routed_agent,
+                # OBS-36: métricas multi-agente
+                total_input_tokens=total_in or None,
+                total_output_tokens=total_out or None,
+                llm_iteraciones=llm_iters or None,
+                used_fallback=response.used_fallback,
+                classify_ms=response.classify_ms,
+                agent_confidence=response.agent_confidence,
+                cost_usd=total_cost or None,
             )
 
             # Persistir pasos del loop ReAct
-            step_traces = (response.data or {}).get("step_traces")
             if step_traces:
                 await self.observability_repo.save_steps(correlation_id, step_traces)
+
+            # Persistir decisión de ruteo si viene del orchestrator
+            if response.routed_agent and response.classify_ms is not None:
+                await self.observability_repo.save_agent_routing(
+                    correlation_id=correlation_id,
+                    query=event.text,
+                    agente_seleccionado=response.routed_agent,
+                    classify_ms=response.classify_ms,
+                    confidence=response.agent_confidence,
+                    used_fallback=response.used_fallback,
+                )
 
             # Actualizar contador de interacciones en perfil
             await self.memory.repository.increment_interaction_count(event.user_id)

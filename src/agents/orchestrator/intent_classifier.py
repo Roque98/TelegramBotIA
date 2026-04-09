@@ -9,6 +9,7 @@ por lo que agregar un nuevo agente no requiere tocar este código.
 """
 
 import logging
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
@@ -21,6 +22,15 @@ _CLASSIFIER_SYSTEM = (
 )
 
 
+@dataclass
+class ClassifyResult:
+    """Resultado de clasificación con métricas para observabilidad."""
+    agent_name: str
+    confidence: Optional[float] = None   # 0.0–1.0; None si no disponible
+    alternatives: list[str] = field(default_factory=list)  # otros candidatos detectados
+    used_fallback: bool = False           # True si se usó generalista como fallback
+
+
 class IntentClassifier:
     """
     Clasifica el intent de una consulta usando un modelo nano.
@@ -31,8 +41,9 @@ class IntentClassifier:
 
     Example:
         >>> classifier = IntentClassifier(llm_provider)
-        >>> intent = await classifier.classify("cuántas ventas hubo ayer?", agents)
-        >>> # "datos"
+        >>> result = await classifier.classify("cuántas ventas hubo ayer?", agents)
+        >>> result.agent_name  # "datos"
+        >>> result.confidence  # 0.95
     """
 
     def __init__(self, llm: Any) -> None:
@@ -40,24 +51,25 @@ class IntentClassifier:
 
     async def classify(
         self, query: str, agents: list["AgentDefinition"]
-    ) -> str:
+    ) -> ClassifyResult:
         """
-        Clasifica el intent de la consulta y retorna el nombre del agente.
+        Clasifica el intent de la consulta y retorna un ClassifyResult.
 
         Args:
             query: Texto del mensaje del usuario
             agents: Lista de agentes activos desde BD
 
         Returns:
-            Nombre del agente seleccionado (str). Si el clasificador falla
-            o no coincide, retorna "generalista".
+            ClassifyResult con agent_name, confidence y used_fallback.
+            Si el clasificador falla o no coincide, retorna agent_name="generalista"
+            con used_fallback=True.
         """
         # Construir opciones con los agentes especializados (no generalista)
         especialistas = [a for a in agents if not a.es_generalista]
 
         if not especialistas:
             logger.debug("No hay agentes especializados — usando generalista directamente")
-            return "generalista"
+            return ClassifyResult(agent_name="generalista", used_fallback=True)
 
         opciones = "\n".join(
             f"- {a.nombre}: {a.descripcion}" for a in especialistas
@@ -80,23 +92,33 @@ class IntentClassifier:
             response = await self.llm.generate_messages(messages)
             raw = response.strip().lower()
 
-            # Buscar el primer nombre válido en la respuesta
-            for name in valid_names:
-                if name in raw:
-                    logger.debug(
-                        f"IntentClassifier: '{query[:60]}' → '{name}'"
-                    )
-                    return name
+            # Buscar todos los nombres válidos en la respuesta para detectar alternativas
+            matched = [name for name in valid_names if name in raw]
+
+            if matched:
+                selected = matched[0]
+                alternatives = matched[1:]
+                # Heurística de confianza: respuesta exacta = alta confianza; múltiples matches = baja
+                confidence = 0.95 if len(matched) == 1 else 0.60
+                logger.debug(
+                    f"IntentClassifier: '{query[:60]}' → '{selected}' "
+                    f"(confidence={confidence}, alternatives={alternatives})"
+                )
+                return ClassifyResult(
+                    agent_name=selected,
+                    confidence=confidence,
+                    alternatives=alternatives,
+                )
 
             # Sin coincidencia → fallback generalista
             logger.debug(
                 f"IntentClassifier: respuesta '{raw[:40]}' no coincide con ningún agente "
                 f"→ fallback 'generalista'"
             )
-            return "generalista"
+            return ClassifyResult(agent_name="generalista", used_fallback=True)
 
         except Exception as e:
             logger.warning(
                 f"IntentClassifier falló ({e}), usando 'generalista'"
             )
-            return "generalista"
+            return ClassifyResult(agent_name="generalista", used_fallback=True)

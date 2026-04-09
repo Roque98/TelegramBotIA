@@ -35,6 +35,14 @@ class ObservabilityRepository:
         tools_used: Optional[list[str]] = None,
         steps_count: int = 0,
         agente_nombre: Optional[str] = None,
+        # OBS-36: campos de observabilidad multi-agente
+        total_input_tokens: Optional[int] = None,
+        total_output_tokens: Optional[int] = None,
+        llm_iteraciones: Optional[int] = None,
+        used_fallback: bool = False,
+        classify_ms: Optional[int] = None,
+        agent_confidence: Optional[float] = None,
+        cost_usd: Optional[float] = None,
     ) -> bool:
         """
         Persiste una interacción completa en BotIAv2_InteractionLogs.
@@ -43,7 +51,14 @@ class ObservabilityRepository:
         silenciosamente si el usuario no está registrado (idUsuario queda NULL).
 
         Args:
-            agente_nombre: Nombre del agente que respondió (ARQ-35). NULL si no aplica.
+            agente_nombre: Nombre del agente que respondió (ARQ-35).
+            total_input_tokens: Tokens de entrada agregados del request (OBS-36).
+            total_output_tokens: Tokens de salida agregados del request (OBS-36).
+            llm_iteraciones: Iteraciones del loop ReAct (OBS-36).
+            used_fallback: Si se usó el agente generalista como fallback (OBS-36).
+            classify_ms: Latencia del IntentClassifier en ms (OBS-36).
+            agent_confidence: Confianza del clasificador 0.0–1.0 (OBS-36).
+            cost_usd: Costo total del request en USD (OBS-36).
         """
         try:
             exitoso = 0 if error_message else 1
@@ -53,7 +68,9 @@ class ObservabilityRepository:
                     comando, query, respuesta, mensajeError,
                     toolsUsadas, stepsTomados,
                     memoryMs, reactMs, saveMs, duracionMs, channel, exitoso,
-                    agenteNombre
+                    agenteNombre,
+                    totalInputTokens, totalOutputTokens, llmIteraciones,
+                    usedFallback, classifyMs, agentConfidence, costUSD
                 )
                 VALUES (
                     :correlation_id,
@@ -70,7 +87,9 @@ class ObservabilityRepository:
                     :memory_ms, :react_ms, :save_ms, :total_ms,
                     :channel,
                     :exitoso,
-                    :agente_nombre
+                    :agente_nombre,
+                    :total_input_tokens, :total_output_tokens, :llm_iteraciones,
+                    :used_fallback, :classify_ms, :agent_confidence, :cost_usd
                 )
             """
             chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
@@ -91,10 +110,64 @@ class ObservabilityRepository:
                 "channel": channel,
                 "exitoso": exitoso,
                 "agente_nombre": agente_nombre[:100] if agente_nombre else None,
+                "total_input_tokens": total_input_tokens,
+                "total_output_tokens": total_output_tokens,
+                "llm_iteraciones": llm_iteraciones,
+                "used_fallback": 1 if used_fallback else 0,
+                "classify_ms": classify_ms,
+                "agent_confidence": agent_confidence,
+                "cost_usd": cost_usd,
             })
             return True
         except Exception as e:
             logger.error(f"Error saving interaction: {e}")
+            return False
+
+    async def save_agent_routing(
+        self,
+        correlation_id: str,
+        query: Optional[str],
+        agente_seleccionado: str,
+        classify_ms: int,
+        confidence: Optional[float] = None,
+        alternatives: Optional[list[str]] = None,
+        used_fallback: bool = False,
+    ) -> bool:
+        """
+        Persiste la decisión de ruteo en BotIAv2_AgentRouting (OBS-36).
+
+        Args:
+            correlation_id: ID de correlación del request.
+            query: Texto de la consulta (truncado a 1000 chars).
+            agente_seleccionado: Nombre del agente elegido.
+            classify_ms: Latencia del clasificador en ms.
+            confidence: Confianza del clasificador 0.0–1.0.
+            alternatives: Lista de agentes alternativos detectados en la respuesta.
+            used_fallback: True si se cayó al generalista por no encontrar el agente.
+        """
+        try:
+            alternatives_json = json.dumps(alternatives) if alternatives else None
+            sql = """
+                INSERT INTO abcmasplus..BotIAv2_AgentRouting (
+                    correlationId, query, agenteSeleccionado,
+                    confianza, alternativas, classifyMs, usedFallback
+                ) VALUES (
+                    :correlation_id, :query, :agente_seleccionado,
+                    :confianza, :alternativas, :classify_ms, :used_fallback
+                )
+            """
+            await self.db_manager.execute_non_query_async(sql, {
+                "correlation_id": correlation_id[:50] if correlation_id else None,
+                "query": (query or "")[:1000],
+                "agente_seleccionado": agente_seleccionado[:100],
+                "confianza": confidence,
+                "alternativas": alternatives_json[:500] if alternatives_json else None,
+                "classify_ms": classify_ms,
+                "used_fallback": 1 if used_fallback else 0,
+            })
+            return True
+        except Exception as e:
+            logger.error(f"Error saving agent routing: {e}")
             return False
 
     async def save_steps(

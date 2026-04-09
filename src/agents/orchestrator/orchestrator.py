@@ -84,16 +84,17 @@ class AgentOrchestrator:
             # 1. Cargar agentes activos desde cache/BD
             definitions = self.agent_config_service.get_active_agents()
 
-            # 2. Clasificar intent
-            agent_name = await self.intent_classifier.classify(query, definitions)
+            # 2. Clasificar intent (retorna ClassifyResult con confianza y alternativas)
+            classify_result = await self.intent_classifier.classify(query, definitions)
             classify_ms = int((time.perf_counter() - t0) * 1000)
 
             # 3. Resolver definición (con fallback a generalista)
-            definition = self._resolve(agent_name, definitions)
+            definition, used_fallback = self._resolve(classify_result.agent_name, definitions)
 
             logger.info(
                 f"Orchestrator: '{query[:50]}' → '{definition.nombre}' "
-                f"(classify={classify_ms}ms)"
+                f"(classify={classify_ms}ms, confidence={classify_result.confidence}, "
+                f"fallback={used_fallback})"
             )
 
             # 4. Construir / recuperar del cache la instancia del agente
@@ -114,14 +115,17 @@ class AgentOrchestrator:
             **kwargs,
         )
 
-        # 6. Registrar qué agente respondió (para observabilidad)
+        # 6. Registrar qué agente respondió y métricas de ruteo (para observabilidad)
         response.routed_agent = definition.nombre
+        response.classify_ms = classify_ms
+        response.agent_confidence = classify_result.confidence
+        response.used_fallback = used_fallback or classify_result.used_fallback
 
         return response
 
     def _resolve(
         self, agent_name: str, definitions: list[AgentDefinition]
-    ) -> AgentDefinition:
+    ) -> tuple[AgentDefinition, bool]:
         """
         Resuelve la definición del agente por nombre, con fallback al generalista.
 
@@ -130,7 +134,8 @@ class AgentOrchestrator:
             definitions: Lista de agentes activos
 
         Returns:
-            AgentDefinition del agente a usar
+            Tupla (AgentDefinition, used_fallback). used_fallback=True si se recurrió
+            al generalista porque el agente clasificado no estaba en la lista activa.
 
         Raises:
             AgentConfigException: Si no hay agente generalista activo en BD
@@ -138,7 +143,7 @@ class AgentOrchestrator:
         # Búsqueda directa por nombre
         for d in definitions:
             if d.nombre == agent_name:
-                return d
+                return d, False
 
         # Fallback al generalista
         for d in definitions:
@@ -147,7 +152,7 @@ class AgentOrchestrator:
                     f"Orchestrator: agente '{agent_name}' no encontrado, "
                     f"usando generalista como fallback"
                 )
-                return d
+                return d, True
 
         raise AgentConfigException(
             "No hay agente generalista activo en la configuración de BD. "
