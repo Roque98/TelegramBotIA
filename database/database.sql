@@ -136,33 +136,36 @@ PRINT 'Tabla BotIAv2_knowledge_entries creada.';
 END
 ELSE PRINT 'Tabla BotIAv2_knowledge_entries ya existe, saltando.';
 
+-- BotIAv2_LogOperaciones eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
+
 IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.tables
-    WHERE
-        name = 'BotIAv2_LogOperaciones'
-) BEGIN CREATE TABLE dbo.[BotIAv2_LogOperaciones] (
-    [idLog] bigint IDENTITY(1, 1) NOT NULL,
-    [idUsuario] int NOT NULL,
-    [comando] nvarchar(100) NULL,
-    [telegramChatId] bigint NULL,
-    [telegramUsername] nvarchar(100) NULL,
-    [parametros] nvarchar(MAX) NULL,
-    [resultado] nvarchar(MAX) NULL,
-    [mensajeError] nvarchar(MAX) NULL,
-    [duracionMs] int NULL,
-    [ipOrigen] nvarchar(50) NULL,
-    [fechaEjecucion] datetime NOT NULL DEFAULT (getdate()),
-    CONSTRAINT [PK_BotIAv2_LogOperaciones] PRIMARY KEY CLUSTERED ([idLog] ASC),
-    CONSTRAINT [FK_BotIAv2_LogOperaciones_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
+    SELECT * FROM sys.tables WHERE name = 'BotIAv2_InteractionLogs'
+) BEGIN CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
+    [idLog]             bigint          IDENTITY(1, 1) NOT NULL,
+    [correlationId]     nvarchar(50)    NULL,
+    [idUsuario]         int             NOT NULL,
+    [telegramChatId]    bigint          NULL,
+    [telegramUsername]  nvarchar(100)   NULL,
+    [comando]           nvarchar(100)   NULL,
+    [query]             nvarchar(500)   NULL,
+    [respuesta]         nvarchar(MAX)   NULL,
+    [mensajeError]      nvarchar(MAX)   NULL,
+    [toolsUsadas]       nvarchar(MAX)   NULL,   -- JSON: ["calculate","datetime"]
+    [stepsTomados]      int             NULL,
+    [memoryMs]          int             NULL,
+    [reactMs]           int             NULL,
+    [saveMs]            int             NULL,
+    [duracionMs]        int             NULL,
+    [channel]           nvarchar(50)    NULL    DEFAULT ('telegram'),
+    [fechaEjecucion]    datetime        NOT NULL DEFAULT (getdate()),
+    CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC),
+    CONSTRAINT [FK_BotIAv2_InteractionLogs_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
 );
 
-PRINT 'Tabla BotIAv2_LogOperaciones creada.';
+PRINT 'Tabla BotIAv2_InteractionLogs creada.';
 
 END
-ELSE PRINT 'Tabla BotIAv2_LogOperaciones ya existe, saltando.';
+ELSE PRINT 'Tabla BotIAv2_InteractionLogs ya existe, saltando.';
 
 IF NOT EXISTS (
     SELECT
@@ -336,36 +339,7 @@ PRINT 'Tabla BotIAv2_TipoEntidad creada.';
 END
 ELSE PRINT 'Tabla BotIAv2_TipoEntidad ya existe, saltando.';
 
-IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.tables
-    WHERE
-        name = 'BotIAv2_TransactionLogs'
-) BEGIN CREATE TABLE dbo.[BotIAv2_TransactionLogs] (
-    [id] bigint IDENTITY(1, 1) NOT NULL,
-    [correlationId] varchar(50) NULL,
-    [userId] nvarchar(50) NULL,
-    [username] nvarchar(100) NULL,
-    [query] nvarchar(500) NULL,
-    [channel] nvarchar(20) NULL DEFAULT ('telegram'),
-    [memoryMs] int NULL,
-    [reactMs] int NULL,
-    [saveMs] int NULL,
-    [totalMs] int NULL,
-    [success] bit NOT NULL,
-    [errorMessage] nvarchar(1000) NULL,
-    [toolsUsed] nvarchar(500) NULL,
-    [stepsCount] int NULL,
-    [createdAt] datetime NULL DEFAULT (getdate()),
-    CONSTRAINT [PK__Transact__3213E83F564B14D1] PRIMARY KEY CLUSTERED ([id] ASC)
-);
-
-PRINT 'Tabla BotIAv2_TransactionLogs creada.';
-
-END
-ELSE PRINT 'Tabla BotIAv2_TransactionLogs ya existe, saltando.';
+-- BotIAv2_TransactionLogs eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
 
 IF NOT EXISTS (
     SELECT
@@ -551,45 +525,30 @@ IF NOT EXISTS (
         AND object_id = OBJECT_ID('dbo.[BotIAv2_knowledge_entries]')
 ) CREATE NONCLUSTERED INDEX [idx_knowledge_entries_question] ON dbo.[BotIAv2_knowledge_entries] ([question] ASC);
 
+-- Índices BotIAv2_InteractionLogs
 IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_BotIAv2_LogOperaciones_ChatId'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
-) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_ChatId] ON dbo.[BotIAv2_LogOperaciones] ([telegramChatId] ASC);
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionLogs_ChatId'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_ChatId] ON dbo.[BotIAv2_InteractionLogs] ([telegramChatId] ASC);
 
 IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_BotIAv2_LogOperaciones_Comando'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
-) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_Comando] ON dbo.[BotIAv2_LogOperaciones] ([comando] ASC);
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionLogs_CorrelationId'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_CorrelationId] ON dbo.[BotIAv2_InteractionLogs] ([correlationId] ASC);
 
 IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_BotIAv2_LogOperaciones_FechaEjecucion'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
-) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_FechaEjecucion] ON dbo.[BotIAv2_LogOperaciones] ([fechaEjecucion] DESC);
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionLogs_FechaEjecucion'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_FechaEjecucion] ON dbo.[BotIAv2_InteractionLogs] ([fechaEjecucion] DESC);
 
 IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_BotIAv2_LogOperaciones_IdUsuario'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_LogOperaciones]')
-) CREATE NONCLUSTERED INDEX [IX_BotIAv2_LogOperaciones_IdUsuario] ON dbo.[BotIAv2_LogOperaciones] ([idUsuario] ASC);
+    SELECT * FROM sys.indexes
+    WHERE name = 'IX_InteractionLogs_IdUsuario'
+      AND object_id = OBJECT_ID('dbo.[BotIAv2_InteractionLogs]')
+) CREATE NONCLUSTERED INDEX [IX_InteractionLogs_IdUsuario] ON dbo.[BotIAv2_InteractionLogs] ([idUsuario] ASC);
 
 
 IF NOT EXISTS (
@@ -684,25 +643,7 @@ IF NOT EXISTS (
         AND object_id = OBJECT_ID('dbo.[BotIAv2_table_documentation]')
 ) CREATE NONCLUSTERED INDEX [idx_table_documentation_active] ON dbo.[BotIAv2_table_documentation] ([active] ASC);
 
-IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_TransactionLogs_createdAt'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_TransactionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_TransactionLogs_createdAt] ON dbo.[BotIAv2_TransactionLogs] ([createdAt] DESC);
-
-IF NOT EXISTS (
-    SELECT
-        *
-    FROM
-        sys.indexes
-    WHERE
-        name = 'IX_TransactionLogs_userId'
-        AND object_id = OBJECT_ID('dbo.[BotIAv2_TransactionLogs]')
-) CREATE NONCLUSTERED INDEX [IX_TransactionLogs_userId] ON dbo.[BotIAv2_TransactionLogs] ([userId] ASC);
+-- Índices IX_TransactionLogs_* eliminados — tabla reemplazada por BotIAv2_InteractionLogs (OBS-31)
 
 IF NOT EXISTS (
     SELECT
@@ -842,3 +783,69 @@ ORDER BY
 
 END
 GO
+
+-- ============================================================
+-- MIGRACIÓN OBS-31: Tablas legacy → BotIAv2_InteractionLogs
+-- Ejecutar DESPUÉS de desplegar el código Python actualizado.
+-- ============================================================
+
+-- PASO 1: Migrar datos históricos de LogOperaciones
+-- (best-effort: migra los campos que coinciden)
+IF OBJECT_ID('dbo.[BotIAv2_LogOperaciones]', 'U') IS NOT NULL
+    AND OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.[BotIAv2_InteractionLogs] (
+        idUsuario, telegramChatId, telegramUsername,
+        comando, query, respuesta, mensajeError, duracionMs, fechaEjecucion
+    )
+    SELECT
+        lo.idUsuario,
+        ut.telegramChatId,
+        ut.telegramUsername,
+        lo.comando,
+        JSON_VALUE(lo.parametros, '$.query'),
+        lo.resultado,
+        lo.mensajeError,
+        lo.duracionMs,
+        lo.fechaEjecucion
+    FROM dbo.[BotIAv2_LogOperaciones] lo
+    INNER JOIN dbo.[BotIAv2_UsuariosTelegram] ut ON lo.idUsuario = ut.idUsuario;
+
+    PRINT 'Migración LogOperaciones → InteractionLogs completada.';
+END
+
+-- PASO 2: Migrar datos históricos de TransactionLogs
+IF OBJECT_ID('dbo.[BotIAv2_TransactionLogs]', 'U') IS NOT NULL
+    AND OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NOT NULL
+BEGIN
+    -- Actualizar filas ya migradas de LogOperaciones con tiempos desglosados
+    -- donde coincida telegramChatId + fecha aproximada (±1 segundo)
+    UPDATE il
+    SET
+        il.correlationId  = tl.correlationId,
+        il.memoryMs       = tl.memoryMs,
+        il.reactMs        = tl.reactMs,
+        il.saveMs         = tl.saveMs,
+        il.toolsUsadas    = tl.toolsUsed,
+        il.stepsTomados   = tl.stepsCount,
+        il.channel        = tl.channel
+    FROM dbo.[BotIAv2_InteractionLogs] il
+    INNER JOIN dbo.[BotIAv2_TransactionLogs] tl
+        ON il.telegramChatId = CAST(tl.userId AS bigint)
+        AND ABS(DATEDIFF(SECOND, il.fechaEjecucion, tl.createdAt)) <= 1;
+
+    PRINT 'Migración TransactionLogs → InteractionLogs completada.';
+END
+
+-- PASO 3: DROP tablas legacy
+IF OBJECT_ID('dbo.[BotIAv2_LogOperaciones]', 'U') IS NOT NULL
+BEGIN
+    DROP TABLE dbo.[BotIAv2_LogOperaciones];
+    PRINT 'Tabla BotIAv2_LogOperaciones eliminada.';
+END
+
+IF OBJECT_ID('dbo.[BotIAv2_TransactionLogs]', 'U') IS NOT NULL
+BEGIN
+    DROP TABLE dbo.[BotIAv2_TransactionLogs];
+    PRINT 'Tabla BotIAv2_TransactionLogs eliminada.';
+END
