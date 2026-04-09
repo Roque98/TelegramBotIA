@@ -70,10 +70,10 @@ def _build_tool_catalog(
       3. INSERT en BotIAv2_Recurso del proyecto con activo=1
     """
     db_source = db_registry if db_registry is not None else db_manager
-    token = bot_token or settings.telegram_bot_token
+    token = bot_token  # None → se omite; el caller decide si pasar settings.telegram_bot_token
 
     return {
-        "database_query":    lambda: DatabaseTool(db_manager=db_source, llm_provider=data_llm),
+        "database_query":    lambda: DatabaseTool(db_manager=db_source, llm_provider=data_llm) if (db_source and data_llm) else None,
         "knowledge_search":  lambda: KnowledgeTool(knowledge_manager=knowledge_manager) if knowledge_manager else None,
         "calculate":         lambda: CalculateTool(),
         "datetime":          lambda: DateTimeTool(),
@@ -105,6 +105,9 @@ def create_tool_registry(
     ToolRegistry.reset()
     registry = ToolRegistry()
 
+    # Resolver token: argumento explícito tiene prioridad, luego settings
+    resolved_token = bot_token or settings.telegram_bot_token
+
     catalog = _build_tool_catalog(
         db_manager=db_manager,
         knowledge_manager=knowledge_manager,
@@ -113,7 +116,7 @@ def create_tool_registry(
         agent_config_service=agent_config_service,
         data_llm=data_llm,
         db_registry=db_registry,
-        bot_token=bot_token,
+        bot_token=resolved_token,
     )
 
     if active_tool_names is None:
