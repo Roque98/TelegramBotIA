@@ -57,6 +57,7 @@ plan/
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
+| [ARQ-33 Dynamic Tool Hints](02-activos/PLAN_ARQ_33_DYNAMIC_HINTS.md) | 0% (0/11) | `develop` | usage_hint por tool, registry dinámico, prompt sin hardcode |
 
 ---
 
