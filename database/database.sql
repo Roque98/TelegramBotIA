@@ -150,7 +150,7 @@ IF NOT EXISTS (
     [query]             nvarchar(500)   NULL,
     [respuesta]         nvarchar(MAX)   NULL,
     [mensajeError]      nvarchar(MAX)   NULL,
-    [toolsUsadas]       nvarchar(MAX)   NULL,   -- JSON: ["calculate","datetime"]
+    [toolsUsadas]       nvarchar(MAX)   NULL,   -- JSON array: herramientas usadas
     [stepsTomados]      int             NULL,
     [memoryMs]          int             NULL,
     [reactMs]           int             NULL,
