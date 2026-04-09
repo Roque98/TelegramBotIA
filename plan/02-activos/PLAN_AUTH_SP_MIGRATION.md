@@ -42,40 +42,40 @@ que auth viva en una BD diferente a `core` si se requiere.
 
 ### Tareas
 
-- [ ] **sp_BotAuth_GetUsuarioByChatId** — Reemplaza query en `user_query_repository.get_by_chat_id`
+- [ ] **BotIAv2_sp_GetUsuarioByChatId** — Reemplaza query en `user_query_repository.get_by_chat_id`
   - Input: `@telegramChatId BIGINT`
   - Output: idUsuario, nombre, email, idRol, puesto, empresa, estado, verificado
 
-- [ ] **sp_BotAuth_GetPerfilUsuario** — Reemplaza query en `user_query_repository.get_profile_for_permissions`
+- [ ] **BotIAv2_sp_GetPerfilUsuario** — Reemplaza query en `user_query_repository.get_profile_for_permissions`
   - Input: `@telegramChatId BIGINT`
   - Output: idUsuario, nombre, rol_id, gerencia_ids (lista), estado, verificado
   - Incluye JOIN a GerenciasUsuarios (agrega los gerencia_ids como string separado por coma o via cursor)
 
-- [ ] **sp_BotAuth_GetAdminChatIds** — Reemplaza query en `user_query_repository.get_admin_chat_ids`
+- [ ] **BotIAv2_sp_GetAdminChatIds** — Reemplaza query en `user_query_repository.get_admin_chat_ids`
   - Input: ninguno
   - Output: telegramChatId de todos los admins activos verificados
 
-- [ ] **sp_BotAuth_GetUsuarioById** — Reemplaza query en `user_repository.get_user_by_id`
+- [ ] **BotIAv2_sp_GetUsuarioById** — Reemplaza query en `user_repository.get_user_by_id`
   - Input: `@idUsuario INT`
   - Output: idUsuario, nombre, email, idRol, puesto, empresa, estado
 
-- [ ] **sp_BotAuth_InsertarCuentaTelegram** — Reemplaza lógica en `telegram_account_repository`
+- [ ] **BotIAv2_sp_InsertarCuentaTelegram** — Reemplaza lógica en `telegram_account_repository`
   - Input: idUsuario, telegramChatId, telegramUsername, codigoVerificacion
   - Output: idUsuarioTelegram nuevo (o error si ya existe)
 
-- [ ] **sp_BotAuth_MarcarCuentaVerificada** — Reemplaza `mark_account_verified`
+- [ ] **BotIAv2_sp_MarcarCuentaVerificada** — Reemplaza `mark_account_verified`
   - Input: `@telegramChatId BIGINT`
   - Output: rows affected
 
-- [ ] **sp_BotAuth_BloquearCuenta** — Reemplaza `block_account`
+- [ ] **BotIAv2_sp_BloquearCuenta** — Reemplaza `block_account`
   - Input: `@telegramChatId BIGINT`, `@motivo NVARCHAR(255)`
   - Output: rows affected
 
-- [ ] **sp_BotAuth_ActualizarActividad** — Reemplaza `update_last_activity`
+- [ ] **BotIAv2_sp_ActualizarActividad** — Reemplaza `update_last_activity`
   - Input: `@telegramChatId BIGINT`
   - Output: rows affected
 
-- [ ] **sp_BotAuth_GetPermisosUsuario** — Reemplaza la query UNION en `permission_repository`
+- [ ] **BotIAv2_sp_GetPermisosUsuario** — Reemplaza la query UNION en `permission_repository`
   - Input: `@idUsuario INT`, `@gerenciaIds NVARCHAR(MAX)` (CSV), `@recursos NVARCHAR(MAX)` (CSV, opcional)
   - Output: recurso, tipoRecurso, idRolRequerido, permitido, prioridad
   - Lógica: UNION de permisos por usuario / por rol / por gerencia + recursos públicos
@@ -98,7 +98,7 @@ que auth viva en una BD diferente a `core` si se requiere.
 
 - [ ] **Agregar `AUTH_DB_ALIAS` a `.env.example`**
   - Valor por defecto: `core`
-  - Comentario: alias de la BD que contiene los SPs de autenticación (sp_BotAuth_*)
+  - Comentario: alias de la BD que contiene los SPs de autenticación (BotIAv2_sp_*)
 
 - [ ] **Agregar `auth_db_alias` a `AppSettings` en `src/config/settings.py`**
   - Tipo: `str`, default `"core"`
@@ -119,21 +119,21 @@ que auth viva en una BD diferente a `core` si se requiere.
 ### Tareas
 
 - [ ] **Actualizar `UserQueryRepository`** — 3 métodos
-  - `get_by_chat_id` → `EXEC sp_BotAuth_GetUsuarioByChatId @telegramChatId`
-  - `get_profile_for_permissions` → `EXEC sp_BotAuth_GetPerfilUsuario @telegramChatId`
-  - `get_admin_chat_ids` → `EXEC sp_BotAuth_GetAdminChatIds`
+  - `get_by_chat_id` → `EXEC BotIAv2_sp_GetUsuarioByChatId @telegramChatId`
+  - `get_profile_for_permissions` → `EXEC BotIAv2_sp_GetPerfilUsuario @telegramChatId`
+  - `get_admin_chat_ids` → `EXEC BotIAv2_sp_GetAdminChatIds`
   - Usar `auth_db_alias` del settings para elegir la conexión via `db_manager`
 
 - [ ] **Actualizar `UserRepository`** — 1 método
-  - `get_user_by_id` → `EXEC sp_BotAuth_GetUsuarioById @idUsuario`
+  - `get_user_by_id` → `EXEC BotIAv2_sp_GetUsuarioById @idUsuario`
 
 - [ ] **Actualizar `TelegramAccountRepository`** — 3 métodos
-  - `insert_telegram_account` → `EXEC sp_BotAuth_InsertarCuentaTelegram ...`
-  - `mark_account_verified` → `EXEC sp_BotAuth_MarcarCuentaVerificada @telegramChatId`
-  - `block_account` → `EXEC sp_BotAuth_BloquearCuenta @telegramChatId, @motivo`
+  - `insert_telegram_account` → `EXEC BotIAv2_sp_InsertarCuentaTelegram ...`
+  - `mark_account_verified` → `EXEC BotIAv2_sp_MarcarCuentaVerificada @telegramChatId`
+  - `block_account` → `EXEC BotIAv2_sp_BloquearCuenta @telegramChatId, @motivo`
 
 - [ ] **Actualizar `PermissionRepository`** — 1 método principal
-  - Query UNION de permisos → `EXEC sp_BotAuth_GetPermisosUsuario @idUsuario, @gerenciaIds`
+  - Query UNION de permisos → `EXEC BotIAv2_sp_GetPermisosUsuario @idUsuario, @gerenciaIds`
   - Los gerencia_ids se pasan como CSV (ya vienen como lista desde el perfil)
 
 - [ ] **Inyectar `auth_db_alias`** en los repositorios que lo necesiten
@@ -155,8 +155,8 @@ que auth viva en una BD diferente a `core` si se requiere.
   - Cambiar mocks de SQL text a mocks de EXEC sp_*
 
 - [ ] **Test de integración** `tests/auth/test_auth_sp_integration.py`
-  - Verificar que `sp_BotAuth_GetPerfilUsuario` retorna los campos esperados
-  - Verificar que `sp_BotAuth_GetPermisosUsuario` resuelve permisos correctamente
+  - Verificar que `BotIAv2_sp_GetPerfilUsuario` retorna los campos esperados
+  - Verificar que `BotIAv2_sp_GetPermisosUsuario` resuelve permisos correctamente
 
 - [ ] **Test de configuración** — verificar que `AUTH_DB_ALIAS` inválido lanza error al iniciar
 

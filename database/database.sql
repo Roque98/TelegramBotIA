@@ -1359,14 +1359,14 @@ IF NOT EXISTS (SELECT 1 FROM dbo.BotIAv2_knowledge_categories WHERE name = 'oper
 PRINT 'BotIAv2_knowledge_categories: categorías base cargadas.';
 
 -- ============================================================
--- Stored Procedures de Autenticación (sp_BotAuth_*)
+-- Stored Procedures de Autenticación (BotIAv2_sp_*)
 -- Centralizan todas las queries de usuarios, roles y gerencias.
 -- Los repositorios Python llaman estos SPs en lugar de SQL directo.
 -- ============================================================
 
--- 1. sp_BotAuth_GetUsuarioByChatId
+-- 1. BotIAv2_sp_GetUsuarioByChatId
 GO
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetUsuarioByChatId
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetUsuarioByChatId
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1384,8 +1384,8 @@ BEGIN
 END;
 GO
 
--- 2. sp_BotAuth_GetUsuarioById
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetUsuarioById
+-- 2. BotIAv2_sp_GetUsuarioById
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetUsuarioById
     @idUsuario INT
 AS
 BEGIN
@@ -1404,8 +1404,8 @@ BEGIN
 END;
 GO
 
--- 3. sp_BotAuth_GetPerfilUsuario
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetPerfilUsuario
+-- 3. BotIAv2_sp_GetPerfilUsuario
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetPerfilUsuario
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1425,8 +1425,8 @@ BEGIN
 END;
 GO
 
--- 4. sp_BotAuth_GetAdminChatIds
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetAdminChatIds
+-- 4. BotIAv2_sp_GetAdminChatIds
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetAdminChatIds
     @idRolAdmin INT = 1
 AS
 BEGIN
@@ -1439,8 +1439,8 @@ BEGIN
 END;
 GO
 
--- 5. sp_BotAuth_ActualizarActividad
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_ActualizarActividad
+-- 5. BotIAv2_sp_ActualizarActividad
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_ActualizarActividad
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1452,8 +1452,8 @@ BEGIN
 END;
 GO
 
--- 6. sp_BotAuth_BuscarPorEmail
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_BuscarPorEmail
+-- 6. BotIAv2_sp_BuscarPorEmail
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_BuscarPorEmail
     @email NVARCHAR(255)
 AS
 BEGIN
@@ -1464,8 +1464,8 @@ BEGIN
 END;
 GO
 
--- 7. sp_BotAuth_EstaRegistrado
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_EstaRegistrado
+-- 7. BotIAv2_sp_EstaRegistrado
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_EstaRegistrado
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1479,8 +1479,8 @@ BEGIN
 END;
 GO
 
--- 8. sp_BotAuth_GetInfoRegistro
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetInfoRegistro
+-- 8. BotIAv2_sp_GetInfoRegistro
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetInfoRegistro
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1491,8 +1491,8 @@ BEGIN
 END;
 GO
 
--- 9. sp_BotAuth_GetEstadoRegistro
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetEstadoRegistro
+-- 9. BotIAv2_sp_GetEstadoRegistro
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetEstadoRegistro
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1506,8 +1506,8 @@ BEGIN
 END;
 GO
 
--- 10. sp_BotAuth_GetCuentasTelegram
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetCuentasTelegram
+-- 10. BotIAv2_sp_GetCuentasTelegram
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetCuentasTelegram
     @idUsuario INT
 AS
 BEGIN
@@ -1522,8 +1522,8 @@ BEGIN
 END;
 GO
 
--- 11. sp_BotAuth_TieneCuentaTelegram
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_TieneCuentaTelegram
+-- 11. BotIAv2_sp_TieneCuentaTelegram
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_TieneCuentaTelegram
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1537,8 +1537,8 @@ BEGIN
 END;
 GO
 
--- 12. sp_BotAuth_TieneCuentaPrincipal
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_TieneCuentaPrincipal
+-- 12. BotIAv2_sp_TieneCuentaPrincipal
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_TieneCuentaPrincipal
     @idUsuario INT
 AS
 BEGIN
@@ -1552,8 +1552,8 @@ BEGIN
 END;
 GO
 
--- 13. sp_BotAuth_InsertarCuentaTelegram
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_InsertarCuentaTelegram
+-- 13. BotIAv2_sp_InsertarCuentaTelegram
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_InsertarCuentaTelegram
     @idUsuario          INT,
     @telegramChatId     BIGINT,
     @telegramUsername   NVARCHAR(100)  = NULL,
@@ -1581,8 +1581,8 @@ BEGIN
 END;
 GO
 
--- 14. sp_BotAuth_GetPendienteVerificacion
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetPendienteVerificacion
+-- 14. BotIAv2_sp_GetPendienteVerificacion
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetPendienteVerificacion
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1594,8 +1594,8 @@ BEGIN
 END;
 GO
 
--- 15. sp_BotAuth_MarcarCuentaVerificada
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_MarcarCuentaVerificada
+-- 15. BotIAv2_sp_MarcarCuentaVerificada
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_MarcarCuentaVerificada
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1607,8 +1607,8 @@ BEGIN
 END;
 GO
 
--- 16. sp_BotAuth_IncrementarIntentos
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_IncrementarIntentos
+-- 16. BotIAv2_sp_IncrementarIntentos
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_IncrementarIntentos
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1620,8 +1620,8 @@ BEGIN
 END;
 GO
 
--- 17. sp_BotAuth_ActualizarCodigoVerificacion
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_ActualizarCodigoVerificacion
+-- 17. BotIAv2_sp_ActualizarCodigoVerificacion
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_ActualizarCodigoVerificacion
     @telegramChatId     BIGINT,
     @codigoVerificacion NVARCHAR(50)
 AS
@@ -1636,8 +1636,8 @@ BEGIN
 END;
 GO
 
--- 18. sp_BotAuth_BloquearCuenta
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_BloquearCuenta
+-- 18. BotIAv2_sp_BloquearCuenta
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_BloquearCuenta
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -1649,8 +1649,8 @@ BEGIN
 END;
 GO
 
--- 19. sp_BotAuth_GetPermisosUsuario (SQL dinámico para IN de gerencias/direcciones)
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetPermisosUsuario
+-- 19. BotIAv2_sp_GetPermisosUsuario (SQL dinámico para IN de gerencias/direcciones)
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetPermisosUsuario
     @idUsuario    INT,
     @idRol        INT,
     @gerenciaIds  NVARCHAR(MAX) = NULL,
@@ -1690,8 +1690,8 @@ BEGIN
 END;
 GO
 
--- 20. sp_BotAuth_EsRecursoPublico
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_EsRecursoPublico
+-- 20. BotIAv2_sp_EsRecursoPublico
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_EsRecursoPublico
     @recurso NVARCHAR(200)
 AS
 BEGIN
@@ -1702,8 +1702,8 @@ BEGIN
 END;
 GO
 
--- 21. sp_BotAuth_GetToolsActivas
-CREATE OR ALTER PROCEDURE dbo.sp_BotAuth_GetToolsActivas
+-- 21. BotIAv2_sp_GetToolsActivas
+CREATE OR ALTER PROCEDURE dbo.BotIAv2_sp_GetToolsActivas
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1713,7 +1713,7 @@ BEGIN
 END;
 GO
 
-PRINT 'sp_BotAuth_*: 21 stored procedures creados/actualizados.';
+PRINT 'BotIAv2_sp_*: 21 stored procedures creados/actualizados.';
 
 -- ------------------------------------------------------------
 -- Verificación final

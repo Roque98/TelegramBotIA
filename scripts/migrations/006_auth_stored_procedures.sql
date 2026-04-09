@@ -1,16 +1,16 @@
 -- ============================================================
--- Migración 006: Stored Procedures de Autenticación (sp_BotAuth_*)
+-- Migración 006: Stored Procedures de Autenticación (BotIAv2_sp_*)
 -- Propósito: Centralizar en BD todas las queries de usuarios, roles y gerencias.
 --            Los repositorios Python llaman estos SPs en lugar de SQL directo.
 -- BD destino: abcmasplus
 -- ============================================================
 
 -- ============================================================
--- 1. sp_BotAuth_GetUsuarioByChatId
+-- 1. BotIAv2_sp_GetUsuarioByChatId
 --    Reemplaza: user_query_repository.get_by_chat_id
 --               user_repository.get_user_by_chat_id
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetUsuarioByChatId
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetUsuarioByChatId
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -43,12 +43,12 @@ END;
 GO
 
 -- ============================================================
--- 2. sp_BotAuth_GetUsuarioById
+-- 2. BotIAv2_sp_GetUsuarioById
 --    Reemplaza: user_query_repository.get_by_user_id
 --               user_repository.get_user_by_id
 --               telegram_account_repository.find_user_by_employee_id
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetUsuarioById
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetUsuarioById
     @idUsuario INT
 AS
 BEGIN
@@ -81,11 +81,11 @@ END;
 GO
 
 -- ============================================================
--- 3. sp_BotAuth_GetPerfilUsuario
+-- 3. BotIAv2_sp_GetPerfilUsuario
 --    Reemplaza: user_query_repository.get_profile_for_permissions
 --    Retorna: user_id, role_id, gerencia_ids_csv (CSV de IDs)
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetPerfilUsuario
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetPerfilUsuario
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -107,10 +107,10 @@ END;
 GO
 
 -- ============================================================
--- 4. sp_BotAuth_GetAdminChatIds
+-- 4. BotIAv2_sp_GetAdminChatIds
 --    Reemplaza: user_query_repository.get_admin_chat_ids
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetAdminChatIds
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetAdminChatIds
     @idRolAdmin INT = 1
 AS
 BEGIN
@@ -127,11 +127,11 @@ END;
 GO
 
 -- ============================================================
--- 5. sp_BotAuth_ActualizarActividad
+-- 5. BotIAv2_sp_ActualizarActividad
 --    Reemplaza: user_query_repository.update_last_activity
 --               user_repository.update_last_activity
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_ActualizarActividad
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_ActualizarActividad
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -145,11 +145,11 @@ END;
 GO
 
 -- ============================================================
--- 6. sp_BotAuth_BuscarPorEmail
+-- 6. BotIAv2_sp_BuscarPorEmail
 --    Reemplaza: telegram_account_repository.find_user_by_email
 --               user_repository.find_user_by_email
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_BuscarPorEmail
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_BuscarPorEmail
     @email NVARCHAR(255)
 AS
 BEGIN
@@ -162,11 +162,11 @@ END;
 GO
 
 -- ============================================================
--- 7. sp_BotAuth_EstaRegistrado
+-- 7. BotIAv2_sp_EstaRegistrado
 --    Reemplaza: user_repository.is_user_registered
 --    Retorna: 1 si tiene cuenta activa, 0 si no
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_EstaRegistrado
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_EstaRegistrado
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -181,10 +181,10 @@ END;
 GO
 
 -- ============================================================
--- 8. sp_BotAuth_GetInfoRegistro
+-- 8. BotIAv2_sp_GetInfoRegistro
 --    Reemplaza: user_repository.get_registration_info
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetInfoRegistro
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetInfoRegistro
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -197,11 +197,11 @@ END;
 GO
 
 -- ============================================================
--- 9. sp_BotAuth_GetEstadoRegistro
+-- 9. BotIAv2_sp_GetEstadoRegistro
 --    Reemplaza: telegram_account_repository.get_registration_status
 --               user_repository.get_registration_status
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetEstadoRegistro
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetEstadoRegistro
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -221,10 +221,10 @@ END;
 GO
 
 -- ============================================================
--- 10. sp_BotAuth_GetCuentasTelegram
+-- 10. BotIAv2_sp_GetCuentasTelegram
 --     Reemplaza: user_repository.get_all_user_telegram_accounts
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetCuentasTelegram
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetCuentasTelegram
     @idUsuario INT
 AS
 BEGIN
@@ -247,11 +247,11 @@ END;
 GO
 
 -- ============================================================
--- 11. sp_BotAuth_TieneCuentaTelegram
+-- 11. BotIAv2_sp_TieneCuentaTelegram
 --     Reemplaza: telegram_account_repository.has_telegram_account
 --                user_repository.has_telegram_account
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_TieneCuentaTelegram
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_TieneCuentaTelegram
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -266,11 +266,11 @@ END;
 GO
 
 -- ============================================================
--- 12. sp_BotAuth_TieneCuentaPrincipal
+-- 12. BotIAv2_sp_TieneCuentaPrincipal
 --     Reemplaza: telegram_account_repository.has_principal_account
 --                user_repository.has_principal_account
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_TieneCuentaPrincipal
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_TieneCuentaPrincipal
     @idUsuario INT
 AS
 BEGIN
@@ -285,11 +285,11 @@ END;
 GO
 
 -- ============================================================
--- 13. sp_BotAuth_InsertarCuentaTelegram
+-- 13. BotIAv2_sp_InsertarCuentaTelegram
 --     Reemplaza: telegram_account_repository.insert_telegram_account
 --                user_repository.insert_telegram_account
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_InsertarCuentaTelegram
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_InsertarCuentaTelegram
     @idUsuario          INT,
     @telegramChatId     BIGINT,
     @telegramUsername   NVARCHAR(100)  = NULL,
@@ -318,11 +318,11 @@ END;
 GO
 
 -- ============================================================
--- 14. sp_BotAuth_GetPendienteVerificacion
+-- 14. BotIAv2_sp_GetPendienteVerificacion
 --     Reemplaza: telegram_account_repository.get_pending_verification
 --                user_repository.get_pending_verification
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetPendienteVerificacion
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetPendienteVerificacion
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -341,11 +341,11 @@ END;
 GO
 
 -- ============================================================
--- 15. sp_BotAuth_MarcarCuentaVerificada
+-- 15. BotIAv2_sp_MarcarCuentaVerificada
 --     Reemplaza: telegram_account_repository.mark_account_verified
 --                user_repository.mark_account_verified
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_MarcarCuentaVerificada
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_MarcarCuentaVerificada
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -360,11 +360,11 @@ END;
 GO
 
 -- ============================================================
--- 16. sp_BotAuth_IncrementarIntentos
+-- 16. BotIAv2_sp_IncrementarIntentos
 --     Reemplaza: telegram_account_repository.increment_verification_attempts
 --                user_repository.increment_verification_attempts
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_IncrementarIntentos
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_IncrementarIntentos
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -377,11 +377,11 @@ END;
 GO
 
 -- ============================================================
--- 17. sp_BotAuth_ActualizarCodigoVerificacion
+-- 17. BotIAv2_sp_ActualizarCodigoVerificacion
 --     Reemplaza: telegram_account_repository.update_verification_code
 --                user_repository.update_verification_code
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_ActualizarCodigoVerificacion
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_ActualizarCodigoVerificacion
     @telegramChatId     BIGINT,
     @codigoVerificacion NVARCHAR(50)
 AS
@@ -397,11 +397,11 @@ END;
 GO
 
 -- ============================================================
--- 18. sp_BotAuth_BloquearCuenta
+-- 18. BotIAv2_sp_BloquearCuenta
 --     Reemplaza: telegram_account_repository.block_account
 --                user_repository.block_account
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_BloquearCuenta
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_BloquearCuenta
     @telegramChatId BIGINT
 AS
 BEGIN
@@ -414,11 +414,11 @@ END;
 GO
 
 -- ============================================================
--- 19. sp_BotAuth_GetPermisosUsuario
+-- 19. BotIAv2_sp_GetPermisosUsuario
 --     Reemplaza: permission_repository.get_all_for_user
 --     Nota: usa SQL dinámico para los IN de gerencias/direcciones
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetPermisosUsuario
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetPermisosUsuario
     @idUsuario      INT,
     @idRol          INT,
     @gerenciaIds    NVARCHAR(MAX) = NULL,   -- CSV: "1,2,3" o NULL
@@ -468,10 +468,10 @@ END;
 GO
 
 -- ============================================================
--- 20. sp_BotAuth_EsRecursoPublico
+-- 20. BotIAv2_sp_EsRecursoPublico
 --     Reemplaza: permission_repository.is_public
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_EsRecursoPublico
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_EsRecursoPublico
     @recurso NVARCHAR(200)
 AS
 BEGIN
@@ -484,10 +484,10 @@ END;
 GO
 
 -- ============================================================
--- 21. sp_BotAuth_GetToolsActivas
+-- 21. BotIAv2_sp_GetToolsActivas
 --     Reemplaza: permission_repository.get_active_tool_names
 -- ============================================================
-CREATE OR ALTER PROCEDURE abcmasplus..sp_BotAuth_GetToolsActivas
+CREATE OR ALTER PROCEDURE abcmasplus..BotIAv2_sp_GetToolsActivas
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -506,9 +506,9 @@ SELECT
     create_date,
     modify_date
 FROM sys.procedures
-WHERE name LIKE 'sp_BotAuth_%'
+WHERE name LIKE 'BotIAv2_sp_%'
 ORDER BY name;
 
 PRINT 'Migración 006 completada: ' + CAST((
-    SELECT COUNT(*) FROM sys.procedures WHERE name LIKE 'sp_BotAuth_%'
-) AS VARCHAR) + ' SPs sp_BotAuth_* disponibles.';
+    SELECT COUNT(*) FROM sys.procedures WHERE name LIKE 'BotIAv2_sp_%'
+) AS VARCHAR) + ' SPs BotIAv2_sp_* disponibles.';
