@@ -8,82 +8,117 @@ Este módulo define:
 """
 
 from datetime import UTC, datetime
-from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+from pydantic_core import core_schema
 
 
-class ActionType(str, Enum):
+class ActionType:
     """
-    Tipos de acciones que el agente puede ejecutar.
+    Representa una acción del agente ReAct: un tool registrado o FINISH.
 
-    Cada acción corresponde a un tool disponible o a FINISH
-    para terminar el razonamiento.
+    Ya no es un Enum fijo — valida contra el set de tools activos que
+    el agente pasa en cada llamada a from_string(), de modo que cualquier
+    tool registrado en ToolRegistry es una acción válida sin tocar este archivo.
     """
 
-    DATABASE_QUERY = "database_query"
-    KNOWLEDGE_SEARCH = "knowledge_search"
-    CALCULATE = "calculate"
-    DATETIME = "datetime"
-    SAVE_PREFERENCE = "save_preference"
-    SAVE_MEMORY = "save_memory"
     FINISH = "finish"
 
+    # Aliases independientes del catálogo de tools
+    _ALIASES: dict[str, str] = {
+        "db": "database_query",
+        "database": "database_query",
+        "query": "database_query",
+        "sql": "database_query",
+        "knowledge": "knowledge_search",
+        "kb": "knowledge_search",
+        "search": "knowledge_search",
+        "calc": "calculate",
+        "math": "calculate",
+        "date": "datetime",
+        "time": "datetime",
+        "preference": "save_preference",
+        "save_pref": "save_preference",
+        "set_preference": "save_preference",
+        "memory": "save_memory",
+        "save_mem": "save_memory",
+        "remember": "save_memory",
+        "done": "finish",
+        "end": "finish",
+        "answer": "finish",
+    }
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def is_final(self) -> bool:
+        """Retorna True si la acción es FINISH."""
+        return self.value == self.FINISH
+
+    def is_tool(self) -> bool:
+        """Retorna True si la acción es un tool (no FINISH)."""
+        return not self.is_final()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, ActionType):
+            return self.value == other.value
+        if isinstance(other, str):
+            return self.value == other
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"ActionType({self.value!r})"
+
     @classmethod
-    def from_string(cls, value: str) -> "ActionType":
+    def from_string(
+        cls,
+        value: str,
+        valid_tools: Optional[set[str]] = None,
+    ) -> "ActionType":
         """
         Convierte un string a ActionType.
 
         Args:
-            value: Nombre de la acción
-
-        Returns:
-            ActionType correspondiente
+            value: Nombre de la acción que devolvió el LLM
+            valid_tools: Set de nombres de tools activos en el registry.
+                Si se pasa, solo acepta esos nombres + "finish".
+                Si es None, acepta cualquier string (backward compat / tests).
 
         Raises:
-            ValueError: Si la acción no existe
+            ValueError: Si valid_tools está definido y la acción no es válida.
         """
-        value_lower = value.lower().strip()
+        resolved = cls._ALIASES.get(value.lower().strip(), value.lower().strip())
 
-        # Mapeo de aliases
-        aliases = {
-            "db": cls.DATABASE_QUERY,
-            "database": cls.DATABASE_QUERY,
-            "query": cls.DATABASE_QUERY,
-            "sql": cls.DATABASE_QUERY,
-            "knowledge": cls.KNOWLEDGE_SEARCH,
-            "kb": cls.KNOWLEDGE_SEARCH,
-            "search": cls.KNOWLEDGE_SEARCH,
-            "calc": cls.CALCULATE,
-            "math": cls.CALCULATE,
-            "date": cls.DATETIME,
-            "time": cls.DATETIME,
-            "preference": cls.SAVE_PREFERENCE,
-            "save_pref": cls.SAVE_PREFERENCE,
-            "set_preference": cls.SAVE_PREFERENCE,
-            "memory": cls.SAVE_MEMORY,
-            "save_mem": cls.SAVE_MEMORY,
-            "remember": cls.SAVE_MEMORY,
-            "done": cls.FINISH,
-            "end": cls.FINISH,
-            "answer": cls.FINISH,
-        }
+        if resolved == cls.FINISH:
+            return cls(cls.FINISH)
 
-        if value_lower in aliases:
-            return aliases[value_lower]
-
-        try:
-            return cls(value_lower)
-        except ValueError:
+        if valid_tools is not None:
+            if resolved in valid_tools:
+                return cls(resolved)
+            valid_list = sorted(valid_tools) + [cls.FINISH]
             raise ValueError(
-                f"Unknown action: {value}. "
-                f"Valid actions: {[a.value for a in cls]}"
+                f"Unknown action: {value}. Valid actions: {valid_list}"
             )
 
-    def is_tool(self) -> bool:
-        """Retorna True si la acción es un tool (no FINISH)."""
-        return self != ActionType.FINISH
+        # Sin valid_tools: acepta cualquier string (tests y backward compat)
+        return cls(resolved)
+
+    # ── Pydantic v2 — permite usar ActionType como tipo de campo ──────────
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: Any
+    ) -> Any:
+        return core_schema.no_info_plain_validator_function(
+            lambda v: cls(v.lower().strip()) if isinstance(v, str) else v,
+            serialization=core_schema.to_string_ser_schema(),
+        )
 
 
 class ReActStep(BaseModel):
@@ -187,7 +222,7 @@ class ReActResponse(BaseModel):
 
     def is_final(self) -> bool:
         """Retorna True si esta es la respuesta final."""
-        return self.action == ActionType.FINISH
+        return self.action.is_final()
 
     @classmethod
     def finish(cls, thought: str, answer: str) -> "ReActResponse":
@@ -226,7 +261,7 @@ class ReActResponse(BaseModel):
         Returns:
             ReActResponse con la llamada al tool
         """
-        if action == ActionType.FINISH:
+        if action.is_final():
             raise ValueError("Use ReActResponse.finish() for final responses")
 
         return cls(

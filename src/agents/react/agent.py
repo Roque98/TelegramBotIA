@@ -435,8 +435,9 @@ class ReActAgent(BaseAgent):
             # Generar respuesta pasando mensajes estructurados directamente
             response_text = await self.llm.generate_messages(messages)
 
-            # Parsear JSON
-            react_response = self._parse_response(response_text)
+            # Parsear JSON — pasar tools activos para validación dinámica
+            valid_tools = set(self.tools.get_tool_names())
+            react_response = self._parse_response(response_text, valid_tools=valid_tools)
 
             # Agregar respuesta al historial
             messages.append({"role": "assistant", "content": response_text})
@@ -456,7 +457,7 @@ class ReActAgent(BaseAgent):
                 provider="unknown",
             )
 
-    def _parse_response(self, response_text: str) -> ReActResponse:
+    def _parse_response(self, response_text: str, valid_tools: Optional[set[str]] = None) -> ReActResponse:
         """
         Parsea la respuesta del LLM a ReActResponse.
 
@@ -479,7 +480,7 @@ class ReActAgent(BaseAgent):
 
         # Intento 1: parsear directamente (caso más común y correcto)
         try:
-            return self._build_react_response(json.loads(text))
+            return self._build_react_response(json.loads(text), valid_tools=valid_tools)
         except json.JSONDecodeError:
             pass
 
@@ -489,15 +490,15 @@ class ReActAgent(BaseAgent):
             end = text.rfind("```")  # último cierre, no el primero dentro de valores
             if end > start:
                 try:
-                    return self._build_react_response(json.loads(text[start:end].strip()))
+                    return self._build_react_response(json.loads(text[start:end].strip()), valid_tools=valid_tools)
                 except json.JSONDecodeError:
                     pass
 
         raise json.JSONDecodeError("Cannot parse LLM response as JSON", text, 0)
 
-    def _build_react_response(self, data: dict) -> ReActResponse:
+    def _build_react_response(self, data: dict, valid_tools: Optional[set[str]] = None) -> ReActResponse:
         """Construye ReActResponse desde un dict ya parseado."""
-        action = ActionType.from_string(data.get("action", "finish"))
+        action = ActionType.from_string(data.get("action", "finish"), valid_tools=valid_tools)
         return ReActResponse(
             thought=data.get("thought", ""),
             action=action,

@@ -138,14 +138,28 @@ class ToolRegistry:
         """
         permisos: dict[str, bool] = getattr(user_context, "permisos", {}) if user_context else {}
 
-        # Filtrar herramientas según permisos (si hay permisos cargados)
-        if permisos:
+        permisos_loaded: bool = getattr(user_context, "permisos_loaded", False) if user_context else False
+
+        # Filtrar herramientas según permisos
+        # - permisos_loaded=True → mostrar solo las autorizadas para este usuario
+        # - permisos_loaded=False → usuario sin perfil o API sin permisos resueltos;
+        #   mostrar solo las tools públicas (esPublico) registradas en el registry.
+        #   En la práctica, las tools "privadas" desactivadas en BotIAv2_Recurso no
+        #   aparecerán aquí de todas formas porque execute() las bloqueará, pero
+        #   es mejor no mostrárselas al LLM en primer lugar.
+        if permisos_loaded:
             visible_tools = {
                 name: tool for name, tool in self._tools.items()
                 if permisos.get(f"tool:{name}", False)
             }
         else:
-            visible_tools = self._tools
+            # Sin permisos: solo tools que el registry considera "siempre activas"
+            # (reload_permissions, finish) — el resto requiere perfil de usuario
+            _ALWAYS_VISIBLE = {"reload_permissions", "finish"}
+            visible_tools = {
+                name: tool for name, tool in self._tools.items()
+                if name in _ALWAYS_VISIBLE
+            }
 
         if not visible_tools:
             return "No tools available."
@@ -210,7 +224,8 @@ class ToolRegistry:
 
         # Verificar permisos si están cargados
         permisos: dict[str, bool] = getattr(user_context, "permisos", {}) if user_context else {}
-        if permisos and not permisos.get(f"tool:{tool_name}", False):
+        permisos_loaded: bool = getattr(user_context, "permisos_loaded", False) if user_context else False
+        if permisos_loaded and not permisos.get(f"tool:{tool_name}", False):
             user_id = getattr(user_context, "user_id", "unknown") if user_context else "unknown"
             logger.warning(
                 f"Permission denied: user={user_id} tool={tool_name} "

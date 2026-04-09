@@ -135,6 +135,7 @@ class UserContext(BaseModel):
     gerencia_ids: list[int] = Field(default_factory=list)
     direccion_ids: list[int] = Field(default_factory=list)
     permisos: dict[str, bool] = Field(default_factory=dict)  # {recurso: permitido}
+    permisos_loaded: bool = False  # True solo si la carga desde BD fue exitosa
 
     model_config = {"frozen": False}
 

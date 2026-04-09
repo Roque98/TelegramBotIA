@@ -163,6 +163,7 @@ class MemoryService:
                     gerencia_ids=context.gerencia_ids,
                     direccion_ids=context.direccion_ids,
                 )
+                context.permisos_loaded = True
             except Exception as e:
                 logger.warning(f"Error cargando permisos para user {user_id}: {e}")
 
