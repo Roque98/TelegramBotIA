@@ -11,8 +11,9 @@
 plan/
 ├── README.md                              # Este indice
 ├── 01-completados/                        # Planes finalizados (18)
-├── 02-activos/                            # Planes en progreso (1)
-│   └── PLAN_OBS_32_LOG_IMPROVEMENTS.md   # Mejoras al sistema de logs
+├── 02-activos/                            # Planes en progreso (2)
+│   ├── PLAN_OBS_32_LOG_IMPROVEMENTS.md   # Mejoras al sistema de logs
+│   └── PLAN_ARQ_35_DYNAMIC_ORCHESTRATOR.md # Orchestrator con agentes dinámicos
 └── 03-ideas/                              # Ideas y propuestas
     └── IDEAS_MEJORA_BOT.md                # Ideas de mejora priorizadas
 ```
@@ -24,7 +25,7 @@ plan/
 | Metrica | Valor |
 |---------|-------|
 | Planes completados | 18 |
-| Planes activos | 1 |
+| Planes activos | 2 |
 | Ideas documentadas | 10 |
 
 ---
@@ -59,6 +60,7 @@ plan/
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
+| [ARQ-35 Orchestrator con Agentes Dinámicos](02-activos/PLAN_ARQ_35_DYNAMIC_ORCHESTRATOR.md) | 0% | `feature/arq-35-dynamic-orchestrator` | Pendiente iniciar |
 
 ---
 
