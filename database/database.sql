@@ -138,34 +138,32 @@ ELSE PRINT 'Tabla BotIAv2_knowledge_entries ya existe, saltando.';
 
 -- BotIAv2_LogOperaciones eliminada — reemplazada por BotIAv2_InteractionLogs (OBS-31)
 
-IF NOT EXISTS (
-    SELECT * FROM sys.tables WHERE name = 'BotIAv2_InteractionLogs'
-) BEGIN CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
-    [idLog]             bigint          IDENTITY(1, 1) NOT NULL,
-    [correlationId]     nvarchar(50)    NULL,
-    [idUsuario]         int             NOT NULL,
-    [telegramChatId]    bigint          NULL,
-    [telegramUsername]  nvarchar(100)   NULL,
-    [comando]           nvarchar(100)   NULL,
-    [query]             nvarchar(500)   NULL,
-    [respuesta]         nvarchar(MAX)   NULL,
-    [mensajeError]      nvarchar(MAX)   NULL,
-    [toolsUsadas]       nvarchar(MAX)   NULL,   -- JSON array: herramientas usadas
-    [stepsTomados]      int             NULL,
-    [memoryMs]          int             NULL,
-    [reactMs]           int             NULL,
-    [saveMs]            int             NULL,
-    [duracionMs]        int             NULL,
-    [channel]           nvarchar(50)    NULL    DEFAULT ('telegram'),
-    [fechaEjecucion]    datetime        NOT NULL DEFAULT (getdate()),
-    CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC),
-    CONSTRAINT [FK_BotIAv2_InteractionLogs_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
-);
-
-PRINT 'Tabla BotIAv2_InteractionLogs creada.';
-
+IF OBJECT_ID('dbo.[BotIAv2_InteractionLogs]', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.[BotIAv2_InteractionLogs] (
+        [idLog]             bigint          IDENTITY(1, 1) NOT NULL,
+        [correlationId]     nvarchar(50)    NULL,
+        [idUsuario]         int             NOT NULL,
+        [telegramChatId]    bigint          NULL,
+        [telegramUsername]  nvarchar(100)   NULL,
+        [comando]           nvarchar(100)   NULL,
+        [query]             nvarchar(500)   NULL,
+        [respuesta]         nvarchar(MAX)   NULL,
+        [mensajeError]      nvarchar(MAX)   NULL,
+        [toolsUsadas]       nvarchar(MAX)   NULL,
+        [stepsTomados]      int             NULL,
+        [memoryMs]          int             NULL,
+        [reactMs]           int             NULL,
+        [saveMs]            int             NULL,
+        [duracionMs]        int             NULL,
+        [channel]           nvarchar(50)    NULL        DEFAULT ('telegram'),
+        [fechaEjecucion]    datetime        NOT NULL    DEFAULT (getdate()),
+        CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC),
+        CONSTRAINT [FK_BotIAv2_InteractionLogs_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
+    )
+    PRINT 'Tabla BotIAv2_InteractionLogs creada.'
 END
-ELSE PRINT 'Tabla BotIAv2_InteractionLogs ya existe, saltando.';
+ELSE PRINT 'Tabla BotIAv2_InteractionLogs ya existe, saltando.'
 
 IF NOT EXISTS (
     SELECT
