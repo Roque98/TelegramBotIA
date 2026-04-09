@@ -1,7 +1,7 @@
 # Plan: ARQ-35 Orchestrator con Agentes Dinámicos
 
 > **Estado**: 🟡 En progreso
-> **Última actualización**: 2026-04-08
+> **Última actualización**: 2026-04-09
 > **Rama Git**: `feature/arq-35-dynamic-orchestrator`
 
 ## Resumen de Progreso
@@ -15,7 +15,7 @@
 | Fase 5: Admin tooling y recarga | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y migración | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/22 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/27 tareas)
 
 ---
 
@@ -68,7 +68,7 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
 |------------|--------|-----------------|
 | `src/agents/orchestrator/orchestrator.py` | Funcional (binario) | Refactor a N-way |
 | `src/agents/orchestrator/intent_classifier.py` | Funcional (binario) | Prompt dinámico desde BD |
-| `ReActAgent` | Sin cambios | Recibe prompt y tool-scope como parámetros |
+| `ReActAgent` | Cambio menor | Agregar `system_prompt_override: Optional[str] = None` en `__init__` |
 | `ToolRegistry` | Sin cambios | Sigue siendo el registro global |
 | `SEC-01 PermissionService` | Sin cambios | Sigue filtrando por usuario |
 | `pipeline/factory.py` | Cambio menor | Construir orchestrator en lugar de react_agent directo |
@@ -126,8 +126,19 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
   );
   ```
 
+- [ ] Crear trigger `TR_AgenteDef_VersionHistorial` en `BotIAv2_AgenteDef` que se dispara
+  en cada `UPDATE` de `systemPrompt`:
+  - Incrementa `version = version + 1` en la fila actualizada
+  - Inserta la versión anterior en `BotIAv2_AgentePromptHistorial`
+
+  Esto garantiza el historial incluso para ediciones directas por SQL, sin depender
+  de que el código de aplicación lo recuerde. El `AgentBuilder` usa `version` como
+  clave de cache — sin este trigger, el cache nunca invalidaría al cambiar un prompt.
+
 - [ ] Insertar datos iniciales: 4 agentes (datos, conocimiento, casual, generalista)
   con prompts adaptados de `REACT_SYSTEM_PROMPT` actual y sus tools correspondientes.
+  Los prompts deben incluir los placeholders `{tools_description}` y `{usage_hints}`
+  (ver contrato en Fase 2).
 
 ---
 
@@ -162,7 +173,18 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
 - [ ] `src/domain/agent_config/agent_config_service.py`
   - Cache LRU TTL 5 min (mismo patrón que `PermissionService`)
   - `get_active_agents() → list[AgentDefinition]`
-  - `invalidate_cache()` — llamado por el tool de recarga
+  - `invalidate_cache()` — invalida tanto el cache del service como el cache de instancias
+    del `AgentBuilder` (se le pasa una referencia al builder en el constructor)
+
+- [ ] Validar contrato de placeholders al cargar desde BD: si un `systemPrompt`
+  no contiene `{tools_description}` o `{usage_hints}`, loguear `WARNING` y rechazar
+  el agente (excluirlo de la lista activa con log explicativo). Esto evita un `KeyError`
+  silencioso en runtime cuando `build_system_prompt()` intente formatear el template.
+
+  **Contrato documentado**: todo prompt almacenado en `BotIAv2_AgenteDef.systemPrompt`
+  debe contener exactamente estos dos placeholders:
+  - `{tools_description}` — donde se inyecta la lista de tools visible para el usuario
+  - `{usage_hints}` — donde se inyectan las instrucciones de uso filtradas por permisos
 
 ---
 
@@ -199,8 +221,15 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
 
 - [ ] Agregar parámetro `tool_scope` a `ToolRegistry.get_tools_prompt()` y `get_usage_hints()`
 
-- [ ] Agregar cache de instancias de agente keyed por `(idAgente, version)` — evita
-  reconstruir en cada request cuando la definición no cambió.
+- [ ] Agregar `system_prompt_override: Optional[str] = None` a `ReActAgent.__init__`.
+  Cuando no es `None`, se usa en lugar de `REACT_SYSTEM_PROMPT` al llamar
+  `build_system_prompt()` dentro de `execute()`. Valor por defecto `None` preserva
+  el comportamiento actual — no hay cambio de interfaz para quien ya usa `ReActAgent`.
+
+- [ ] Agregar cache de instancias de agente keyed por `(idAgente, version)` en `AgentBuilder`
+  — evita reconstruir en cada request cuando la definición no cambió.
+  El trigger de BD garantiza que `version` cambia al editar el prompt,
+  por lo que el cache invalida correctamente sin lógica adicional.
 
 ---
 
@@ -243,8 +272,21 @@ cargados dinámicamente desde BD.
           agent_name = await self.intent_classifier.classify(query, definitions)
           definition = self._resolve(agent_name, definitions)  # fallback a generalista si no existe
           agent = self.agent_builder.build(definition)
-          return await agent.execute(query=query, context=context, ...)
+          response = await agent.execute(query=query, context=context, ...)
+          response.routed_agent = definition.nombre  # para observabilidad
+          return response
   ```
+
+- [ ] Definir comportamiento cuando no hay agente generalista activo en BD:
+  - `_resolve()` lanza `AgentConfigException` con mensaje claro
+  - `AgentOrchestrator.execute()` la captura, notifica al admin vía `admin_notifier`
+    y retorna `AgentResponse.error_response("Servicio temporalmente no disponible")`
+  - Nunca falla silenciosamente ni produce una excepción no manejada hacia el usuario
+
+- [ ] Registrar `agenteNombre` en observabilidad: agregar columna `agenteNombre VARCHAR(100)`
+  a `BotIAv2_InteractionLogs` vía migration SQL. `MainHandler` la recibe en el
+  `AgentResponse` (`response.routed_agent`) y la pasa a `ObservabilityRepository`.
+  Sin esta columna el criterio de éxito "registrar el agente que respondió" no se cumple.
 
 - [ ] Actualizar `pipeline/factory.py`:
   - Construir `AgentConfigService(AgentConfigRepository(db))`
@@ -269,10 +311,17 @@ cargados dinámicamente desde BD.
       # esPublico=0, solo admins
   ```
 
-  Registrar en factory y agregar recurso en BD:
+  Registrar en factory y agregar recurso + permiso en BD:
   ```sql
-  INSERT INTO BotIAv2_Recurso (recurso, tipoRecurso, esPublico)
-  VALUES ('tool:reload_agent_config', 'tool', 0);
+  -- Recurso
+  INSERT INTO abcmasplus..BotIAv2_Recurso (recurso, tipoRecurso, descripcion, esPublico)
+  VALUES ('tool:reload_agent_config', 'tool', 'Recarga configuración de agentes desde BD', 0);
+
+  -- Permiso para rol Admin (idRol=1) — sin esto, la tool existe pero nadie puede invocarla
+  DECLARE @idRecurso INT = SCOPE_IDENTITY();
+  DECLARE @idAuth INT = (SELECT idTipoEntidad FROM abcmasplus..BotIAv2_TipoEntidad WHERE nombre = 'autenticado');
+  INSERT INTO abcmasplus..BotIAv2_Permisos (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido)
+  VALUES (@idAuth, 0, @idRecurso, 1, 1);  -- idRol=1 = Admin
   ```
 
 - [ ] SQL de administración — queries listos para copiar/pegar:
