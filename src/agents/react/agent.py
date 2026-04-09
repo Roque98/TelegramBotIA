@@ -89,6 +89,8 @@ class ReActAgent(BaseAgent):
         tool_registry: ToolRegistry,
         max_iterations: int = 10,
         temperature: float = 0.1,
+        system_prompt_override: Optional[str] = None,
+        tool_scope: Optional[set[str]] = None,
     ):
         """
         Inicializa el agente ReAct.
@@ -98,15 +100,25 @@ class ReActAgent(BaseAgent):
             tool_registry: Registro de herramientas disponibles
             max_iterations: Número máximo de iteraciones
             temperature: Temperatura para generación del LLM
+            system_prompt_override: Si se provee, reemplaza REACT_SYSTEM_PROMPT.
+                Debe contener los placeholders {tools_description} y {usage_hints}.
+                Cuando es None, se usa el prompt por defecto (comportamiento anterior).
+            tool_scope: Conjunto de nombres de tools permitidos para este agente.
+                Cuando es None (agente generalista), no se filtra por scope.
+                Los permisos del usuario siempre se aplican sobre el scope.
         """
         self.llm = llm
         self.tools = tool_registry
         self.max_iterations = max_iterations
         self.temperature = temperature
+        self.system_prompt_override = system_prompt_override
+        self.tool_scope = tool_scope
 
         logger.info(
             f"ReActAgent inicializado (max_iterations={max_iterations}, "
-            f"tools={len(tool_registry)})"
+            f"tools={len(tool_registry)}, "
+            f"override={'yes' if system_prompt_override else 'no'}, "
+            f"scope={'all' if tool_scope is None else len(tool_scope)})"
         )
 
     async def execute(
@@ -164,10 +176,22 @@ class ReActAgent(BaseAgent):
             await emit(session_started_event(session_id, context.user_id, len(self.tools)))
 
             # Construir prompts base
-            system_prompt = build_system_prompt(
-                tools_description=self.tools.get_tools_prompt(user_context=context),
-                usage_hints=self.tools.get_usage_hints(user_context=context),
+            tools_description = self.tools.get_tools_prompt(
+                user_context=context, tool_scope=self.tool_scope
             )
+            usage_hints = self.tools.get_usage_hints(
+                user_context=context, tool_scope=self.tool_scope
+            )
+            if self.system_prompt_override:
+                system_prompt = self.system_prompt_override.format(
+                    tools_description=tools_description,
+                    usage_hints=usage_hints,
+                )
+            else:
+                system_prompt = build_system_prompt(
+                    tools_description=tools_description,
+                    usage_hints=usage_hints,
+                )
             messages = [{"role": "system", "content": system_prompt}]
 
             while not scratchpad.is_full():
