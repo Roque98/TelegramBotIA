@@ -40,6 +40,7 @@ class AgentResponse(BaseModel):
     steps_taken: int = 1
     metadata: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    routed_agent: Optional[str] = None  # Nombre del agente seleccionado por el orquestador
 
     model_config = {"frozen": False}
 

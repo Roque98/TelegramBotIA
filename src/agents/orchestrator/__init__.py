@@ -1,5 +1,5 @@
-"""Orquestador de agentes — routing por intent."""
-from .intent_classifier import IntentClassifier, Intent
-from .orchestrator import AgentOrchestrator
+"""Orquestador de agentes — routing dinámico N-way desde BD (ARQ-35)."""
+from .intent_classifier import IntentClassifier
+from .orchestrator import AgentOrchestrator, AgentConfigException
 
-__all__ = ["IntentClassifier", "Intent", "AgentOrchestrator"]
+__all__ = ["IntentClassifier", "AgentOrchestrator", "AgentConfigException"]

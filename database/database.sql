@@ -177,6 +177,7 @@ BEGIN
         [saveMs]            int             NULL,
         [duracionMs]        int             NULL,
         [channel]           nvarchar(50)    NULL        DEFAULT ('telegram'),
+        [agenteNombre]      varchar(100)    NULL,       -- ARQ-35: agente que respondió
         [fechaEjecucion]    datetime        NOT NULL    DEFAULT (getdate()),
         CONSTRAINT [PK_BotIAv2_InteractionLogs] PRIMARY KEY CLUSTERED ([idLog] ASC),
         CONSTRAINT [FK_BotIAv2_InteractionLogs_Usuarios] FOREIGN KEY ([idUsuario]) REFERENCES dbo.[Usuarios] ([idUsuario])
@@ -816,58 +817,91 @@ END
 GO
 
 -- ============================================================
--- OBS-32: Mejoras al sistema de logs
--- Ejecutar una sola vez sobre la BD existente.
+-- SP: BotIAv2_sp_UltimaInteraccion
+-- Muestra el detalle completo de la última interacción registrada
+-- y valida que el costo de InteractionSteps coincida con CostSesiones.
+-- Fix: validación usa subqueries separadas para evitar fan trap (producto cartesiano).
 -- ============================================================
 
--- Fix 1: correlationId en CostSesiones (permite JOIN exacto costo ↔ interacción)
-IF NOT EXISTS (
-    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = 'BotIAv2_CostSesiones' AND COLUMN_NAME = 'correlationId'
-)
+USE abcmasplus;
+GO
+
+IF OBJECT_ID('dbo.BotIAv2_sp_UltimaInteraccion', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.BotIAv2_sp_UltimaInteraccion;
+GO
+
+CREATE PROCEDURE dbo.BotIAv2_sp_UltimaInteraccion
+AS
 BEGIN
-    ALTER TABLE abcmasplus..BotIAv2_CostSesiones ADD correlationId nvarchar(50) NULL
-    PRINT 'OBS-32: CostSesiones.correlationId agregado'
-END
-ELSE PRINT 'OBS-32: CostSesiones.correlationId ya existe, saltando.'
+    SET NOCOUNT ON;
 
--- Fix 2: exitoso en InteractionLogs (flag explícito, sin inferir de mensajeError IS NULL)
-IF NOT EXISTS (
-    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = 'BotIAv2_InteractionLogs' AND COLUMN_NAME = 'exitoso'
-)
-BEGIN
-    ALTER TABLE abcmasplus..BotIAv2_InteractionLogs ADD exitoso bit NOT NULL DEFAULT 1
-    -- Marcar filas existentes con error como exitoso=0
-    UPDATE abcmasplus..BotIAv2_InteractionLogs SET exitoso = 0 WHERE mensajeError IS NOT NULL
-    PRINT 'OBS-32: InteractionLogs.exitoso agregado'
-END
-ELSE PRINT 'OBS-32: InteractionLogs.exitoso ya existe, saltando.'
+    -- Obtener el último correlationId insertado
+    DECLARE @lastCorrelationId NVARCHAR(100);
 
--- Fix 4: idUsuario nullable (evita pérdida silenciosa de filas cuando el usuario no está registrado)
--- Requiere drop del FK constraint primero
-DECLARE @fkName nvarchar(200)
-SELECT @fkName = name
-FROM abcmasplus.sys.foreign_keys
-WHERE parent_object_id = OBJECT_ID('abcmasplus..BotIAv2_InteractionLogs')
-  AND name LIKE '%Usuarios%'
+    SELECT TOP 1 @lastCorrelationId = il.correlationId
+    FROM abcmasplus..BotIAv2_InteractionLogs il
+    ORDER BY il.fechaEjecucion DESC;
 
-IF @fkName IS NOT NULL
-BEGIN
-    EXEC('ALTER TABLE abcmasplus..BotIAv2_InteractionLogs DROP CONSTRAINT [' + @fkName + ']')
-    PRINT 'OBS-32: FK InteractionLogs → Usuarios eliminado'
-END
+    IF @lastCorrelationId IS NULL
+    BEGIN
+        RAISERROR('No se encontraron registros en BotIAv2_InteractionLogs.', 16, 1);
+        RETURN;
+    END;
 
-ALTER TABLE abcmasplus..BotIAv2_InteractionLogs ALTER COLUMN idUsuario int NULL
-PRINT 'OBS-32: InteractionLogs.idUsuario ahora nullable'
+    -- 1. Última interacción (vista general)
+    SELECT *
+    FROM abcmasplus..BotIAv2_InteractionLogs il
+    WHERE il.correlationId = @lastCorrelationId
+    ORDER BY il.fechaEjecucion DESC;
 
--- Fix 5: costoUSD por llamada en InteractionSteps (costo calculado por TurnCost)
-IF NOT EXISTS (
-    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_NAME = 'BotIAv2_InteractionSteps' AND COLUMN_NAME = 'costoUSD'
-)
-BEGIN
-    ALTER TABLE abcmasplus..BotIAv2_InteractionSteps ADD costoUSD decimal(10,8) NULL
-    PRINT 'OBS-32: InteractionSteps.costoUSD agregado'
-END
-ELSE PRINT 'OBS-32: InteractionSteps.costoUSD ya existe, saltando.'
+    -- 2. Steps del último registro
+    SELECT *
+    FROM BotIAv2_InteractionSteps s
+    WHERE s.correlationId = @lastCorrelationId
+    ORDER BY s.correlationId, s.stepNum;
+
+    -- 3. Costo del último registro (detalle por sesión)
+    SELECT ut.telegramUsername, cs.*
+    FROM abcmasplus..BotIAv2_CostSesiones cs
+    LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
+        ON cs.telegramChatId = ut.telegramChatId
+    WHERE cs.correlationId = @lastCorrelationId
+    ORDER BY cs.fechaSesion DESC;
+
+    -- 4. Validación: suma de InteractionSteps vs suma de CostSesiones
+    -- Se agregan en subqueries independientes para evitar el producto cartesiano
+    -- que ocurre al hacer JOIN directo entre dos tablas con múltiples filas por correlationId.
+    SELECT
+        s.sumStepsUSD,
+        cs.sumCostSesionesUSD,
+        s.sumStepsUSD - cs.sumCostSesionesUSD          AS diferencia,
+        CASE
+            WHEN ABS(s.sumStepsUSD - cs.sumCostSesionesUSD) < 0.000001
+            THEN 'OK'
+            ELSE 'DISCREPANCIA'
+        END                                             AS estatus
+    FROM (
+        SELECT ISNULL(SUM(costoUSD), 0) AS sumStepsUSD
+        FROM abcmasplus..BotIAv2_InteractionSteps
+        WHERE correlationId = @lastCorrelationId
+    ) s
+    CROSS JOIN (
+        SELECT ISNULL(SUM(costoUSD), 0) AS sumCostSesionesUSD
+        FROM abcmasplus..BotIAv2_CostSesiones
+        WHERE correlationId = @lastCorrelationId
+    ) cs;
+
+END;
+
+-- ============================================================
+-- ARQ-35: Tablas de agentes dinámicos (ver migrations/arq35_dynamic_orchestrator.sql)
+-- Ejecutar: python scripts/run_migration.py database/migrations/arq35_dynamic_orchestrator.sql
+--           python scripts/run_migration.py database/migrations/arq35_trigger_fix.sql
+-- ============================================================
+-- BotIAv2_AgenteDef          -- Definición de cada agente LLM
+-- BotIAv2_AgenteTools        -- Tools en el scope de cada agente
+-- BotIAv2_AgentePromptHistorial -- Auditoría de cambios de prompt (append-only)
+-- TR_AgenteDef_VersionHistorial  -- Trigger: auto-incrementa version en UPDATE de systemPrompt
+-- Columna agenteNombre en BotIAv2_InteractionLogs (ya incluida arriba)
+-- ============================================================
+GO

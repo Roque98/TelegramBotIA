@@ -116,6 +116,7 @@ class ToolRegistry:
         self,
         context_budget_used: float = 0.0,
         user_context: Optional["UserContext"] = None,
+        tool_scope: Optional[set[str]] = None,
     ) -> str:
         """
         Genera la descripción de herramientas para el prompt del LLM.
@@ -159,6 +160,14 @@ class ToolRegistry:
             visible_tools = {
                 name: tool for name, tool in self._tools.items()
                 if name in _ALWAYS_VISIBLE
+            }
+
+        # Aplicar tool_scope: intersección con el scope del agente especialista.
+        # tool_scope=None → agente generalista, no se filtra por scope.
+        if tool_scope is not None:
+            visible_tools = {
+                name: tool for name, tool in visible_tools.items()
+                if name in tool_scope
             }
 
         if not visible_tools:
@@ -239,7 +248,11 @@ class ToolRegistry:
 
         return await tool.execute(**action_input)
 
-    def get_usage_hints(self, user_context: Optional["UserContext"] = None) -> str:
+    def get_usage_hints(
+        self,
+        user_context: Optional["UserContext"] = None,
+        tool_scope: Optional[set[str]] = None,
+    ) -> str:
         """
         Genera la lista numerada de usage_hints para las tools visibles del usuario.
 
@@ -248,6 +261,7 @@ class ToolRegistry:
 
         Args:
             user_context: Contexto del usuario con permisos precargados
+            tool_scope: Scope del agente especialista. None = generalista (sin filtro de scope).
 
         Returns:
             String con hints numerados a partir de 2 (listo para inyectar en el prompt),
@@ -266,6 +280,13 @@ class ToolRegistry:
             visible_tools = [
                 tool for name, tool in self._tools.items()
                 if name in _ALWAYS_VISIBLE
+            ]
+
+        # Aplicar tool_scope si el agente es especialista
+        if tool_scope is not None:
+            visible_tools = [
+                tool for tool in visible_tools
+                if tool.name in tool_scope
             ]
 
         hints = [tool.definition.usage_hint for tool in visible_tools if tool.definition.usage_hint]

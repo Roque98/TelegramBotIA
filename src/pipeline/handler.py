@@ -19,6 +19,7 @@ from src.agents.base.agent import AgentResponse
 from src.agents.base.agent_events import AgentEvent
 from src.agents.base.events import ConversationEvent, UserContext
 from src.agents.react.agent import ReActAgent
+from src.agents.base.agent import BaseAgent
 from src.domain.cost.cost_entity import CostSession
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
@@ -66,7 +67,7 @@ class MainHandler:
 
     def __init__(
         self,
-        react_agent: ReActAgent,
+        react_agent: Any,  # ReActAgent o AgentOrchestrator — ambos exponen .execute()
         memory_service: MemoryService,
         fallback_agent: Optional[FallbackAgent] = None,
         use_fallback_on_error: bool = True,
@@ -344,6 +345,7 @@ class MainHandler:
                 error_message=response.error if not response.success else None,
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
+                agente_nombre=response.routed_agent,
             )
 
             # Persistir pasos del loop ReAct

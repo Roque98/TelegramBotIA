@@ -34,12 +34,16 @@ class ObservabilityRepository:
         error_message: Optional[str] = None,
         tools_used: Optional[list[str]] = None,
         steps_count: int = 0,
+        agente_nombre: Optional[str] = None,
     ) -> bool:
         """
         Persiste una interacción completa en BotIAv2_InteractionLogs.
 
         Usa INSERT directo con subquery para idUsuario — nunca falla
         silenciosamente si el usuario no está registrado (idUsuario queda NULL).
+
+        Args:
+            agente_nombre: Nombre del agente que respondió (ARQ-35). NULL si no aplica.
         """
         try:
             exitoso = 0 if error_message else 1
@@ -48,7 +52,8 @@ class ObservabilityRepository:
                     correlationId, idUsuario, telegramChatId, telegramUsername,
                     comando, query, respuesta, mensajeError,
                     toolsUsadas, stepsTomados,
-                    memoryMs, reactMs, saveMs, duracionMs, channel, exitoso
+                    memoryMs, reactMs, saveMs, duracionMs, channel, exitoso,
+                    agenteNombre
                 )
                 VALUES (
                     :correlation_id,
@@ -64,7 +69,8 @@ class ObservabilityRepository:
                     :steps_count,
                     :memory_ms, :react_ms, :save_ms, :total_ms,
                     :channel,
-                    :exitoso
+                    :exitoso,
+                    :agente_nombre
                 )
             """
             chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
@@ -84,6 +90,7 @@ class ObservabilityRepository:
                 "total_ms": total_ms,
                 "channel": channel,
                 "exitoso": exitoso,
+                "agente_nombre": agente_nombre[:100] if agente_nombre else None,
             })
             return True
         except Exception as e:

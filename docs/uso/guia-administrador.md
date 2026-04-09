@@ -221,4 +221,159 @@ SELECT
 FROM abcmasplus..BotIAv2_CostSesiones cs
 GROUP BY CAST(cs.fechaCreacion AS DATE)
 ORDER BY fecha DESC;
+
+---
+
+## Gestión de agentes (ARQ-35)
+
+A partir de ARQ-35, el bot usa un orquestador dinámico: los prompts, herramientas y
+estado de cada agente se gestionan desde la base de datos sin necesidad de deploy.
+
+### Ver agentes activos con sus tools
+
+```sql
+SELECT
+    ad.idAgente,
+    ad.nombre,
+    ad.descripcion,
+    ad.esGeneralista,
+    ad.temperatura,
+    ad.maxIteraciones,
+    ad.modeloOverride,
+    ad.activo,
+    ad.version,
+    ad.fechaActualizacion,
+    STRING_AGG(at2.nombreTool, ', ') AS tools
+FROM abcmasplus..BotIAv2_AgenteDef ad
+LEFT JOIN abcmasplus..BotIAv2_AgenteTools at2
+    ON ad.idAgente = at2.idAgente AND at2.activo = 1
+GROUP BY ad.idAgente, ad.nombre, ad.descripcion, ad.esGeneralista,
+         ad.temperatura, ad.maxIteraciones, ad.modeloOverride,
+         ad.activo, ad.version, ad.fechaActualizacion
+ORDER BY ad.idAgente;
+```
+
+### Editar el systemPrompt de un agente
+
+El trigger `TR_AgenteDef_VersionHistorial` guarda automáticamente la versión anterior
+en historial e incrementa `version`. Después de editar, recargá la config con la tool
+`reload_agent_config` (solo admins) para aplicar el cambio sin reiniciar el bot.
+
+**Requerimientos del prompt**: debe contener exactamente estos dos placeholders:
+- `{tools_description}` — donde se inyecta la lista de tools del agente
+- `{usage_hints}` — donde se inyectan las instrucciones de uso
+
+```sql
+UPDATE abcmasplus..BotIAv2_AgenteDef
+SET systemPrompt = N'<nuevo prompt con {tools_description} y {usage_hints}>'
+WHERE nombre = 'datos';  -- o 'conocimiento', 'casual', 'generalista'
+```
+
+### Activar / desactivar un agente
+
+```sql
+-- Desactivar agente (sin eliminar)
+UPDATE abcmasplus..BotIAv2_AgenteDef
+SET activo = 0
+WHERE nombre = 'conocimiento';
+
+-- Reactivar
+UPDATE abcmasplus..BotIAv2_AgenteDef
+SET activo = 1
+WHERE nombre = 'conocimiento';
+```
+
+### Agregar un nuevo agente especializado
+
+1. Insertar la definición:
+
+```sql
+INSERT INTO abcmasplus..BotIAv2_AgenteDef
+    (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+VALUES (
+    'rrhh',
+    'Consultas sobre empleados, nómina, ausentismo y gestión de RRHH',
+    N'Eres Amber, especialista en RRHH...
+
+## Herramientas Disponibles
+{tools_description}
+
+- **finish**: Termina con tu respuesta final
+
+## Instrucciones
+1. Para saludos: Usa "finish" directamente
+{usage_hints}
+
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{{
+  "thought": "...",
+  "action": "...",
+  "action_input": {{}},
+  "final_answer": null
+}}
+```',
+    0.1, 8, 0, 1
+);
+
+-- Asignar tools al nuevo agente
+INSERT INTO abcmasplus..BotIAv2_AgenteTools (idAgente, nombreTool)
+SELECT idAgente, tool
+FROM abcmasplus..BotIAv2_AgenteDef
+CROSS JOIN (VALUES ('database_query'), ('calculate'), ('datetime')) AS t(tool)
+WHERE nombre = 'rrhh';
+```
+
+2. Recargar la configuración (admins): enviá el mensaje `reload_agent_config` al bot.
+
+### Ver historial de versiones de un prompt
+
+```sql
+SELECT
+    h.version,
+    h.modificadoPor,
+    h.razonCambio,
+    h.fechaCreacion,
+    LEFT(h.systemPrompt, 200) AS promptPreview
+FROM abcmasplus..BotIAv2_AgentePromptHistorial h
+JOIN abcmasplus..BotIAv2_AgenteDef ad ON h.idAgente = ad.idAgente
+WHERE ad.nombre = 'datos'
+ORDER BY h.version DESC;
+```
+
+### Rollback a versión anterior
+
+```sql
+-- Ver qué versión restaurar
+DECLARE @idAgente INT = (SELECT idAgente FROM abcmasplus..BotIAv2_AgenteDef WHERE nombre = 'datos');
+
+-- Restaurar versión específica (el trigger guardará la actual en historial)
+UPDATE abcmasplus..BotIAv2_AgenteDef
+SET systemPrompt = (
+    SELECT TOP 1 systemPrompt
+    FROM abcmasplus..BotIAv2_AgentePromptHistorial
+    WHERE idAgente = @idAgente AND version = 2  -- versión a restaurar
+    ORDER BY version DESC
+)
+WHERE idAgente = @idAgente;
+
+-- Luego recargar: usar tool reload_agent_config desde el bot
+```
+
+### Ver routing de agentes en InteractionLogs
+
+```sql
+-- Distribución de consultas por agente (últimos 7 días)
+SELECT
+    agenteNombre,
+    COUNT(*) AS consultas,
+    AVG(duracionMs) AS duracion_avg_ms,
+    SUM(CASE WHEN exitoso = 1 THEN 1 ELSE 0 END) AS exitosas
+FROM abcmasplus..BotIAv2_InteractionLogs
+WHERE fechaEjecucion >= DATEADD(DAY, -7, GETDATE())
+  AND agenteNombre IS NOT NULL
+GROUP BY agenteNombre
+ORDER BY consultas DESC;
+```
 ```

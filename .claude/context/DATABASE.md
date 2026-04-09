@@ -405,3 +405,54 @@ db.execute_query("SELECT * FROM users WHERE id = ?", [user_id])
 # ❌ Incorrecto (SQL injection)
 db.execute_query(f"SELECT * FROM users WHERE id = {user_id}")
 ```
+
+---
+
+## Tablas ARQ-35: Agentes Dinámicos
+
+### BotIAv2_AgenteDef
+```sql
+idAgente           INT PK IDENTITY
+nombre             VARCHAR(100) UNIQUE   -- 'datos', 'conocimiento', 'casual', 'generalista'
+descripcion        VARCHAR(500)          -- usada por IntentClassifier para rutear
+systemPrompt       NVARCHAR(MAX)         -- debe contener {tools_description} y {usage_hints}
+temperatura        DECIMAL(3,2)          -- temperatura del LLM
+maxIteraciones     INT                   -- max_iterations del ReActAgent
+modeloOverride     VARCHAR(100) NULL     -- NULL = usa openai_loop_model del sistema
+esGeneralista      BIT                   -- 1 = ignora tool_scope, usa permisos directos del usuario
+activo             BIT
+version            INT                   -- incrementado automáticamente por trigger al cambiar prompt
+fechaActualizacion DATETIME2
+```
+
+### BotIAv2_AgenteTools
+```sql
+idAgenteTools  INT PK IDENTITY
+idAgente       INT FK → BotIAv2_AgenteDef
+nombreTool     VARCHAR(100)   -- 'database_query', 'knowledge_search', etc.
+activo         BIT
+UNIQUE(idAgente, nombreTool)
+```
+
+### BotIAv2_AgentePromptHistorial (append-only)
+```sql
+idHistorial   INT PK IDENTITY
+idAgente      INT FK → BotIAv2_AgenteDef
+systemPrompt  NVARCHAR(MAX)   -- versión anterior del prompt
+version       INT             -- versión guardada
+razonCambio   VARCHAR(500)
+modificadoPor VARCHAR(100)
+fechaCreacion DATETIME2
+```
+
+### Trigger TR_AgenteDef_VersionHistorial
+- Se dispara en `UPDATE` de `systemPrompt` en `BotIAv2_AgenteDef`
+- Inserta la versión anterior en `BotIAv2_AgentePromptHistorial`
+- Incrementa `version` en la fila actualizada
+- Permite cache de instancias keyed por `(idAgente, version)` en `AgentBuilder`
+
+### BotIAv2_InteractionLogs (columna agregada)
+```sql
+agenteNombre   VARCHAR(100) NULL   -- ARQ-35: nombre del agente que respondió
+```
+```
