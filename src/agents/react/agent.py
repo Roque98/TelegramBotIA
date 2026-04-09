@@ -238,11 +238,16 @@ class ReActAgent(BaseAgent):
 
                 # Registrar step de tool call
                 step_num += 1
+                _INTERNAL_KEYS = {"user_context", "user_id"}
+                tool_input_clean = {
+                    k: v for k, v in react_response.action_input.items()
+                    if k not in _INTERNAL_KEYS
+                }
                 step_traces.append({
                     "stepNum": step_num,
                     "tipo": "tool_call",
                     "nombre": react_response.action.value,
-                    "entrada": json.dumps(react_response.action_input)[:4000],
+                    "entrada": json.dumps(tool_input_clean)[:4000],
                     "salida": observation[:4000],
                     "tokensIn": None,
                     "tokensOut": None,
