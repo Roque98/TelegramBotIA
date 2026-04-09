@@ -107,10 +107,10 @@ class ObservabilityRepository:
             sql = """
                 INSERT INTO abcmasplus..BotIAv2_InteractionSteps (
                     correlationId, stepNum, tipo, nombre,
-                    entrada, salida, tokensIn, tokensOut, duracionMs, fechaInicio
+                    entrada, salida, tokensIn, tokensOut, costoUSD, duracionMs, fechaInicio
                 ) VALUES (
                     :correlation_id, :step_num, :tipo, :nombre,
-                    :entrada, :salida, :tokens_in, :tokens_out, :duracion_ms, :fecha_inicio
+                    :entrada, :salida, :tokens_in, :tokens_out, :costo_usd, :duracion_ms, :fecha_inicio
                 )
             """
             for step in steps:
@@ -123,6 +123,7 @@ class ObservabilityRepository:
                     "salida": step.get("salida"),
                     "tokens_in": step.get("tokensIn"),
                     "tokens_out": step.get("tokensOut"),
+                    "costo_usd": step.get("costoUSD"),
                     "duracion_ms": step.get("duracionMs", 0),
                     "fecha_inicio": step.get("fechaInicio"),
                 })

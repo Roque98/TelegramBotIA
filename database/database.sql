@@ -860,3 +860,14 @@ END
 
 ALTER TABLE abcmasplus..BotIAv2_InteractionLogs ALTER COLUMN idUsuario int NULL
 PRINT 'OBS-32: InteractionLogs.idUsuario ahora nullable'
+
+-- Fix 5: costoUSD por llamada en InteractionSteps (costo calculado por TurnCost)
+IF NOT EXISTS (
+    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'BotIAv2_InteractionSteps' AND COLUMN_NAME = 'costoUSD'
+)
+BEGIN
+    ALTER TABLE abcmasplus..BotIAv2_InteractionSteps ADD costoUSD decimal(10,8) NULL
+    PRINT 'OBS-32: InteractionSteps.costoUSD agregado'
+END
+ELSE PRINT 'OBS-32: InteractionSteps.costoUSD ya existe, saltando.'

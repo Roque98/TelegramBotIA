@@ -190,6 +190,7 @@ class ReActAgent(BaseAgent):
                     "salida": (messages[-1]["content"] if messages else "")[:4000],
                     "tokensIn": last_turn.input_tokens if last_turn else None,
                     "tokensOut": last_turn.output_tokens if last_turn else None,
+                    "costoUSD": last_turn.cost_usd if last_turn else None,
                     "duracionMs": llm_ms,
                     "fechaInicio": t_llm_start,
                 })

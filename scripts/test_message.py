@@ -85,8 +85,9 @@ def query_logs(correlation_id: str) -> None:
         if steps:
             for s in steps:
                 tokens = f"in={s['tokensIn']} out={s['tokensOut']}" if s['tokensIn'] else "—"
+                costo = f"${s['costoUSD']:.6f}" if s.get('costoUSD') else "—"
                 print(f"  [{s['stepNum']}] {s['tipo']:<10} {str(s['nombre']):<20} "
-                      f"{s['duracionMs']:>5}ms  tokens:{tokens}  inicio:{s['fechaInicio']}")
+                      f"{s['duracionMs']:>5}ms  tokens:{tokens}  costo:{costo}  inicio:{s['fechaInicio']}")
         else:
             print("  ⚠ SIN STEPS — posible bug en save_steps()")
 
