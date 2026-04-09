@@ -245,9 +245,16 @@ class ReActAgent(BaseAgent):
                         if tracer:
                             if _trace_owner: tracer.end_trace()
 
+                    # La respuesta puede venir en final_answer o en action_input["answer"]
+                    # según el formato del system prompt de cada agente
+                    answer = (
+                        react_response.final_answer
+                        or react_response.action_input.get("answer")
+                        or ""
+                    )
                     return AgentResponse.success_response(
                         agent_name=self.name,
-                        message=react_response.final_answer or "",
+                        message=answer,
                         execution_time_ms=elapsed_ms,
                         steps_taken=steps,
                         data={
