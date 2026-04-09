@@ -14,8 +14,10 @@ Uso:
     sql_handler.set_repository(ObservabilityRepository(db_manager))
 """
 
+import json
 import logging
 import threading
+import traceback
 from typing import Optional
 
 from src.infra.observability.tracing import TracingFilter
@@ -54,6 +56,15 @@ class SqlLogHandler(logging.Handler):
             if user_id == "-":
                 user_id = None
 
+            # Popular extra con traceback cuando hay excepción
+            extra = None
+            if record.exc_info and record.exc_info[0] is not None:
+                tb_lines = traceback.format_exception(*record.exc_info)
+                tb_str = "".join(tb_lines)
+                extra = {"traceback": tb_str[-1800:]}
+            elif hasattr(record, "stack_info") and record.stack_info:
+                extra = {"stack_info": record.stack_info[:1800]}
+
             repo = self._repository
             t = threading.Thread(
                 target=repo.save_log_sync,
@@ -64,6 +75,7 @@ class SqlLogHandler(logging.Handler):
                     "correlation_id": correlation_id,
                     "user_id": user_id,
                     "module": module,
+                    "extra": extra,
                 },
                 daemon=True,
             )

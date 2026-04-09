@@ -38,21 +38,23 @@ class ObservabilityRepository:
         """
         Persiste una interacción completa en BotIAv2_InteractionLogs.
 
-        Reemplaza save_transaction (TransactionLogs) y save_interaction
-        (LogOperaciones) — ahora es una sola fila por request.
+        Usa INSERT directo con subquery para idUsuario — nunca falla
+        silenciosamente si el usuario no está registrado (idUsuario queda NULL).
         """
         try:
+            exitoso = 0 if error_message else 1
             sql = """
                 INSERT INTO abcmasplus..BotIAv2_InteractionLogs (
                     correlationId, idUsuario, telegramChatId, telegramUsername,
                     comando, query, respuesta, mensajeError,
                     toolsUsadas, stepsTomados,
-                    memoryMs, reactMs, saveMs, duracionMs, channel
+                    memoryMs, reactMs, saveMs, duracionMs, channel, exitoso
                 )
-                SELECT
+                VALUES (
                     :correlation_id,
-                    ut.idUsuario,
-                    ut.telegramChatId,
+                    (SELECT TOP 1 idUsuario FROM abcmasplus..BotIAv2_UsuariosTelegram
+                     WHERE telegramChatId = :chat_id AND activo = 1),
+                    :chat_id_int,
                     :username,
                     '/ia',
                     :query,
@@ -61,12 +63,15 @@ class ObservabilityRepository:
                     :tools_used,
                     :steps_count,
                     :memory_ms, :react_ms, :save_ms, :total_ms,
-                    :channel
-                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
+                    :channel,
+                    :exitoso
+                )
             """
+            chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
             await self.db_manager.execute_non_query_async(sql, {
                 "correlation_id": correlation_id[:50] if correlation_id else None,
+                "chat_id": str(user_id) if user_id else None,
+                "chat_id_int": chat_id_int,
                 "username": username,
                 "query": (query or "")[:500],
                 "respuesta": respuesta,
@@ -78,7 +83,7 @@ class ObservabilityRepository:
                 "save_ms": save_ms,
                 "total_ms": total_ms,
                 "channel": channel,
-                "chat_id": str(user_id) if user_id else None,
+                "exitoso": exitoso,
             })
             return True
         except Exception as e:
@@ -102,10 +107,10 @@ class ObservabilityRepository:
             sql = """
                 INSERT INTO abcmasplus..BotIAv2_InteractionSteps (
                     correlationId, stepNum, tipo, nombre,
-                    entrada, salida, tokensIn, tokensOut, duracionMs
+                    entrada, salida, tokensIn, tokensOut, duracionMs, fechaInicio
                 ) VALUES (
                     :correlation_id, :step_num, :tipo, :nombre,
-                    :entrada, :salida, :tokens_in, :tokens_out, :duracion_ms
+                    :entrada, :salida, :tokens_in, :tokens_out, :duracion_ms, :fecha_inicio
                 )
             """
             for step in steps:
@@ -119,6 +124,7 @@ class ObservabilityRepository:
                     "tokens_in": step.get("tokensIn"),
                     "tokens_out": step.get("tokensOut"),
                     "duracion_ms": step.get("duracionMs", 0),
+                    "fecha_inicio": step.get("fechaInicio"),
                 })
             return True
         except Exception as e:

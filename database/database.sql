@@ -814,3 +814,49 @@ ORDER BY
 
 END
 GO
+
+-- ============================================================
+-- OBS-32: Mejoras al sistema de logs
+-- Ejecutar una sola vez sobre la BD existente.
+-- ============================================================
+
+-- Fix 1: correlationId en CostSesiones (permite JOIN exacto costo ↔ interacción)
+IF NOT EXISTS (
+    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'BotIAv2_CostSesiones' AND COLUMN_NAME = 'correlationId'
+)
+BEGIN
+    ALTER TABLE abcmasplus..BotIAv2_CostSesiones ADD correlationId nvarchar(50) NULL
+    PRINT 'OBS-32: CostSesiones.correlationId agregado'
+END
+ELSE PRINT 'OBS-32: CostSesiones.correlationId ya existe, saltando.'
+
+-- Fix 2: exitoso en InteractionLogs (flag explícito, sin inferir de mensajeError IS NULL)
+IF NOT EXISTS (
+    SELECT 1 FROM abcmasplus.INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME = 'BotIAv2_InteractionLogs' AND COLUMN_NAME = 'exitoso'
+)
+BEGIN
+    ALTER TABLE abcmasplus..BotIAv2_InteractionLogs ADD exitoso bit NOT NULL DEFAULT 1
+    -- Marcar filas existentes con error como exitoso=0
+    UPDATE abcmasplus..BotIAv2_InteractionLogs SET exitoso = 0 WHERE mensajeError IS NOT NULL
+    PRINT 'OBS-32: InteractionLogs.exitoso agregado'
+END
+ELSE PRINT 'OBS-32: InteractionLogs.exitoso ya existe, saltando.'
+
+-- Fix 4: idUsuario nullable (evita pérdida silenciosa de filas cuando el usuario no está registrado)
+-- Requiere drop del FK constraint primero
+DECLARE @fkName nvarchar(200)
+SELECT @fkName = name
+FROM abcmasplus.sys.foreign_keys
+WHERE parent_object_id = OBJECT_ID('abcmasplus..BotIAv2_InteractionLogs')
+  AND name LIKE '%Usuarios%'
+
+IF @fkName IS NOT NULL
+BEGIN
+    EXEC('ALTER TABLE abcmasplus..BotIAv2_InteractionLogs DROP CONSTRAINT [' + @fkName + ']')
+    PRINT 'OBS-32: FK InteractionLogs → Usuarios eliminado'
+END
+
+ALTER TABLE abcmasplus..BotIAv2_InteractionLogs ALTER COLUMN idUsuario int NULL
+PRINT 'OBS-32: InteractionLogs.idUsuario ahora nullable'

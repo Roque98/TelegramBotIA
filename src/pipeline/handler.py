@@ -357,7 +357,9 @@ class MainHandler:
             # Persistir costo si está disponible
             cost = (response.data or {}).get("cost")
             if cost:
-                asyncio.create_task(self._record_cost(event.user_id, cost, response.steps_taken))
+                asyncio.create_task(
+                    self._record_cost(event.user_id, cost, response.steps_taken, correlation_id)
+                )
 
         except Exception as e:
             logger.error(f"Error saving interaction: {e}")
@@ -404,12 +406,13 @@ class MainHandler:
         user_id: str,
         cost: dict,
         steps_taken: int,
+        correlation_id: Optional[str] = None,
     ) -> None:
         """Persiste el costo de la sesión en CostSesiones."""
         if not self.cost_repo:
             return
         try:
-            session = CostSession.from_summary(user_id, cost, steps_taken)
+            session = CostSession.from_summary(user_id, cost, steps_taken, correlation_id)
             await self.cost_repo.save_session(session)
         except Exception as e:
             logger.error(f"Error guardando costo de sesión: {e}")

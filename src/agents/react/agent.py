@@ -7,6 +7,7 @@ y repite hasta tener suficiente información.
 """
 
 import asyncio
+import datetime
 import json
 import logging
 import time
@@ -168,6 +169,7 @@ class ReActAgent(BaseAgent):
 
             while not scratchpad.is_full():
                 # 1. Generar siguiente paso (LLM call)
+                t_llm_start = datetime.datetime.utcnow()
                 t_llm = time.perf_counter()
                 react_response = await self._generate_step(
                     query=query,
@@ -189,6 +191,7 @@ class ReActAgent(BaseAgent):
                     "tokensIn": last_turn.input_tokens if last_turn else None,
                     "tokensOut": last_turn.output_tokens if last_turn else None,
                     "duracionMs": llm_ms,
+                    "fechaInicio": t_llm_start,
                 })
 
                 await emit(thought_generated_event(session_id, react_response.thought))
@@ -228,6 +231,7 @@ class ReActAgent(BaseAgent):
 
                 # 3. Ejecutar tool
                 await emit(tool_called_event(session_id, react_response.action.value, len(scratchpad) + 1))
+                t_tool_start = datetime.datetime.utcnow()
                 t_tool = time.perf_counter()
                 observation = await self._execute_tool(
                     action=react_response.action,
@@ -252,6 +256,7 @@ class ReActAgent(BaseAgent):
                     "tokensIn": None,
                     "tokensOut": None,
                     "duracionMs": tool_ms,
+                    "fechaInicio": t_tool_start,
                 })
 
                 await emit(observation_received_event(session_id, react_response.action.value, not observation.startswith("Error")))

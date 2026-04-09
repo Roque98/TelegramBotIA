@@ -21,10 +21,10 @@ class CostRepository:
         query = """
             INSERT INTO abcmasplus..BotIAv2_CostSesiones (
                 telegramChatId, modelo, inputTokens, outputTokens,
-                cacheReadTokens, llamadasLLM, costoUSD, pasos, fechaSesion
+                cacheReadTokens, llamadasLLM, costoUSD, pasos, correlationId, fechaSesion
             ) VALUES (
                 :chat_id, :modelo, :input_tokens, :output_tokens,
-                :cache_read_tokens, :llm_calls, :cost_usd, :pasos, GETDATE()
+                :cache_read_tokens, :llm_calls, :cost_usd, :pasos, :correlation_id, GETDATE()
             )
         """
         await self.db_manager.execute_non_query_async(query, {
@@ -36,6 +36,7 @@ class CostRepository:
             "llm_calls": session.llm_calls,
             "cost_usd": session.cost_usd,
             "pasos": session.steps,
+            "correlation_id": session.correlation_id[:50] if session.correlation_id else None,
         })
 
     async def get_daily_costs(self, date_str: str) -> list[dict]:
