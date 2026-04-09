@@ -80,3 +80,25 @@ class PermissionRepository:
         """
         rows = await self.db_manager.execute_query_async(query, {"recurso": recurso})
         return bool(rows and rows[0].get("esPublico"))
+
+    async def get_active_tool_names(self) -> list[str]:
+        """
+        Retorna los nombres de las tools activas en BotIAv2_Recurso.
+
+        Solo retorna recursos con tipoRecurso='tool' y activo=1.
+        El campo `recurso` tiene formato 'tool:<nombre>' (ej: 'tool:calculate').
+        Se retorna solo la parte después de 'tool:'.
+        """
+        query = """
+            SELECT recurso
+            FROM abcmasplus..BotIAv2_Recurso
+            WHERE tipoRecurso = 'tool'
+              AND activo = 1
+        """
+        rows = await self.db_manager.execute_query_async(query, {})
+        names = []
+        for row in rows:
+            recurso = row.get("recurso", "")
+            if recurso.startswith("tool:"):
+                names.append(recurso[len("tool:"):])
+        return names

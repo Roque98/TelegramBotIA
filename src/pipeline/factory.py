@@ -7,6 +7,7 @@ con todas las dependencias configuradas.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -46,6 +47,44 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _build_tool_catalog(
+    db_manager: Any,
+    knowledge_manager: Any,
+    memory_service: Any,
+    permission_service: Any,
+    agent_config_service: Any,
+    data_llm: Any,
+    db_registry: Any,
+    bot_token: Optional[str],
+) -> dict[str, Any]:
+    """
+    Catálogo completo de tools disponibles en el codebase.
+
+    La clave coincide exactamente con el sufijo del campo `recurso` en
+    BotIAv2_Recurso (formato 'tool:<clave>'). Solo se instancian las tools
+    cuya clave aparezca en BotIAv2_Recurso con activo=1 — el resto se ignora.
+
+    Para agregar una tool nueva a un proyecto:
+      1. Crear la clase en src/agents/tools/
+      2. Añadir una entrada aquí
+      3. INSERT en BotIAv2_Recurso del proyecto con activo=1
+    """
+    db_source = db_registry if db_registry is not None else db_manager
+    token = bot_token or settings.telegram_bot_token
+
+    return {
+        "database_query":    lambda: DatabaseTool(db_manager=db_source, llm_provider=data_llm),
+        "knowledge_search":  lambda: KnowledgeTool(knowledge_manager=knowledge_manager) if knowledge_manager else None,
+        "calculate":         lambda: CalculateTool(),
+        "datetime":          lambda: DateTimeTool(),
+        "save_preference":   lambda: SavePreferenceTool(db_manager=db_manager, memory_service=memory_service),
+        "save_memory":       lambda: SaveMemoryTool(memory_service=memory_service),
+        "reload_permissions":    lambda: ReloadPermissionsTool(permission_service=permission_service),
+        "reload_agent_config":   lambda: ReloadAgentConfigTool(agent_config_service=agent_config_service),
+        "read_attachment":   lambda: ReadAttachmentTool(bot_token=token) if token else None,
+    }
+
+
 def create_tool_registry(
     db_manager: Optional[Any] = None,
     knowledge_manager: Optional[Any] = None,
@@ -55,29 +94,47 @@ def create_tool_registry(
     data_llm: Optional[Any] = None,
     agent_config_service: Optional[Any] = None,
     db_registry: Optional[DatabaseRegistry] = None,
+    active_tool_names: Optional[list[str]] = None,
 ) -> ToolRegistry:
-    """Crea y configura el registro de herramientas."""
+    """
+    Crea y configura el registro de herramientas según lo activo en BotIAv2_Recurso.
+
+    Si `active_tool_names` es None (no se pudo consultar la BD), registra
+    todas las tools disponibles como fallback para no romper el arranque.
+    """
     ToolRegistry.reset()
     registry = ToolRegistry()
 
-    # Preferir DatabaseRegistry (multi-DB) sobre db_manager legacy
-    db_source = db_registry if db_registry is not None else db_manager
-    registry.register(DatabaseTool(db_manager=db_source, llm_provider=data_llm))
-    if knowledge_manager is not None:
-        registry.register(KnowledgeTool(knowledge_manager=knowledge_manager))
-    else:
-        logger.warning("KnowledgeTool not registered: no KnowledgeService available")
-    registry.register(CalculateTool())
-    registry.register(DateTimeTool())
-    registry.register(SavePreferenceTool(db_manager=db_manager, memory_service=memory_service))
-    registry.register(SaveMemoryTool(memory_service=memory_service))
-    registry.register(ReloadPermissionsTool(permission_service=permission_service))
-    registry.register(ReloadAgentConfigTool(agent_config_service=agent_config_service))
-    token = bot_token or settings.telegram_bot_token
-    if token:
-        registry.register(ReadAttachmentTool(bot_token=token))
+    catalog = _build_tool_catalog(
+        db_manager=db_manager,
+        knowledge_manager=knowledge_manager,
+        memory_service=memory_service,
+        permission_service=permission_service,
+        agent_config_service=agent_config_service,
+        data_llm=data_llm,
+        db_registry=db_registry,
+        bot_token=bot_token,
+    )
 
-    logger.info(f"ToolRegistry created with {len(registry)} tools")
+    if active_tool_names is None:
+        # Fallback: registrar todo el catálogo (BD no disponible en startup)
+        logger.warning("ToolRegistry: no se pudo consultar BD — registrando todas las tools del catálogo")
+        names_to_register = list(catalog.keys())
+    else:
+        names_to_register = active_tool_names
+
+    for name in names_to_register:
+        factory_fn = catalog.get(name)
+        if factory_fn is None:
+            logger.warning(f"ToolRegistry: '{name}' está activo en BD pero no existe en el catálogo — ignorado")
+            continue
+        tool = factory_fn()
+        if tool is None:
+            logger.warning(f"ToolRegistry: '{name}' no pudo instanciarse (dependencia faltante) — ignorado")
+            continue
+        registry.register(tool)
+
+    logger.info(f"ToolRegistry creado con {len(registry)} tools: {list(registry._tools.keys())}")
     return registry
 
 
@@ -240,8 +297,18 @@ def create_main_handler(
 
     data_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
 
-    # Crear ToolRegistry sin agent_config_service primero
-    # (se actualizará tras crear el orchestrator)
+    # Consultar BD para saber qué tools están activas en este proyecto
+    active_tool_names: Optional[list[str]] = None
+    try:
+        perm_repo = PermissionRepository(db_manager=db)
+        active_tool_names = asyncio.get_event_loop().run_until_complete(
+            perm_repo.get_active_tool_names()
+        )
+        logger.info(f"Tools activas en BD: {active_tool_names}")
+    except Exception as e:
+        logger.warning(f"No se pudieron obtener tools activas de BD, usando fallback completo: {e}")
+
+    # Crear ToolRegistry basado en lo activo en BotIAv2_Recurso
     tool_registry = create_tool_registry(
         db_manager=db,
         knowledge_manager=knowledge_manager,
@@ -251,6 +318,7 @@ def create_main_handler(
         data_llm=data_llm,
         agent_config_service=None,  # Se inyecta abajo
         db_registry=db_registry,    # DB-37: multi-database registry
+        active_tool_names=active_tool_names,
     )
 
     # Crear orquestador dinámico
