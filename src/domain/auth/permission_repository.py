@@ -11,10 +11,7 @@ logger = logging.getLogger(__name__)
 class PermissionRepository:
     """
     Repositorio de permisos del nuevo sistema SEC-01.
-
-    La query principal usa UNION de dos partes:
-    1. Filas de BotIAv2_Permisos que aplican al usuario (por rol, gerencia, dirección, usuario)
-    2. Recursos con esPublico=1 de BotIAv2_Recurso — siempre permitidos sin consultar BotIAv2_Permisos
+    Todas las consultas se delegan a stored procedures BotIAv2_sp_*.
     """
 
     def __init__(self, db_manager: Any) -> None:
@@ -29,72 +26,38 @@ class PermissionRepository:
     ) -> list[dict]:
         """
         Retorna todas las filas de permisos que aplican al usuario.
-
         Cada fila tiene: recurso (str), permitido (bool), tipoResolucion (str)
         """
-        # Preparar listas para IN clause (SQL Server no acepta arrays directamente)
-        gerencias_str = ",".join(str(g) for g in gerencia_ids) if gerencia_ids else "0"
-        direcciones_str = ",".join(str(d) for d in direccion_ids) if direccion_ids else "0"
+        gerencias_str = ",".join(str(g) for g in gerencia_ids) if gerencia_ids else None
+        direcciones_str = ",".join(str(d) for d in direccion_ids) if direccion_ids else None
 
-        query = f"""
-            SELECT br.recurso, bp.permitido, bte.tipoResolucion
-            FROM abcmasplus..BotIAv2_Permisos bp
-            INNER JOIN abcmasplus..BotIAv2_Recurso     br  ON bp.idRecurso    = br.idRecurso
-            INNER JOIN abcmasplus..BotIAv2_TipoEntidad bte ON bp.idTipoEntidad = bte.idTipoEntidad
-            WHERE bp.activo = 1
-              AND br.activo = 1
-              AND (bp.fechaExpiracion IS NULL OR bp.fechaExpiracion > GETDATE())
-              AND (
-                (bte.nombre = 'usuario' AND bp.idEntidad = :user_id)
-                OR (bte.nombre = 'autenticado'
-                    AND (bp.idRolRequerido IS NULL OR bp.idRolRequerido = :role_id))
-                OR (bte.nombre = 'gerencia'
-                    AND bp.idEntidad IN ({gerencias_str})
-                    AND (bp.idRolRequerido IS NULL OR bp.idRolRequerido = :role_id))
-                OR (bte.nombre = 'direccion'
-                    AND bp.idEntidad IN ({direcciones_str})
-                    AND (bp.idRolRequerido IS NULL OR bp.idRolRequerido = :role_id))
-              )
-
-            UNION ALL
-
-            SELECT br.recurso, 1 AS permitido, 'permisivo' AS tipoResolucion
-            FROM abcmasplus..BotIAv2_Recurso br
-            WHERE br.esPublico = 1
-              AND br.activo = 1
+        query = """
+            EXEC abcmasplus..BotIAv2_sp_GetPermisosUsuario
+                @idUsuario    = :user_id,
+                @idRol        = :role_id,
+                @gerenciaIds  = :gerencia_ids,
+                @direccionIds = :direccion_ids
         """
-
-        params = {
+        return await self.db_manager.execute_query_async(query, {
             "user_id": user_id,
             "role_id": role_id,
-        }
-
-        return await self.db_manager.execute_query_async(query, params)
+            "gerencia_ids": gerencias_str,
+            "direccion_ids": direcciones_str,
+        })
 
     async def is_public(self, recurso: str) -> bool:
         """Verifica si un recurso es público (shortcut sin cargar todo el contexto)."""
-        query = """
-            SELECT esPublico
-            FROM abcmasplus..BotIAv2_Recurso
-            WHERE recurso = :recurso AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_EsRecursoPublico @recurso = :recurso"
         rows = await self.db_manager.execute_query_async(query, {"recurso": recurso})
         return bool(rows and rows[0].get("esPublico"))
 
     async def get_active_tool_names(self) -> list[str]:
         """
         Retorna los nombres de las tools activas en BotIAv2_Recurso.
-
-        Solo retorna recursos con tipoRecurso='tool' y activo=1.
         El campo `recurso` tiene formato 'tool:<nombre>' (ej: 'tool:calculate').
         Se retorna solo la parte después de 'tool:'.
         """
-        query = """
-            SELECT recurso
-            FROM abcmasplus..BotIAv2_Recurso
-            WHERE tipoRecurso = 'tool'
-              AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetToolsActivas"
         rows = await self.db_manager.execute_query_async(query, {})
         names = []
         for row in rows:

@@ -18,38 +18,24 @@ class TelegramAccountRepository:
         self.db_manager = db_manager
 
     async def find_user_by_email(self, email: str) -> Optional[dict]:
-        query = """
-            SELECT idUsuario, Nombre, email, idRol, puesto, Activa
-            FROM abcmasplus..Usuarios
-            WHERE email = :email AND Activa = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_BuscarPorEmail @email = :email"
         rows = await self.db_manager.execute_query_async(query, {"email": email})
         return rows[0] if rows else None
 
     async def find_user_by_employee_id(self, employee_id: int) -> Optional[dict]:
-        query = """
-            SELECT idUsuario, Nombre, email, idRol, puesto, Activa
-            FROM abcmasplus..Usuarios
-            WHERE idUsuario = :employee_id AND Activa = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetUsuarioById @idUsuario = :employee_id"
         rows = await self.db_manager.execute_query_async(query, {"employee_id": employee_id})
         return rows[0] if rows else None
 
     async def has_telegram_account(self, chat_id: int) -> bool:
-        query = """
-            SELECT COUNT(*) AS cnt FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE telegramChatId = :chat_id AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_TieneCuentaTelegram @telegramChatId = :chat_id"
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
-        return bool(rows and rows[0].get("cnt", 0) > 0)
+        return bool(rows and rows[0].get("tieneCuenta"))
 
     async def has_principal_account(self, user_id: int) -> bool:
-        query = """
-            SELECT COUNT(*) AS cnt FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE idUsuario = :user_id AND esPrincipal = 1 AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_TieneCuentaPrincipal @idUsuario = :user_id"
         rows = await self.db_manager.execute_query_async(query, {"user_id": user_id})
-        return bool(rows and rows[0].get("cnt", 0) > 0)
+        return bool(rows and rows[0].get("tienePrincipal"))
 
     async def insert_telegram_account(
         self,
@@ -62,19 +48,19 @@ class TelegramAccountRepository:
         last_name: Optional[str] = None,
         alias: Optional[str] = None,
     ) -> None:
-        query = """
-            INSERT INTO abcmasplus..BotIAv2_UsuariosTelegram (
-                idUsuario, telegramChatId, telegramUsername,
-                telegramFirstName, telegramLastName, alias,
-                esPrincipal, estado, codigoVerificacion,
-                verificado, intentosVerificacion, fechaRegistro, activo
-            ) VALUES (
-                :user_id, :chat_id, :username, :first_name, :last_name,
-                :alias, :es_principal, :estado, :verification_code,
-                0, 0, GETDATE(), 1
-            )
-        """
         from .constants import AccountState
+        query = """
+            EXEC abcmasplus..BotIAv2_sp_InsertarCuentaTelegram
+                @idUsuario          = :user_id,
+                @telegramChatId     = :chat_id,
+                @telegramUsername   = :username,
+                @telegramFirstName  = :first_name,
+                @telegramLastName   = :last_name,
+                @alias              = :alias,
+                @esPrincipal        = :es_principal,
+                @estado             = :estado,
+                @codigoVerificacion = :verification_code
+        """
         await self.db_manager.execute_non_query_async(query, {
             "user_id": user_id,
             "chat_id": chat_id,
@@ -88,61 +74,32 @@ class TelegramAccountRepository:
         })
 
     async def get_pending_verification(self, chat_id: int) -> Optional[dict]:
-        query = """
-            SELECT idUsuarioTelegram, idUsuario, codigoVerificacion,
-                   intentosVerificacion, fechaRegistro, verificado
-            FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE telegramChatId = :chat_id AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetPendienteVerificacion @telegramChatId = :chat_id"
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
         return rows[0] if rows else None
 
     async def mark_account_verified(self, chat_id: int) -> None:
-        query = """
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET verificado = 1, fechaVerificacion = GETDATE(), codigoVerificacion = NULL
-            WHERE telegramChatId = :chat_id
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_MarcarCuentaVerificada @telegramChatId = :chat_id"
         await self.db_manager.execute_non_query_async(query, {"chat_id": chat_id})
 
     async def increment_verification_attempts(self, chat_id: int) -> None:
-        query = """
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET intentosVerificacion = intentosVerificacion + 1
-            WHERE telegramChatId = :chat_id
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_IncrementarIntentos @telegramChatId = :chat_id"
         await self.db_manager.execute_non_query_async(query, {"chat_id": chat_id})
 
     async def update_verification_code(self, chat_id: int, new_code: str) -> None:
         query = """
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET codigoVerificacion = :new_code,
-                intentosVerificacion = 0,
-                fechaRegistro = GETDATE()
-            WHERE telegramChatId = :chat_id
+            EXEC abcmasplus..BotIAv2_sp_ActualizarCodigoVerificacion
+                @telegramChatId     = :chat_id,
+                @codigoVerificacion = :new_code
         """
-        await self.db_manager.execute_non_query_async(query, {"new_code": new_code, "chat_id": chat_id})
+        await self.db_manager.execute_non_query_async(query, {"chat_id": chat_id, "new_code": new_code})
 
     async def block_account(self, chat_id: int) -> None:
-        from .constants import AccountState
-        query = """
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET estado = :estado
-            WHERE telegramChatId = :chat_id
-        """
-        await self.db_manager.execute_non_query_async(query, {
-            "estado": AccountState.BLOCKED,
-            "chat_id": chat_id,
-        })
+        query = "EXEC abcmasplus..BotIAv2_sp_BloquearCuenta @telegramChatId = :chat_id"
+        await self.db_manager.execute_non_query_async(query, {"chat_id": chat_id})
         logger.warning(f"Cuenta bloqueada: chat_id={chat_id}")
 
     async def get_registration_status(self, chat_id: int) -> Optional[dict]:
-        query = """
-            SELECT ut.verificado, ut.estado, ut.intentosVerificacion,
-                   ut.fechaRegistro, u.Nombre, u.email
-            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetEstadoRegistro @telegramChatId = :chat_id"
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
         return rows[0] if rows else None

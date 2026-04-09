@@ -28,19 +28,7 @@ class UserRepository:
 
     def get_user_by_chat_id(self, chat_id: int) -> Optional[TelegramUser]:
         try:
-            query = text("""
-                SELECT
-                    u.idUsuario, u.Nombre, u.email, u.idRol, u.puesto,
-                    u.Empresa, u.Activa,
-                    r.nombre AS rolNombre,
-                    ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
-                    ut.telegramFirstName, ut.telegramLastName, ut.alias,
-                    ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-                WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetUsuarioByChatId @telegramChatId = :chat_id")
             result = self.session.execute(query, {"chat_id": chat_id})
             row = result.fetchone()
             return TelegramUser(dict(zip(result.keys(), row))) if row else None
@@ -50,20 +38,7 @@ class UserRepository:
 
     def get_user_by_id(self, user_id: int) -> Optional[TelegramUser]:
         try:
-            query = text("""
-                SELECT
-                    u.idUsuario, u.Nombre, u.email, u.idRol, u.puesto,
-                    u.Empresa, u.Activa,
-                    r.nombre AS rolNombre,
-                    ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
-                    ut.telegramFirstName, ut.telegramLastName, ut.alias,
-                    ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-                FROM abcmasplus..Usuarios u
-                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-                LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
-                    ON u.idUsuario = ut.idUsuario AND ut.esPrincipal = 1 AND ut.activo = 1
-                WHERE u.idUsuario = :user_id
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetUsuarioById @idUsuario = :user_id")
             result = self.session.execute(query, {"user_id": user_id})
             row = result.fetchone()
             return TelegramUser(dict(zip(result.keys(), row))) if row else None
@@ -77,23 +52,17 @@ class UserRepository:
 
     def is_user_registered(self, chat_id: int) -> bool:
         try:
-            query = text("""
-                SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
-                WHERE telegramChatId = :chat_id AND activo = 1
-            """)
-            count = self.session.execute(query, {"chat_id": chat_id}).scalar()
-            return count > 0
+            query = text("EXEC abcmasplus..BotIAv2_sp_EstaRegistrado @telegramChatId = :chat_id")
+            result = self.session.execute(query, {"chat_id": chat_id})
+            row = result.fetchone()
+            return bool(row and row[0])
         except Exception as e:
             logger.error(f"Error verificando registro de chat_id {chat_id}: {e}")
             return False
 
     def get_registration_info(self, chat_id: int) -> Optional[dict]:
         try:
-            query = text("""
-                SELECT idUsuario, verificado, estado
-                FROM abcmasplus..BotIAv2_UsuariosTelegram
-                WHERE telegramChatId = :chat_id AND activo = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetInfoRegistro @telegramChatId = :chat_id")
             result = self.session.execute(query, {"chat_id": chat_id})
             row = result.fetchone()
             return dict(zip(result.keys(), row)) if row else None
@@ -103,14 +72,11 @@ class UserRepository:
 
     def update_last_activity(self, chat_id: int) -> bool:
         try:
-            query = text("""
-                UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-                SET fechaUltimaActividad = GETDATE()
-                WHERE telegramChatId = :chat_id AND activo = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_ActualizarActividad @telegramChatId = :chat_id")
             result = self.session.execute(query, {"chat_id": chat_id})
             self.session.commit()
-            return result.rowcount > 0
+            row = result.fetchone()
+            return bool(row and row[0] > 0)
         except Exception as e:
             logger.error(f"Error actualizando última actividad para chat_id {chat_id}: {e}")
             self.session.rollback()
@@ -138,15 +104,7 @@ class UserRepository:
 
     def get_all_user_telegram_accounts(self, user_id: int) -> list:
         try:
-            query = text("""
-                SELECT
-                    idUsuarioTelegram, telegramChatId, telegramUsername,
-                    alias, esPrincipal, estado, verificado,
-                    fechaRegistro, fechaUltimaActividad
-                FROM abcmasplus..BotIAv2_UsuariosTelegram
-                WHERE idUsuario = :user_id AND activo = 1
-                ORDER BY esPrincipal DESC, fechaRegistro DESC
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetCuentasTelegram @idUsuario = :user_id")
             result = self.session.execute(query, {"user_id": user_id})
             rows = result.fetchall()
             return [dict(zip(result.keys(), row)) for row in rows]
@@ -160,11 +118,7 @@ class UserRepository:
 
     def find_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         try:
-            query = text("""
-                SELECT idUsuario, Nombre, email, idRol, puesto, Activa
-                FROM abcmasplus..Usuarios
-                WHERE email = :email AND Activa = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_BuscarPorEmail @email = :email")
             result = self.session.execute(query, {"email": email})
             row = result.fetchone()
             return dict(zip(result.keys(), row)) if row else None
@@ -174,11 +128,7 @@ class UserRepository:
 
     def find_user_by_employee_id(self, employee_id: int) -> Optional[Dict[str, Any]]:
         try:
-            query = text("""
-                SELECT idUsuario, Nombre, email, idRol, puesto, Activa
-                FROM abcmasplus..Usuarios
-                WHERE idUsuario = :employee_id AND Activa = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetUsuarioById @idUsuario = :employee_id")
             result = self.session.execute(query, {"employee_id": employee_id})
             row = result.fetchone()
             return dict(zip(result.keys(), row)) if row else None
@@ -187,18 +137,16 @@ class UserRepository:
             raise
 
     def has_telegram_account(self, chat_id: int) -> bool:
-        query = text("""
-            SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE telegramChatId = :chat_id AND activo = 1
-        """)
-        return self.session.execute(query, {"chat_id": chat_id}).scalar() > 0
+        query = text("EXEC abcmasplus..BotIAv2_sp_TieneCuentaTelegram @telegramChatId = :chat_id")
+        result = self.session.execute(query, {"chat_id": chat_id})
+        row = result.fetchone()
+        return bool(row and row[0])
 
     def has_principal_account(self, user_id: int) -> bool:
-        query = text("""
-            SELECT COUNT(*) FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE idUsuario = :user_id AND esPrincipal = 1 AND activo = 1
-        """)
-        return self.session.execute(query, {"user_id": user_id}).scalar() > 0
+        query = text("EXEC abcmasplus..BotIAv2_sp_TieneCuentaPrincipal @idUsuario = :user_id")
+        result = self.session.execute(query, {"user_id": user_id})
+        row = result.fetchone()
+        return bool(row and row[0])
 
     def insert_telegram_account(
         self,
@@ -212,16 +160,15 @@ class UserRepository:
         alias: Optional[str] = None
     ) -> None:
         query = text("""
-            INSERT INTO abcmasplus..BotIAv2_UsuariosTelegram (
-                idUsuario, telegramChatId, telegramUsername,
-                telegramFirstName, telegramLastName, alias,
-                esPrincipal, estado, codigoVerificacion,
-                verificado, intentosVerificacion, fechaRegistro, activo
-            ) VALUES (
-                :user_id, :chat_id, :username, :first_name, :last_name,
-                :alias, :es_principal, 'ACTIVO', :verification_code,
-                0, 0, GETDATE(), 1
-            )
+            EXEC abcmasplus..BotIAv2_sp_InsertarCuentaTelegram
+                @idUsuario          = :user_id,
+                @telegramChatId     = :chat_id,
+                @telegramUsername   = :username,
+                @telegramFirstName  = :first_name,
+                @telegramLastName   = :last_name,
+                @alias              = :alias,
+                @esPrincipal        = :es_principal,
+                @codigoVerificacion = :verification_code
         """)
         self.session.execute(query, {
             "user_id": user_id, "chat_id": chat_id, "username": username,
@@ -232,52 +179,33 @@ class UserRepository:
         self.session.commit()
 
     def get_pending_verification(self, chat_id: int) -> Optional[Dict[str, Any]]:
-        query = text("""
-            SELECT idUsuarioTelegram, idUsuario, codigoVerificacion,
-                   intentosVerificacion, fechaRegistro, verificado
-            FROM abcmasplus..BotIAv2_UsuariosTelegram
-            WHERE telegramChatId = :chat_id AND activo = 1
-        """)
+        query = text("EXEC abcmasplus..BotIAv2_sp_GetPendienteVerificacion @telegramChatId = :chat_id")
         result = self.session.execute(query, {"chat_id": chat_id})
         row = result.fetchone()
         return dict(zip(result.keys(), row)) if row else None
 
     def mark_account_verified(self, chat_id: int) -> None:
-        query = text("""
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET verificado = 1, fechaVerificacion = GETDATE(), codigoVerificacion = NULL
-            WHERE telegramChatId = :chat_id
-        """)
+        query = text("EXEC abcmasplus..BotIAv2_sp_MarcarCuentaVerificada @telegramChatId = :chat_id")
         self.session.execute(query, {"chat_id": chat_id})
         self.session.commit()
 
     def increment_verification_attempts(self, chat_id: int) -> None:
-        query = text("""
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET intentosVerificacion = intentosVerificacion + 1
-            WHERE telegramChatId = :chat_id
-        """)
+        query = text("EXEC abcmasplus..BotIAv2_sp_IncrementarIntentos @telegramChatId = :chat_id")
         self.session.execute(query, {"chat_id": chat_id})
         self.session.commit()
 
     def update_verification_code(self, chat_id: int, new_code: str) -> None:
         query = text("""
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET codigoVerificacion = :new_code,
-                intentosVerificacion = 0,
-                fechaRegistro = GETDATE()
-            WHERE telegramChatId = :chat_id
+            EXEC abcmasplus..BotIAv2_sp_ActualizarCodigoVerificacion
+                @telegramChatId     = :chat_id,
+                @codigoVerificacion = :new_code
         """)
         self.session.execute(query, {"new_code": new_code, "chat_id": chat_id})
         self.session.commit()
 
     def block_account(self, chat_id: int) -> None:
         try:
-            query = text("""
-                UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-                SET estado = 'BLOQUEADO'
-                WHERE telegramChatId = :chat_id
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_BloquearCuenta @telegramChatId = :chat_id")
             self.session.execute(query, {"chat_id": chat_id})
             self.session.commit()
             logger.warning(f"Cuenta bloqueada: chat_id={chat_id}")
@@ -287,13 +215,7 @@ class UserRepository:
 
     def get_registration_status(self, chat_id: int) -> Optional[Dict[str, Any]]:
         try:
-            query = text("""
-                SELECT ut.verificado, ut.estado, ut.intentosVerificacion,
-                       ut.fechaRegistro, u.Nombre, u.email
-                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
-            """)
+            query = text("EXEC abcmasplus..BotIAv2_sp_GetEstadoRegistro @telegramChatId = :chat_id")
             result = self.session.execute(query, {"chat_id": chat_id})
             row = result.fetchone()
             return dict(zip(result.keys(), row)) if row else None

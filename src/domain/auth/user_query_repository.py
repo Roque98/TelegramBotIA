@@ -21,38 +21,13 @@ class UserQueryRepository:
 
     async def get_by_chat_id(self, chat_id: int) -> Optional[TelegramUser]:
         """Obtiene usuario completo a partir del telegramChatId."""
-        query = """
-            SELECT
-                u.idUsuario, u.Nombre, u.email, u.idRol, u.puesto,
-                u.Empresa, u.Activa,
-                r.nombre AS rolNombre,
-                ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
-                ut.telegramFirstName, ut.telegramLastName, ut.alias,
-                ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-            WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetUsuarioByChatId @telegramChatId = :chat_id"
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
         return TelegramUser(rows[0]) if rows else None
 
     async def get_by_user_id(self, user_id: int) -> Optional[TelegramUser]:
         """Obtiene usuario por idUsuario (cuenta principal de Telegram)."""
-        query = """
-            SELECT
-                u.idUsuario, u.Nombre, u.email, u.idRol, u.puesto,
-                u.Empresa, u.Activa,
-                r.nombre AS rolNombre,
-                ut.idUsuarioTelegram, ut.telegramChatId, ut.telegramUsername,
-                ut.telegramFirstName, ut.telegramLastName, ut.alias,
-                ut.esPrincipal, ut.estado, ut.verificado, ut.fechaUltimaActividad
-            FROM abcmasplus..Usuarios u
-            LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut
-                ON u.idUsuario = ut.idUsuario AND ut.esPrincipal = 1 AND ut.activo = 1
-            WHERE u.idUsuario = :user_id
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetUsuarioById @idUsuario = :user_id"
         rows = await self.db_manager.execute_query_async(query, {"user_id": user_id})
         return TelegramUser(rows[0]) if rows else None
 
@@ -61,20 +36,7 @@ class UserQueryRepository:
         Query liviana para AuthMiddleware — solo trae lo necesario para resolver permisos.
         Retorna: user_id, role_id, gerencia_ids, direccion_ids
         """
-        query = """
-            SELECT
-                u.idUsuario                                         AS user_id,
-                u.idRol                                             AS role_id,
-                STUFF((
-                    SELECT ',' + CAST(gu.idGerencia AS VARCHAR)
-                    FROM abcmasplus..GerenciasUsuarios gu
-                    WHERE gu.idUsuario = u.idUsuario
-                    FOR XML PATH('')
-                ), 1, 1, '')                                        AS gerencia_ids_csv
-            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetPerfilUsuario @telegramChatId = :chat_id"
         rows = await self.db_manager.execute_query_async(query, {"chat_id": chat_id})
         if not rows:
             return None
@@ -84,7 +46,7 @@ class UserQueryRepository:
             "user_id": row["user_id"],
             "role_id": row["role_id"],
             "gerencia_ids": gerencia_ids,
-            "direccion_ids": [],  # DireccionesUsuarios no existe en BD
+            "direccion_ids": [],
         }
 
     async def get_admin_chat_ids(self, admin_role_id: int = 1) -> list[int]:
@@ -101,24 +63,11 @@ class UserQueryRepository:
         Returns:
             Lista de chat IDs de Telegram
         """
-        query = """
-            SELECT ut.telegramChatId
-            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE u.idRol = :role_id
-              AND u.Activa = 1
-              AND ut.verificado = 1
-              AND ut.activo = 1
-              AND ut.estado = 'ACTIVO'
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetAdminChatIds @idRolAdmin = :role_id"
         rows = await self.db_manager.execute_query_async(query, {"role_id": admin_role_id})
         return [row["telegramChatId"] for row in rows if row.get("telegramChatId")]
 
     async def update_last_activity(self, chat_id: int) -> None:
         """Actualiza fechaUltimaActividad del usuario."""
-        query = """
-            UPDATE abcmasplus..BotIAv2_UsuariosTelegram
-            SET fechaUltimaActividad = GETDATE()
-            WHERE telegramChatId = :chat_id AND activo = 1
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_ActualizarActividad @telegramChatId = :chat_id"
         await self.db_manager.execute_non_query_async(query, {"chat_id": chat_id})
