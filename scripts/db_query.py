@@ -53,17 +53,20 @@ def execute_sql(sql: str, allow_write: bool = False) -> tuple[list[dict], list[s
     sql = sql.strip()
     upper = sql.upper()
 
-    read_prefixes = ("SELECT", "EXEC", "WITH", "DECLARE")
+    read_prefixes  = ("SELECT", "EXEC", "WITH", "DECLARE")
     write_prefixes = ("INSERT", "UPDATE", "DELETE", "MERGE", "EXEC")
+    ddl_prefixes   = ("ALTER", "CREATE", "DROP", "TRUNCATE", "IF")
 
-    is_read = any(upper.startswith(p) for p in read_prefixes)
+    is_read  = any(upper.startswith(p) for p in read_prefixes)
     is_write = any(upper.startswith(p) for p in write_prefixes)
+    is_ddl   = any(upper.startswith(p) for p in ddl_prefixes)
 
-    if not is_read and not is_write:
-        raise ValueError(f"Tipo de query no permitido. Debe comenzar con: {', '.join(read_prefixes)}")
+    if not is_read and not is_write and not is_ddl:
+        allowed = read_prefixes + write_prefixes + ddl_prefixes
+        raise ValueError(f"Tipo de query no permitido. Debe comenzar con: {', '.join(sorted(set(allowed)))}")
 
     if not is_read and not allow_write:
-        raise ValueError("Escritura no permitida. Usar --write para INSERT/UPDATE/DELETE.")
+        raise ValueError("Escritura/DDL no permitido. Usar --write para INSERT/UPDATE/DELETE/ALTER/CREATE/DROP.")
 
     engine = get_engine()
     with engine.connect() as conn:
@@ -75,7 +78,8 @@ def execute_sql(sql: str, allow_write: bool = False) -> tuple[list[dict], list[s
             return rows, cols
         else:
             conn.commit()
-            return [{"rows_affected": result.rowcount}], ["rows_affected"]
+            affected = result.rowcount if result.rowcount >= 0 else 0
+            return [{"rows_affected": affected}], ["rows_affected"]
 
 
 def format_table(rows: list[dict], cols: list[str], maxrows: int) -> str:
