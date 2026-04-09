@@ -175,32 +175,8 @@ class MemoryService:
     # Interactions & summaries
     # -------------------------------------------------------------------------
 
-    async def record_interaction(
-        self,
-        user_id: str,
-        query: str,
-        response: str,
-        error: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> bool:
-        try:
-            saved = await self.repository.save_interaction(
-                user_id=user_id,
-                query=query,
-                response=response,
-                error=error,
-                metadata=metadata,
-            )
-            if saved and not error:
-                await self.repository.increment_interaction_count(user_id)
-                self._invalidate_user_cache(user_id)
-                logger.debug(f"Interaction recorded for user {user_id}")
-            elif saved and error:
-                logger.debug(f"Error interaction logged for user {user_id}")
-            return saved
-        except Exception as e:
-            logger.error(f"Error recording interaction for {user_id}: {e}")
-            return False
+    # record_interaction eliminado — las interacciones las persiste
+    # ObservabilityRepository.save_interaction() directamente (OBS-31)
 
     async def update_summary(self, user_id: str, new_summary: str) -> bool:
         try:

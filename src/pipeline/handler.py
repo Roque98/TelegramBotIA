@@ -277,18 +277,16 @@ class MainHandler:
                 )
         react_ms = int((time.perf_counter() - t_react) * 1000)
 
-        # 3. Registrar interacción (async, no bloqueante)
-        t_save = time.perf_counter()
-        asyncio.create_task(self._record_interaction(event, response))
-        save_ms = int((time.perf_counter() - t_save) * 1000)
-
         total_ms = int((time.perf_counter() - t_start) * 1000)
+        save_ms = 0  # save ocurre en background, no bloquea el pipeline
 
-        # 4. Transaction trace: log de consola + SQL en background
+        # 3. Log de consola
         self._log_transaction(event, response, memory_ms, react_ms, save_ms, total_ms)
+
+        # 4. Persistir interacción completa en background (una sola escritura)
         if self.observability_repo:
             asyncio.create_task(
-                self._save_transaction_trace(event, response, memory_ms, react_ms, save_ms, total_ms)
+                self._save_interaction(event, response, memory_ms, react_ms, total_ms)
             )
 
         return response
@@ -312,16 +310,15 @@ class MainHandler:
             f"{status} {total_ms}ms"
         )
 
-    async def _save_transaction_trace(
+    async def _save_interaction(
         self,
         event: ConversationEvent,
         response: AgentResponse,
         memory_ms: int,
         react_ms: int,
-        save_ms: int,
         total_ms: int,
     ) -> None:
-        """Persiste la traza de transacción en SQL en background."""
+        """Persiste la interacción completa en BotIAv2_InteractionLogs."""
         try:
             tools_used = None
             if response.data and "scratchpad" in response.data:
@@ -331,23 +328,32 @@ class MainHandler:
                     if s.get("action") not in (None, "finish")
                 })
 
-            await self.observability_repo.save_transaction(
+            await self.observability_repo.save_interaction(
                 correlation_id=event.correlation_id or "",
                 user_id=event.user_id,
                 username=event.metadata.get("username"),
                 query=event.text,
+                respuesta=response.message,
                 channel=event.channel,
                 memory_ms=memory_ms,
                 react_ms=react_ms,
-                save_ms=save_ms,
+                save_ms=0,
                 total_ms=total_ms,
-                success=response.success,
                 error_message=response.error if not response.success else None,
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
             )
+
+            # Actualizar contador de interacciones en perfil
+            await self.memory.repository.increment_interaction_count(event.user_id)
+
+            # Persistir costo si está disponible
+            cost = (response.data or {}).get("cost")
+            if cost:
+                asyncio.create_task(self._record_cost(event.user_id, cost, response.steps_taken))
+
         except Exception as e:
-            logger.error(f"Error saving transaction trace: {e}")
+            logger.error(f"Error saving interaction: {e}")
 
     async def _use_fallback(
         self,
@@ -401,38 +407,6 @@ class MainHandler:
         except Exception as e:
             logger.error(f"Error guardando costo de sesión: {e}")
 
-    async def _record_interaction(
-        self,
-        event: ConversationEvent,
-        response: AgentResponse,
-    ) -> None:
-        """
-        Registra la interacción en memoria.
-
-        Args:
-            event: Evento original
-            response: Respuesta del agente
-        """
-        try:
-            cost = (response.data or {}).get("cost") if response.data else None
-            await self.memory.record_interaction(
-                user_id=event.user_id,
-                query=event.text,
-                response=response.message or "",
-                error=response.error if not response.success else None,
-                metadata={
-                    "channel": event.channel,
-                    "agent": response.agent_name,
-                    "steps_taken": response.steps_taken,
-                    "execution_time_ms": response.execution_time_ms,
-                    "correlation_id": event.correlation_id,
-                    "username": event.metadata.get("username"),
-                },
-            )
-            if cost:
-                asyncio.create_task(self._record_cost(event.user_id, cost, response.steps_taken))
-        except Exception as e:
-            logger.error(f"Error recording interaction: {e}")
 
     def _format_error(self, response: AgentResponse) -> str:
         """

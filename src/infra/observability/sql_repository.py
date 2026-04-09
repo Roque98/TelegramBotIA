@@ -19,57 +19,70 @@ class ObservabilityRepository:
     def __init__(self, db_manager) -> None:
         self.db_manager = db_manager
 
-    async def save_transaction(
+    async def save_interaction(
         self,
         correlation_id: str,
         user_id: Optional[str],
         username: Optional[str],
         query: Optional[str],
+        respuesta: Optional[str],
         channel: str,
         memory_ms: int,
         react_ms: int,
         save_ms: int,
         total_ms: int,
-        success: bool,
         error_message: Optional[str] = None,
         tools_used: Optional[list[str]] = None,
         steps_count: int = 0,
     ) -> bool:
         """
-        Guarda una traza de transacción en TransactionLogs.
+        Persiste una interacción completa en BotIAv2_InteractionLogs.
 
-        Llamar al final de cada request para registrar el flujo completo.
+        Reemplaza save_transaction (TransactionLogs) y save_interaction
+        (LogOperaciones) — ahora es una sola fila por request.
         """
         try:
             sql = """
-                INSERT INTO abcmasplus..BotIAv2_TransactionLogs (
-                    correlationId, userId, username, query, channel,
-                    memoryMs, reactMs, saveMs, totalMs, success,
-                    errorMessage, toolsUsed, stepsCount
-                ) VALUES (
-                    :correlation_id, :user_id, :username, :query, :channel,
-                    :memory_ms, :react_ms, :save_ms, :total_ms, :success,
-                    :error_message, :tools_used, :steps_count
+                INSERT INTO abcmasplus..BotIAv2_InteractionLogs (
+                    correlationId, idUsuario, telegramChatId, telegramUsername,
+                    comando, query, respuesta, mensajeError,
+                    toolsUsadas, stepsTomados,
+                    memoryMs, reactMs, saveMs, duracionMs, channel
                 )
+                SELECT
+                    :correlation_id,
+                    ut.idUsuario,
+                    ut.telegramChatId,
+                    :username,
+                    '/ia',
+                    :query,
+                    :respuesta,
+                    :error_message,
+                    :tools_used,
+                    :steps_count,
+                    :memory_ms, :react_ms, :save_ms, :total_ms,
+                    :channel
+                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
+                WHERE ut.telegramChatId = :chat_id AND ut.activo = 1
             """
             await self.db_manager.execute_non_query_async(sql, {
                 "correlation_id": correlation_id[:50] if correlation_id else None,
-                "user_id": str(user_id) if user_id else None,
                 "username": username,
                 "query": (query or "")[:500],
-                "channel": channel,
+                "respuesta": respuesta,
+                "error_message": error_message[:2000] if error_message else None,
+                "tools_used": json.dumps(tools_used) if tools_used else None,
+                "steps_count": steps_count,
                 "memory_ms": memory_ms,
                 "react_ms": react_ms,
                 "save_ms": save_ms,
                 "total_ms": total_ms,
-                "success": 1 if success else 0,
-                "error_message": error_message[:1000] if error_message else None,
-                "tools_used": json.dumps(tools_used) if tools_used else None,
-                "steps_count": steps_count,
+                "channel": channel,
+                "chat_id": str(user_id) if user_id else None,
             })
             return True
         except Exception as e:
-            logger.error(f"Error saving transaction trace: {e}")
+            logger.error(f"Error saving interaction: {e}")
             return False
 
     def save_log_sync(

@@ -142,41 +142,32 @@ class MemoryRepository:
         try:
             query = """
                 SELECT TOP (:limit)
-                    lo.comando      AS Comando,
-                    lo.parametros   AS Parametros,
-                    lo.resultado    AS Resultado,
-                    lo.fechaEjecucion AS Fecha_Hora
-                FROM abcmasplus..BotIAv2_LogOperaciones lo
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                    il.query        AS user_query,
+                    il.respuesta    AS respuesta,
+                    il.fechaEjecucion AS fecha
+                FROM abcmasplus..BotIAv2_InteractionLogs il
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON il.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
-                  AND lo.mensajeError IS NULL
-                ORDER BY lo.fechaEjecucion DESC
+                  AND il.mensajeError IS NULL
+                ORDER BY il.fechaEjecucion DESC
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id), "limit": limit})
 
             messages = []
             for row in reversed(results):
-                params = row.get("Parametros", {})
-                if isinstance(params, str):
-                    try:
-                        params = json.loads(params)
-                    except json.JSONDecodeError:
-                        params = {"query": params}
-
-                user_query = params.get("query", "")
+                user_query = row.get("user_query", "")
                 if user_query:
                     messages.append({
                         "role": "user",
                         "content": user_query,
-                        "timestamp": row.get("Fecha_Hora", datetime.now(UTC)).isoformat(),
+                        "timestamp": row.get("fecha", datetime.now(UTC)).isoformat(),
                     })
-
-                resultado = row.get("Resultado", "")
-                if resultado and resultado != "EXITOSO":
+                respuesta = row.get("respuesta", "")
+                if respuesta:
                     messages.append({
                         "role": "assistant",
-                        "content": resultado,
-                        "timestamp": row.get("Fecha_Hora", datetime.now(UTC)).isoformat(),
+                        "content": respuesta,
+                        "timestamp": row.get("fecha", datetime.now(UTC)).isoformat(),
                     })
 
             return messages
@@ -185,68 +176,26 @@ class MemoryRepository:
             logger.error(f"Error getting messages for {user_id}: {e}")
             return []
 
-    async def save_interaction(
-        self,
-        user_id: str,
-        query: str,
-        response: str,
-        error: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> bool:
-        if not self.db_manager:
-            return True
-
-        try:
-            params_json = json.dumps({"query": query, **(metadata or {})})
-            duration_ms = (metadata or {}).get("execution_time_ms", 0)
-            username = (metadata or {}).get("username")
-            resultado = response[:4000] if not error else "ERROR"
-
-            query_sql = """
-                INSERT INTO abcmasplus..BotIAv2_LogOperaciones (
-                    idUsuario, comando, telegramChatId, telegramUsername,
-                    parametros, resultado, mensajeError, duracionMs, fechaEjecucion
-                )
-                SELECT
-                    ut.idUsuario,
-                    :operation,
-                    :chat_id, :username, :params, :result, :error, :duration_ms, GETDATE()
-                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                WHERE ut.telegramChatId = :chat_id_lookup AND ut.activo = 1
-            """
-            await self.db_manager.execute_non_query_async(query_sql, {
-                "operation": "/ia",
-                "chat_id": str(user_id),
-                "username": username,
-                "params": params_json,
-                "result": resultado,
-                "error": error[:2000] if error else None,
-                "duration_ms": int(duration_ms),
-                "chat_id_lookup": str(user_id),
-            })
-            return True
-
-        except Exception as e:
-            logger.error(f"Error saving interaction for {user_id}: {e}")
-            return False
+    # save_interaction eliminado — las interacciones ahora las persiste
+    # ObservabilityRepository.save_interaction() en BotIAv2_InteractionLogs (OBS-31)
 
     async def get_user_stats(self, user_id: str) -> dict:
-        """Retorna estadísticas de uso del usuario desde LogOperaciones."""
+        """Retorna estadísticas de uso del usuario desde InteractionLogs."""
         if not self.db_manager:
             return {}
 
         try:
             query = """
                 SELECT
-                    COUNT(*)                                            AS total,
-                    SUM(CASE WHEN lo.mensajeError IS NULL THEN 1 ELSE 0 END) AS exitosos,
-                    SUM(CASE WHEN lo.mensajeError IS NOT NULL THEN 1 ELSE 0 END) AS errores,
-                    AVG(CAST(lo.duracionMs AS FLOAT))                   AS avg_ms,
-                    MAX(lo.duracionMs)                                  AS max_ms,
-                    MIN(lo.fechaEjecucion)                              AS primera,
-                    MAX(lo.fechaEjecucion)                              AS ultima
-                FROM abcmasplus..BotIAv2_LogOperaciones lo
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON lo.idUsuario = ut.idUsuario
+                    COUNT(*)                                             AS total,
+                    SUM(CASE WHEN il.mensajeError IS NULL THEN 1 ELSE 0 END)  AS exitosos,
+                    SUM(CASE WHEN il.mensajeError IS NOT NULL THEN 1 ELSE 0 END) AS errores,
+                    AVG(CAST(il.duracionMs AS FLOAT))                    AS avg_ms,
+                    MAX(il.duracionMs)                                   AS max_ms,
+                    MIN(il.fechaEjecucion)                               AS primera,
+                    MAX(il.fechaEjecucion)                               AS ultima
+                FROM abcmasplus..BotIAv2_InteractionLogs il
+                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON il.idUsuario = ut.idUsuario
                 WHERE ut.telegramChatId = :user_id AND ut.activo = 1
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
