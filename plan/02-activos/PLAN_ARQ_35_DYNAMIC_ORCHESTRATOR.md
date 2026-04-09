@@ -1,7 +1,7 @@
 # Plan: ARQ-35 Orchestrator con Agentes Dinámicos
 
 > **Estado**: 🟡 En progreso
-> **Última actualización**: 2026-04-09 (revisión 2)
+> **Última actualización**: 2026-04-09 (revisión 3 — final)
 > **Rama Git**: `feature/arq-35-dynamic-orchestrator`
 
 ## Resumen de Progreso
@@ -15,7 +15,7 @@
 | Fase 5: Admin tooling y recarga | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Tests y migración | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/31 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/34 tareas)
 
 ---
 
@@ -227,6 +227,29 @@ Cada edición genera un registro en `BotIAv2_AgentePromptHistorial` para auditor
   Cuando no es `None`, se usa en lugar de `REACT_SYSTEM_PROMPT` al llamar
   `build_system_prompt()` dentro de `execute()`. Valor por defecto `None` preserva
   el comportamiento actual — no hay cambio de interfaz para quien ya usa `ReActAgent`.
+
+- [ ] Agregar `tool_scope: Optional[set[str]] = None` a `ReActAgent.__init__` y almacenarlo
+  como `self.tool_scope`. Dentro de `execute()`, pasarlo a `registry.get_tools_prompt()`
+  y `registry.get_usage_hints()`:
+
+  ```python
+  system_prompt = build_system_prompt(
+      tools_description=self.tools.get_tools_prompt(
+          user_context=context, tool_scope=self.tool_scope
+      ),
+      usage_hints=self.tools.get_usage_hints(
+          user_context=context, tool_scope=self.tool_scope
+      ),
+  )
+  ```
+
+  `tool_scope=None` mantiene el comportamiento actual (sin filtro de scope, solo permisos
+  del usuario). El agente generalista siempre recibe `tool_scope=None`.
+  Sin este parámetro, la especialización por agente no funciona — todos los agentes
+  verían las mismas tools independientemente de su scope en BD.
+
+- [ ] Crear `src/domain/agent_config/__init__.py` y `src/agents/factory/__init__.py`
+  — paquetes Python nuevos sin estos archivos fallan en runtime al importar.
 
 - [ ] Agregar cache de instancias de agente keyed por `(idAgente, version)` en `AgentBuilder`
   — evita reconstruir en cada request cuando la definición no cambió.
