@@ -1,78 +1,51 @@
-# Documentación del Proyecto - Agente de Base de Datos con Telegram
+# Iris Bot — Documentación
 
-## Índice
+Iris Bot (Amber) es un asistente virtual para Telegram impulsado por LLM. Permite a los empleados
+de la empresa hacer consultas en lenguaje natural sobre datos de negocio, políticas internas y
+procedimientos, sin necesidad de conocer SQL ni sistemas internos.
 
-1. [Introducción](#introducción)
-2. [Estructura del Proyecto](estructura.md)
-3. [Configuración](#configuración)
-4. [Componentes Principales](#componentes-principales)
-5. [Guías de Uso](#guías-de-uso)
+## Stack tecnológico
 
----
-
-## Introducción
-
-Este proyecto implementa un bot de Telegram que funciona como un agente inteligente capaz de:
-- Interpretar consultas en lenguaje natural
-- Traducirlas a consultas SQL
-- Ejecutarlas en una base de datos
-- Devolver los resultados de manera conversacional
-
-## Configuración
-
-### Variables de Entorno
-
-Copiar `.env.example` a `.env` y configurar:
-
-- **TELEGRAM_BOT_TOKEN**: Token del bot de Telegram (obtener de @BotFather)
-- **OPENAI_API_KEY** o **ANTHROPIC_API_KEY**: Clave API del LLM
-- **DB_***: Credenciales de la base de datos
-
-### Instalación de Dependencias
-
-```bash
-pip install -r requirements.txt
-```
-
-## Componentes Principales
-
-### 1. Bot de Telegram (`src/bot/`)
-Maneja la comunicación con los usuarios a través de Telegram.
-
-### 2. Agente LLM (`src/agent/`)
-Interpreta las consultas del usuario y las convierte en consultas SQL.
-
-### 3. Base de Datos (`src/database/`)
-Gestiona las conexiones y ejecución de consultas en la base de datos.
-
-### 4. Configuración (`src/config/`)
-Centraliza la configuración del proyecto.
-
-## Guías de Uso
-
-### Iniciar el Bot
-
-```bash
-python main.py
-```
-
-### Ejemplo de Conversación
-
-```
-Usuario: ¿Cuántos usuarios tenemos registrados?
-Bot: Consultando la base de datos...
-Bot: Actualmente hay 1,234 usuarios registrados en el sistema.
-
-Usuario: Muéstrame los 5 últimos usuarios
-Bot: Aquí están los 5 últimos usuarios registrados:
-     1. Juan Pérez - 2024-01-15
-     2. María González - 2024-01-14
-     ...
-```
+| Componente | Tecnología |
+|------------|------------|
+| Interfaz principal | Telegram Bot API |
+| Interfaz secundaria | REST API (Flask) |
+| Agente LLM | ReAct (Think-Act-Observe) |
+| Modelos LLM | GPT-5.4-mini (loop) / GPT-5.4 (datos) |
+| Base de datos | SQL Server (`abcmasplus`) |
+| Lenguaje | Python 3.11+ async/await |
+| Validación | Pydantic v2 |
 
 ---
 
-## Enlaces Útiles
+## Enfoques de documentación
 
-- [Estructura del Proyecto](estructura.md) - Detalles sobre la organización de carpetas
-- [README principal](../README.md) - Información general del proyecto
+### [Uso](uso/README.md) — Para usuarios, administradores e integradores
+
+Para quienes operan o consumen el sistema sin necesidad de leer código:
+
+- [Qué puede hacer el bot](uso/que-puede-hacer.md)
+- [Guía de usuario Telegram](uso/guia-usuario-telegram.md)
+- [Guía de administrador](uso/guia-administrador.md)
+- [Guía del API REST](uso/guia-api.md)
+- [Configuración y despliegue](uso/configuracion.md)
+
+### [Código](codigo/README.md) — Para desarrolladores y mantenedores
+
+Para quienes entienden, mantienen o extienden el código:
+
+- [Arquitectura](codigo/arquitectura.md)
+- [Flujos del sistema](codigo/flujos.md)
+- [Agente ReAct](codigo/agente-react.md)
+- [Sistema de tools](codigo/tools.md)
+- [Pipeline y factory](codigo/pipeline.md)
+- [Dominio](codigo/dominio.md)
+- [Infraestructura](codigo/infraestructura.md)
+- [Base de datos](codigo/base-de-datos.md)
+- [Cómo extender el sistema](codigo/como-extender.md)
+
+### [Dev](dev/README.md) — Para configurar el entorno de desarrollo
+
+- [Setup local](dev/setup.md)
+- [GitFlow del proyecto](dev/gitflow.md)
+- [Testing](dev/testing.md)

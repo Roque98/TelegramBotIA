@@ -1,0 +1,280 @@
+"""
+Gestión de conexiones a la base de datos.
+"""
+import asyncio
+import logging
+from typing import TYPE_CHECKING, List, Dict, Any, Generator, Optional
+from contextlib import contextmanager
+from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError as SQLTimeoutError
+from src.config.settings import settings
+from src.utils.retry import db_retry
+
+if TYPE_CHECKING:
+    from src.config.settings import DbConnectionConfig
+
+logger = logging.getLogger(__name__)
+
+
+class DatabaseManager:
+    """Gestor de conexiones y operaciones de base de datos."""
+
+    def __init__(self, config: Optional["DbConnectionConfig"] = None):
+        """
+        Inicializar el gestor de base de datos.
+
+        Args:
+            config: Configuración de conexión. Si es None, usa la conexión
+                    principal definida en settings (comportamiento original).
+        """
+        if config is not None:
+            self.database_url = config.database_url
+            self._alias = config.alias
+            self._host = config.host
+            self._db_type = config.db_type
+        else:
+            self.database_url = settings.database_url
+            self._alias = "core"
+            self._host = settings.db_host
+            self._db_type = settings.db_type
+
+        # Para operaciones síncronas con configuración optimizada
+        self.engine = create_engine(
+            self.database_url,
+            echo=False,
+            pool_size=5,              # Número de conexiones permanentes en el pool
+            max_overflow=10,          # Conexiones adicionales permitidas
+            pool_timeout=20,          # Segundos esperando conexión del pool
+            pool_recycle=3600,        # Reciclar conexiones cada hora (evita timeouts)
+            pool_pre_ping=True,       # Verificar conexión antes de usar (previene errores)
+            connect_args={
+                "timeout": 15,        # Timeout de conexión inicial (segundos)
+            }
+        )
+        self.SessionLocal = sessionmaker(bind=self.engine)
+
+        logger.info(f"DatabaseManager '{self._alias}': {self._db_type} en {self._host}")
+
+    @contextmanager
+    def get_session(self) -> Generator[Session, None, None]:
+        """
+        Obtener una sesión de base de datos con context manager.
+
+        ✅ CORREGIDO: Ahora usa context manager para garantizar cierre de sesión.
+
+        Uso:
+            with db_manager.get_session() as session:
+                # Usar sesión
+                result = session.execute(query)
+            # Sesión cerrada automáticamente
+
+        Yields:
+            Session: Sesión de SQLAlchemy
+
+        Raises:
+            ConnectionError: Si hay error de conexión a BD
+            SQLAlchemyError: Si hay error en operación de BD
+        """
+        session = self.SessionLocal()
+        try:
+            yield session
+            session.commit()  # Commit automático si no hubo errores
+        except Exception:
+            session.rollback()  # Rollback automático en error
+            raise
+        finally:
+            session.close()  # Siempre cerrar sesión
+
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
+    def get_schema(self) -> str:
+        """
+        Obtener el esquema de la base de datos en formato texto.
+
+        ✅ CORREGIDO: Manejo específico de excepciones.
+
+        Returns:
+            Descripción del esquema de la base de datos
+
+        Raises:
+            ConnectionError: Si hay error de conexión a BD
+            TimeoutError: Si la operación tarda demasiado
+            SQLAlchemyError: Si hay error de BD
+        """
+        try:
+            inspector = inspect(self.engine)
+            schema_description = []
+
+            for table_name in inspector.get_table_names():
+                schema_description.append(f"\nTabla: {table_name}")
+                columns = inspector.get_columns(table_name)
+
+                for column in columns:
+                    col_type = str(column['type'])
+                    nullable = "NULL" if column['nullable'] else "NOT NULL"
+                    schema_description.append(
+                        f"  - {column['name']}: {col_type} {nullable}"
+                    )
+
+            return "\n".join(schema_description)
+
+        except OperationalError as e:
+            # Error de conexión a BD
+            logger.error(f"Error de conexión al obtener esquema: {e}")
+            raise ConnectionError(f"No se pudo conectar a la base de datos: {e}") from e
+
+        except SQLTimeoutError as e:
+            # Timeout
+            logger.error(f"Timeout al obtener esquema: {e}")
+            raise TimeoutError(f"La base de datos no respondió a tiempo: {e}") from e
+
+        except SQLAlchemyError as e:
+            # Otros errores de SQLAlchemy
+            logger.error(f"Error de SQLAlchemy obteniendo esquema: {e}")
+            raise
+
+        except Exception as e:
+            # Solo para errores verdaderamente inesperados
+            logger.error(f"Error inesperado obteniendo esquema: {e}", exc_info=True)
+            raise
+
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
+    def execute_query(self, sql_query: str, params: tuple = None) -> List[Dict[str, Any]]:
+        """
+        Ejecutar una consulta SQL de solo lectura.
+
+        Args:
+            sql_query: Consulta SQL a ejecutar
+            params: Parámetros opcionales para la consulta (tuple)
+
+        Returns:
+            Lista de diccionarios con los resultados
+
+        Raises:
+            ValueError: Si la consulta no es de solo lectura
+            OperationalError: Si hay error de conexión (tras agotar retries)
+            SQLTimeoutError: Si la consulta tarda demasiado (tras agotar retries)
+            SQLAlchemyError: Si hay error de BD
+        """
+        # Validar que sea solo SELECT o EXEC (stored procedures)
+        query_upper = sql_query.strip().upper()
+        if not (query_upper.startswith("SELECT") or query_upper.startswith("EXEC")):
+            raise ValueError("Solo se permiten consultas SELECT o EXEC")
+
+        try:
+            with self.get_session() as session:
+                if params:
+                    result = session.execute(text(sql_query), params)
+                else:
+                    result = session.execute(text(sql_query))
+                rows = result.fetchall()
+
+                # Convertir a lista de diccionarios
+                if rows:
+                    columns = result.keys()
+                    return [dict(zip(columns, row)) for row in rows]
+                return []
+
+        except (OperationalError, SQLTimeoutError):
+            # Errores transitorios: tenacity los reintenta automaticamente.
+            # Si llegan aqui, se agotaron los reintentos.
+            raise
+
+        except SQLAlchemyError as e:
+            logger.error(f"Error SQL ejecutando consulta: {e}")
+            raise RuntimeError(f"Error ejecutando consulta SQL: {str(e)}") from e
+
+        except Exception as e:
+            logger.error(f"Error inesperado ejecutando consulta: {e}", exc_info=True)
+            raise
+
+    @db_retry(
+        max_attempts=settings.retry_db_max_attempts,
+        min_wait=settings.retry_db_min_wait,
+        max_wait=settings.retry_db_max_wait,
+    )
+    def execute_non_query(self, sql_query: str, params: dict = None) -> int:
+        """
+        Ejecutar una consulta SQL de escritura (INSERT, UPDATE, DELETE, MERGE).
+
+        Args:
+            sql_query: Consulta SQL a ejecutar
+            params: Parámetros opcionales para la consulta
+
+        Returns:
+            Número de filas afectadas
+
+        Raises:
+            ValueError: Si la consulta es de solo lectura (SELECT)
+            OperationalError: Si hay error de conexión (tras agotar retries)
+            SQLTimeoutError: Si la consulta tarda demasiado (tras agotar retries)
+            SQLAlchemyError: Si hay error de BD
+        """
+        query_upper = sql_query.strip().upper()
+        allowed_prefixes = ("INSERT", "UPDATE", "DELETE", "MERGE", "EXEC")
+        if not any(query_upper.startswith(p) for p in allowed_prefixes):
+            raise ValueError(f"Solo se permiten consultas de escritura: {', '.join(allowed_prefixes)}")
+
+        try:
+            with self.get_session() as session:
+                if params:
+                    result = session.execute(text(sql_query), params)
+                else:
+                    result = session.execute(text(sql_query))
+                return result.rowcount
+
+        except (OperationalError, SQLTimeoutError):
+            # Errores transitorios: tenacity los reintenta automaticamente.
+            raise
+
+        except SQLAlchemyError as e:
+            logger.error(f"Error SQL ejecutando escritura: {e}")
+            raise RuntimeError(f"Error ejecutando consulta SQL: {str(e)}") from e
+
+        except Exception as e:
+            logger.error(f"Error inesperado ejecutando escritura: {e}", exc_info=True)
+            raise
+
+    async def execute_query_async(self, sql_query: str, params=None) -> List[Dict[str, Any]]:
+        """
+        Versión async de execute_query.
+
+        Ejecuta la consulta en un thread separado para no bloquear el event loop.
+
+        Args:
+            sql_query: Consulta SQL SELECT o EXEC
+            params: Parámetros opcionales
+
+        Returns:
+            Lista de diccionarios con los resultados
+        """
+        return await asyncio.to_thread(self.execute_query, sql_query, params)
+
+    async def execute_non_query_async(self, sql_query: str, params=None) -> int:
+        """
+        Versión async de execute_non_query.
+
+        Ejecuta la operación de escritura en un thread separado para no bloquear el event loop.
+
+        Args:
+            sql_query: Consulta SQL INSERT/UPDATE/DELETE/MERGE
+            params: Parámetros opcionales
+
+        Returns:
+            Número de filas afectadas
+        """
+        return await asyncio.to_thread(self.execute_non_query, sql_query, params)
+
+    def close(self):
+        """Cerrar las conexiones de base de datos."""
+        self.engine.dispose()
+        logger.info("Conexiones de base de datos cerradas")

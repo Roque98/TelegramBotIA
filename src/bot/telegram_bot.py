@@ -8,8 +8,9 @@ import logging
 from telegram import Update
 from telegram.ext import Application
 from src.config.settings import settings
-from src.agent.llm_agent import LLMAgent
-from src.database.connection import DatabaseManager
+from src.infra.database.connection import DatabaseManager
+from src.infra.database.registry import DatabaseRegistry
+from src.pipeline import create_main_handler
 from .handlers import (
     register_command_handlers,
     register_query_handlers,
@@ -33,17 +34,16 @@ class TelegramBot:
         """Inicializar el bot."""
         logger.info("Inicializando TelegramBot...")
 
-        # Inicializar agente LLM
-        self.agent = LLMAgent()
-
-        # Inicializar gestor de base de datos
+        # Inicializar gestor de base de datos principal
         self.db_manager = DatabaseManager()
 
-        # Inicializar sistema de Tools
-        logger.info("Inicializando sistema de Tools...")
-        from src.tools import initialize_builtin_tools
-        initialize_builtin_tools()
-        logger.info("Sistema de Tools inicializado correctamente")
+        # DB-37: registry de múltiples conexiones (lazy — conecta al primer uso)
+        self.db_registry = DatabaseRegistry.from_settings()
+
+        # Inicializar MainHandler (ReActAgent + MemoryService)
+        logger.info("Inicializando MainHandler (ReAct)...")
+        self.main_handler = create_main_handler(self.db_manager)
+        logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
         self.application = (
@@ -54,7 +54,7 @@ class TelegramBot:
 
         # Inyectar dependencias en bot_data para acceso global
         self.application.bot_data['db_manager'] = self.db_manager
-        self.application.bot_data['agent'] = self.agent
+        self.application.bot_data['main_handler'] = self.main_handler
 
         # Configurar middleware
         self._setup_middleware()
@@ -64,7 +64,7 @@ class TelegramBot:
 
         logger.info(
             f"TelegramBot inicializado exitosamente con "
-            f"LLM provider: {self.agent.llm_provider.get_provider_name()}"
+            f"modelo: {settings.openai_loop_model}"
         )
 
     def _setup_middleware(self):
@@ -94,12 +94,12 @@ class TelegramBot:
         # Registrar command handlers (/start, /help, /stats, etc.)
         register_command_handlers(self.application)
 
-        # Registrar tools handlers (/ia, /query) - Sistema de Tools
+        # Registrar tools handlers (/ia, /query) - usan MainHandler
         # IMPORTANTE: Va antes de query_handlers para que los comandos tengan prioridad
         register_tools_handlers(self.application)
 
         # Registrar query handlers (mensajes de texto sin comando)
-        register_query_handlers(self.application, self.agent)
+        register_query_handlers(self.application, self.main_handler)
 
         # TODO: Registrar handlers adicionales cuando se implementen:
         # - register_admin_handlers() (requiere permisos específicos)
@@ -109,11 +109,10 @@ class TelegramBot:
 
     async def run(self):
         """Ejecutar el bot."""
-        logger.info("🤖 Bot iniciado y esperando mensajes...")
-        logger.info(f"✅ Configuración: {settings.environment}")
-        logger.info(f"✅ Base de datos: {settings.db_type}")
-        logger.info(f"✅ LLM: {self.agent.llm_provider.get_provider_name()} "
-                   f"({self.agent.llm_provider.get_model_name()})")
+        logger.info("Bot iniciado y esperando mensajes...")
+        logger.info(f"Configuración: {settings.environment}")
+        logger.info(f"Base de datos: {settings.db_type}")
+        logger.info(f"Modelo LLM: {settings.openai_loop_model}")
 
         await self.application.run_polling(
             allowed_updates=Update.ALL_TYPES,
@@ -127,5 +126,6 @@ class TelegramBot:
 
         # Cerrar conexiones de base de datos
         self.db_manager.close()
+        self.db_registry.close_all()
 
         logger.info("Bot detenido exitosamente")

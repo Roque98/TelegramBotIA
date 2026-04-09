@@ -20,8 +20,8 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler
 )
-from src.database.connection import DatabaseManager
-from src.auth import RegistrationManager
+from src.infra.database.connection import DatabaseManager
+from src.domain.auth import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +51,18 @@ class RegistrationHandlers:
 
         # Verificar si ya está registrado
         with self.db_manager.get_session() as session:
-            from src.auth import UserManager
-            user_manager = UserManager(session)
+            user_service = UserService(session)
 
-            if user_manager.is_user_registered(user.id):
-                telegram_user = user_manager.get_user_by_chat_id(user.id)
+            if user_service.is_user_registered(user.id):
+                telegram_user = user_service.get_user_by_chat_id(user.id)
+                reg_info = user_service.get_registration_info(user.id)
+                is_verified = (telegram_user and telegram_user.is_verified) or (reg_info and reg_info.get('verificado'))
 
-                if telegram_user.is_verified:
+                if is_verified:
+                    nombre = telegram_user.nombre_completo if telegram_user else "usuario"
                     await update.message.reply_text(
-                        f"✅ Hola {telegram_user.nombre_completo},\n\n"
+                        f"✅ Hola {nombre},\n\n"
                         f"Ya estás registrado y verificado en el sistema.\n\n"
-                        f"👤 *Rol:* {telegram_user.rol_nombre}\n"
-                        f"🆔 *ID Empleado:* {telegram_user.id_empleado}\n\n"
                         f"Puedes usar /help para ver los comandos disponibles.",
                         parse_mode='Markdown'
                     )
@@ -106,10 +106,10 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Buscar usuario por número de empleado
-                user_data = reg_manager.find_user_by_employee_id(employee_id)
+                user_data = user_service.find_user_by_employee_id(employee_id)
 
                 if not user_data:
                     await update.message.reply_text(
@@ -122,7 +122,7 @@ class RegistrationHandlers:
                     return WAITING_FOR_EMPLOYEE_ID
 
                 # Iniciar registro
-                success, message, verification_code = reg_manager.start_registration(
+                success, message, verification_code = user_service.start_registration(
                     user_id=user_data['idUsuario'],
                     chat_id=user.id,
                     username=user.username,
@@ -144,7 +144,7 @@ class RegistrationHandlers:
                 # Informar al usuario que debe consultar el portal
                 await update.message.reply_text(
                     f"✅ *Registro iniciado exitosamente*\n\n"
-                    f"Hola *{user_data['nombre']} {user_data['apellido']}*,\n\n"
+                    f"Hola *{user_data['Nombre']}*,\n\n"
                     f"📋 Tu cuenta de Telegram ha sido registrada en el sistema.\n\n"
                     f"🔐 *Para completar el registro:*\n"
                     f"1️⃣ Ingresa al *Portal de Consola de Monitoreo*\n"
@@ -152,7 +152,7 @@ class RegistrationHandlers:
                     f"3️⃣ Consulta tu *código de verificación*\n"
                     f"4️⃣ Regresa a Telegram y usa: `/verify <codigo>`\n\n"
                     f"⏰ El código es válido por 24 horas.\n\n"
-                    f"_ID Empleado: {employee_id}_\n"
+                    f"_ID Usuario: {employee_id}_\n"
                     f"_Email: {user_data['email']}_",
                     parse_mode='Markdown'
                 )
@@ -196,25 +196,22 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Verificar cuenta
-                success, message = reg_manager.verify_account(
+                success, message = user_service.verify_account(
                     chat_id=user.id,
                     verification_code=verification_code
                 )
 
                 if success:
                     # Obtener información del usuario verificado
-                    from src.auth import UserManager
-                    user_manager = UserManager(session)
-                    telegram_user = user_manager.get_user_by_chat_id(user.id)
+                    telegram_user = user_service.get_user_by_chat_id(user.id)
 
                     await update.message.reply_text(
                         f"🎉 *¡Verificación exitosa!*\n\n"
                         f"Bienvenido, *{telegram_user.nombre_completo}*\n\n"
                         f"👤 *Rol:* {telegram_user.rol_nombre}\n"
-                        f"🆔 *ID Empleado:* {telegram_user.id_empleado}\n"
                         f"📧 *Email:* {telegram_user.email}\n\n"
                         f"✅ Tu cuenta está activa.\n"
                         f"Usa /help para ver los comandos disponibles.",
@@ -242,10 +239,10 @@ class RegistrationHandlers:
 
         try:
             with self.db_manager.get_session() as session:
-                reg_manager = RegistrationManager(session)
+                user_service = UserService(session)
 
                 # Reenviar código
-                success, message, verification_code = reg_manager.resend_verification_code(
+                success, message, verification_code = user_service.resend_verification_code(
                     chat_id=user.id
                 )
 

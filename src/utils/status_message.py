@@ -10,6 +10,8 @@ Ejemplo de uso:
     ...     result = await agent.process_query(query)
     ...     await status.complete(result)
 """
+import asyncio
+import random
 import time
 from typing import Optional
 from telegram import Update, Message
@@ -38,12 +40,37 @@ class StatusMessage:
         >>> await status.complete("¡Listo!")
     """
 
-    # Mensajes de estado genéricos
+    # Mensajes específicos por herramienta para set_tool_active()
+    _TOOL_MESSAGES: dict[str, str] = {
+        "database_query": "🗄️ Consultando base de datos...",
+        "knowledge_search": "📚 Buscando en el conocimiento...",
+        "calculate": "🔢 Calculando...",
+        "datetime": "📅 Consultando fecha y hora...",
+        "get_preferences": "👤 Revisando preferencias...",
+        "save_preferences": "💾 Guardando preferencias...",
+        "save_memory": "🧠 Guardando en memoria...",
+        "reload_permissions": "🔐 Recargando permisos...",
+        "read_attachment": "📎 Leyendo archivo adjunto...",
+    }
+
+    # Mensajes de progreso con personalidad de Amber
     PROCESSING_MESSAGES = [
-        "🔄 Procesando tu solicitud...",
-        "💭 Analizando...",
-        "⚙️ Trabajando en ello...",
-        "✨ Casi listo..."
+        "🔄 Analizando tu consulta...",
+        "💭 Pensando en la mejor respuesta...",
+        "🔍 Revisando la información disponible...",
+        "⚙️ Procesando los datos...",
+        "📊 Consultando las fuentes...",
+        "🧠 Razonando sobre tu pregunta...",
+        "💡 Organizando las ideas...",
+        "🔎 Verificando los detalles...",
+        "📝 Trabajando en la respuesta...",
+        "⏳ Esto puede tomar un momento...",
+        "🤔 Procesando tu solicitud...",
+        "🔬 Evaluando la información...",
+        "📌 Considerando los detalles...",
+        "🧩 Juntando las piezas...",
+        "💬 Formulando una respuesta...",
+        "🔁 Procesando, un momento...",
     ]
 
     def __init__(
@@ -51,7 +78,7 @@ class StatusMessage:
         update: Update,
         initial_message: str = "🔄 Procesando tu solicitud...",
         show_elapsed_time: bool = True,
-        auto_update_interval: float = 3.0
+        auto_update_interval: float = 6.0,
     ):
         """
         Inicializar gestor de mensajes de estado.
@@ -71,6 +98,8 @@ class StatusMessage:
         self._start_time: float = 0
         self._is_started: bool = False
         self._message_index: int = 0
+        self._auto_update_task: Optional[asyncio.Task] = None
+        self._used_messages: set = set()
 
     async def __aenter__(self):
         """Iniciar context manager."""
@@ -108,6 +137,93 @@ class StatusMessage:
             logger.debug(f"Mensaje de estado iniciado: {self._status_message.message_id}")
         except TelegramError as e:
             logger.error(f"Error al enviar mensaje de estado inicial: {e}")
+
+        # Iniciar tarea de actualización automática en background
+        self._auto_update_task = asyncio.create_task(self._auto_update_loop())
+
+    async def _auto_update_loop(self) -> None:
+        """Loop de actualización automática en background."""
+        available = list(self.PROCESSING_MESSAGES)
+        random.shuffle(available)
+        for msg in available:
+            await asyncio.sleep(self.auto_update_interval)
+            if not self._status_message or not self._is_started:
+                break
+            elapsed = time.time() - self._start_time
+            text = msg
+            if elapsed > 5:
+                text += f"\n_({elapsed:.0f}s)_"
+            try:
+                await self._status_message.edit_text(text)
+                logger.debug(f"Auto-update: {msg}")
+            except TelegramError as e:
+                if "message is not modified" not in str(e).lower():
+                    logger.debug(f"Auto-update falló: {e}")
+
+    async def set_phase(self, text: str) -> None:
+        """
+        Actualizar el mensaje de estado con texto específico.
+
+        Llamado por el event_callback del agente para mostrar
+        la fase real en lugar de mensajes aleatorios.
+
+        Args:
+            text: Texto a mostrar (ej. "🗄️ Consultando base de datos...")
+        """
+        if not self._is_started or not self._status_message:
+            return
+
+        # Cancelar loop aleatorio ya que tenemos fases reales
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
+            self._auto_update_task = None
+
+        elapsed = time.time() - self._start_time
+        if elapsed > 5:
+            text += f"\n_({elapsed:.0f}s)_"
+
+        try:
+            await self._status_message.edit_text(text)
+        except TelegramError as e:
+            if "message is not modified" not in str(e).lower():
+                logger.debug(f"set_phase falló: {e}")
+
+    async def _background_warning(self) -> None:
+        """
+        Tarea en background que avisa al usuario si el procesamiento supera el umbral.
+
+        Envía un mensaje NUEVO (no edita el de estado) para no interferir
+        con set_phase(). Esto da al usuario feedback de que el bot sigue trabajando.
+        """
+        await asyncio.sleep(self.background_threshold)
+        if not self._is_started:
+            return
+        try:
+            await self.update.message.reply_text(
+                "⏳ _Sigo trabajando, esto está tomando más de lo esperado..._\n"
+                "_Un momento más, por favor._",
+                parse_mode="Markdown",
+            )
+            logger.debug(f"Background warning enviado después de {self.background_threshold:.0f}s")
+        except Exception as e:
+            logger.debug(f"Background warning falló (ignorado): {e}")
+
+    async def set_tool_active(self, tool_name: str) -> None:
+        """
+        Muestra el mensaje de progreso específico para una herramienta.
+
+        Atajo que busca el mensaje predefinido por nombre de tool y llama set_phase().
+        Útil cuando se llama una tool directamente sin pasar por agent_events.
+
+        Args:
+            tool_name: Nombre de la herramienta (ej. "database_query")
+        """
+        text = self._TOOL_MESSAGES.get(tool_name, f"🔧 Ejecutando {tool_name}...")
+        await self.set_phase(text)
 
     async def update_progress(self) -> None:
         """
@@ -150,6 +266,14 @@ class StatusMessage:
             logger.error("No hay mensaje de estado para completar")
             return
 
+        # Cancelar loop de auto-update
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
+
         # Calcular duración total
         total_duration = time.time() - self._start_time
 
@@ -190,7 +314,7 @@ class StatusMessage:
         except TelegramError as e:
             # Si falla el parseo de Markdown, intentar sin parse_mode
             if "can't parse entities" in str(e).lower():
-                logger.warning(f"Error parseando Markdown, reintentando sin formato: {e}")
+                logger.debug(f"Error parseando Markdown, reintentando sin formato: {e}")
                 try:
                     # Intentar editar sin Markdown
                     await self._status_message.edit_text(final_text + footer)
@@ -212,9 +336,9 @@ class StatusMessage:
                 except TelegramError as e2:
                     logger.error(f"Error al enviar mensaje final alternativo: {e2}")
 
-    async def error(self, error_message: str = "Lo siento, ocurrió un error al procesar tu solicitud") -> None:
+    async def error(self, error_message: str = "Oh no, tuve un problema procesando eso") -> None:
         """
-        Marcar operación como fallida y mostrar mensaje de error.
+        Marcar operación como fallida y mostrar mensaje de error (con personalidad de Amber).
 
         Args:
             error_message: Mensaje de error a mostrar
@@ -227,12 +351,20 @@ class StatusMessage:
             logger.error("No hay mensaje de estado para marcar como error")
             return
 
+        # Cancelar loop de auto-update
+        if self._auto_update_task and not self._auto_update_task.done():
+            self._auto_update_task.cancel()
+            try:
+                await self._auto_update_task
+            except asyncio.CancelledError:
+                pass
+
         total_duration = time.time() - self._start_time
 
         formatted_error = (
             f"❌ **Error**\n\n"
             f"{error_message}\n\n"
-            f"_Por favor, intenta de nuevo o usa /help para más información_"
+            f"_Intenta de nuevo o usa /help si necesitas ayuda_ ✨"
         )
 
         try:
