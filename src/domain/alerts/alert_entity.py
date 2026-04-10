@@ -74,6 +74,17 @@ class HistoricalTicket(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        """Convierte NULL de BD a string vacío para evitar ValidationError en campos str."""
+        if not isinstance(data, dict):
+            return data
+        for field in ("alerta", "detalle", "accionCorrectiva"):
+            if data.get(field) is None:
+                data[field] = ""
+        return data
+
     @property
     def accion_formateada(self) -> str:
         """Reemplaza el marcador [Salto] de la BD por saltos de línea reales."""
