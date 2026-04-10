@@ -114,21 +114,35 @@ class GetEscalationMatrixTool(BaseTool):
                     execution_time_ms=elapsed,
                 )
 
-            # Obtener template, matriz y contactos de área en paralelo
+            # Obtener template y matriz en paralelo
             usar_ekt_evento = evento.es_ekt if evento else usar_ekt
 
-            contacto_atendedora_task = (
-                self._repo.get_contacto_gerencia(evento.id_area_atendedora, usar_ekt=usar_ekt_evento)
-                if evento and evento.id_area_atendedora else asyncio.sleep(0)
-            )
-            contacto_administradora_task = (
-                self._repo.get_contacto_gerencia(evento.id_area_administradora, usar_ekt=usar_ekt_evento)
-                if evento and evento.id_area_administradora else asyncio.sleep(0)
-            )
-
-            template, matriz, contacto_atendedora, contacto_administradora = await asyncio.gather(
+            template, matriz = await asyncio.gather(
                 self._repo.get_template_info(tid, usar_ekt=usar_ekt),
                 self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
+            )
+
+            # Determinar id_gerencia atendedora: preferir el evento activo,
+            # caer al campo Atendedor_idGerencia del template si no hay evento.
+            id_atendedora = (
+                evento.id_area_atendedora if evento and evento.id_area_atendedora
+                else (template.atendedor_id_gerencia if template else None)
+            )
+            id_administradora = (
+                evento.id_area_administradora if evento and evento.id_area_administradora
+                else None
+            )
+
+            contacto_atendedora_task = (
+                self._repo.get_contacto_gerencia(id_atendedora, usar_ekt=usar_ekt_evento)
+                if id_atendedora else asyncio.sleep(0)
+            )
+            contacto_administradora_task = (
+                self._repo.get_contacto_gerencia(id_administradora, usar_ekt=usar_ekt_evento)
+                if id_administradora else asyncio.sleep(0)
+            )
+
+            contacto_atendedora, contacto_administradora = await asyncio.gather(
                 contacto_atendedora_task,
                 contacto_administradora_task,
             )
@@ -159,9 +173,11 @@ class GetEscalationMatrixTool(BaseTool):
                 if c is None or isinstance(c, type(None)):
                     return None
                 try:
+                    # Preferir responsable del evento; fallback al que devuelve el SP
+                    nombre = responsable or c.responsable
                     return {
                         "gerencia": c.gerencia,
-                        "responsable": responsable,
+                        "responsable": nombre,
                         "correos": c.correos,
                         "extensiones": c.extensiones,
                     }

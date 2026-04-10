@@ -62,7 +62,8 @@ class GetContactoGerenciaTool(BaseTool):
                 {"id_gerencia": 42, "usar_ekt": True},
             ],
             returns=(
-                "Dict con 'id_gerencia', 'gerencia', 'correos', 'extensiones'. "
+                "Dict con 'id_gerencia', 'gerencia', 'responsable', 'correos', 'extensiones'. "
+                "'responsable' es el nombre del gerente/responsable del área. "
                 "'correos' y 'extensiones' pueden ser cadenas vacías si no hay datos."
             ),
         )
@@ -108,6 +109,7 @@ class GetContactoGerenciaTool(BaseTool):
                 data={
                     "id_gerencia": id_gerencia,
                     "gerencia": contacto.gerencia,
+                    "responsable": contacto.responsable,
                     "correos": contacto.correos,
                     "extensiones": contacto.extensiones,
                 },
