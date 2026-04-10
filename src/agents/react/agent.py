@@ -245,11 +245,12 @@ class ReActAgent(BaseAgent):
                         if tracer:
                             if _trace_owner: tracer.end_trace()
 
-                    # La respuesta puede venir en final_answer o en action_input["answer"]
-                    # según el formato del system prompt de cada agente
+                    # La respuesta puede venir en final_answer, action_input["answer"]
+                    # o action_input["message"] (cuando ask_user se redirige a finish).
                     answer = (
                         react_response.final_answer
                         or react_response.action_input.get("answer")
+                        or react_response.action_input.get("message")
                         or ""
                     )
                     # Fallback: si finish llega vacío (system prompt sin definición de
