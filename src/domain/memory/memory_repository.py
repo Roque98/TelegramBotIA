@@ -63,7 +63,7 @@ class MemoryRepository:
                 user_id=user_id,
                 display_name=display_name,
                 long_term_summary="\n\n".join(summaries) if summaries else None,
-                interaction_count=row.get("num_interacciones", 0),
+                interaction_count=row.get("num_interacciones") or 0,
                 last_updated=row.get("ultima_actualizacion"),
                 preferences=preferences,
                 db_user_id=row.get("Id_Usuario"),
@@ -172,7 +172,7 @@ class MemoryRepository:
         if not profile:
             profile = UserProfile(user_id=user_id, interaction_count=1)
         else:
-            profile.interaction_count += 1
+            profile.interaction_count = (profile.interaction_count or 0) + 1
         await self.save_profile(profile)
         return profile.interaction_count
 
