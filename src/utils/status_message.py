@@ -351,7 +351,8 @@ class StatusMessage:
 
         # Agregar duración si es solicitado y la operación tomó tiempo significativo
         if self.show_elapsed_time and total_duration >= 1.0:
-            footer = f"\n\n_⏱️ {total_duration:.1f}s_"
+            elapsed_str = _escape_plain(f"{total_duration:.1f}s")
+            footer = f"\n\n_⏱️ {elapsed_str}_"
         else:
             footer = ""
 
