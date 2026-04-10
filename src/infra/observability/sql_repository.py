@@ -61,41 +61,33 @@ class ObservabilityRepository:
             cost_usd: Costo total del request en USD (OBS-36).
         """
         try:
-            exitoso = 0 if error_message else 1
-            sql = """
-                INSERT INTO abcmasplus..BotIAv2_InteractionLogs (
-                    correlationId, idUsuario, telegramChatId, telegramUsername,
-                    comando, query, respuesta, mensajeError,
-                    toolsUsadas, stepsTomados,
-                    memoryMs, reactMs, saveMs, duracionMs, channel, exitoso,
-                    agenteNombre,
-                    totalInputTokens, totalOutputTokens, llmIteraciones,
-                    usedFallback, classifyMs, agentConfidence, costUSD
-                )
-                VALUES (
-                    :correlation_id,
-                    (SELECT TOP 1 idUsuario FROM abcmasplus..BotIAv2_UsuariosTelegram
-                     WHERE telegramChatId = :chat_id AND activo = 1),
-                    :chat_id_int,
-                    :username,
-                    '/ia',
-                    :query,
-                    :respuesta,
-                    :error_message,
-                    :tools_used,
-                    :steps_count,
-                    :memory_ms, :react_ms, :save_ms, :total_ms,
-                    :channel,
-                    :exitoso,
-                    :agente_nombre,
-                    :total_input_tokens, :total_output_tokens, :llm_iteraciones,
-                    :used_fallback, :classify_ms, :agent_confidence, :cost_usd
-                )
-            """
             chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
+            sql = """
+                EXEC abcmasplus..BotIAv2_sp_GuardarInteraccion
+                    @correlationId     = :correlation_id,
+                    @telegramChatId    = :chat_id_int,
+                    @telegramUsername  = :username,
+                    @query             = :query,
+                    @respuesta         = :respuesta,
+                    @mensajeError      = :error_message,
+                    @toolsUsadas       = :tools_used,
+                    @stepsTomados      = :steps_count,
+                    @memoryMs          = :memory_ms,
+                    @reactMs           = :react_ms,
+                    @saveMs            = :save_ms,
+                    @duracionMs        = :total_ms,
+                    @channel           = :channel,
+                    @agenteNombre      = :agente_nombre,
+                    @totalInputTokens  = :total_input_tokens,
+                    @totalOutputTokens = :total_output_tokens,
+                    @llmIteraciones    = :llm_iteraciones,
+                    @usedFallback      = :used_fallback,
+                    @classifyMs        = :classify_ms,
+                    @agentConfidence   = :agent_confidence,
+                    @costUSD           = :cost_usd
+            """
             await self.db_manager.execute_non_query_async(sql, {
                 "correlation_id": correlation_id[:50] if correlation_id else None,
-                "chat_id": str(user_id) if user_id else None,
                 "chat_id_int": chat_id_int,
                 "username": username,
                 "query": (query or "")[:500],
@@ -108,7 +100,6 @@ class ObservabilityRepository:
                 "save_ms": save_ms,
                 "total_ms": total_ms,
                 "channel": channel,
-                "exitoso": exitoso,
                 "agente_nombre": agente_nombre[:100] if agente_nombre else None,
                 "total_input_tokens": total_input_tokens,
                 "total_output_tokens": total_output_tokens,

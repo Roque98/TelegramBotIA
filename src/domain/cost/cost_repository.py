@@ -41,20 +41,5 @@ class CostRepository:
 
     async def get_daily_costs(self, date_str: str) -> list[dict]:
         """Retorna el gasto del día agrupado por usuario. Usado por /costo."""
-        query = """
-            SELECT
-                cs.telegramChatId                                       AS chat_id,
-                COALESCE(u.Nombre, ut.telegramUsername, 'Desconocido') AS nombre,
-                COUNT(*)                                                AS sesiones,
-                SUM(cs.llamadasLLM)                                    AS llamadas,
-                SUM(cs.inputTokens)                                    AS input_tokens,
-                SUM(cs.outputTokens)                                   AS output_tokens,
-                SUM(cs.costoUSD)                                       AS costo_usd
-            FROM abcmasplus..BotIAv2_CostSesiones cs
-            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON cs.telegramChatId = ut.telegramChatId
-            LEFT JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            WHERE cs.fechaSesion >= CAST(:fecha AS DATE)
-            GROUP BY cs.telegramChatId, u.Nombre, ut.telegramUsername
-            ORDER BY costo_usd DESC
-        """
+        query = "EXEC abcmasplus..BotIAv2_sp_GetCostosDiarios @fecha = :fecha"
         return await self.db_manager.execute_query_async(query, {"fecha": date_str})

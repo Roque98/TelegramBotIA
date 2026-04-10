@@ -30,30 +30,7 @@ class MemoryRepository:
 
         try:
             _start = time.perf_counter()
-            query = """
-                SELECT
-                    u.idUsuario AS Id_Usuario,
-                    u.Nombre AS Nombre,
-                    u.idRol AS role_id,
-                    r.nombre AS role_name,
-                    STUFF((
-                        SELECT ',' + CAST(gu.idGerencia AS VARCHAR)
-                        FROM abcmasplus..GerenciasUsuarios gu
-                        WHERE gu.idUsuario = u.idUsuario
-                        FOR XML PATH('')
-                    ), 1, 1, '') AS gerencia_ids_csv,
-                    ump.resumenContextoLaboral AS resumen_contexto_laboral,
-                    ump.resumenTemasRecientes AS resumen_temas_recientes,
-                    ump.resumenHistorialBreve AS resumen_historial_breve,
-                    ump.numInteracciones AS num_interacciones,
-                    ump.ultimaActualizacion AS ultima_actualizacion,
-                    ump.preferencias AS preferencias
-                FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-                LEFT JOIN abcmasplus..Roles r ON u.idRol = r.idRol
-                LEFT JOIN abcmasplus..BotIAv2_UserMemoryProfiles ump ON u.idUsuario = ump.idUsuario
-                WHERE ut.telegramChatId = :user_id AND ut.activo = 1
-            """
+            query = "EXEC abcmasplus..BotIAv2_sp_GetPerfilMemoria @telegramChatId = :user_id"
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
             logger.debug(f"get_profile query for {user_id}: {(time.perf_counter() - _start) * 1000:.1f}ms")
 
@@ -141,15 +118,9 @@ class MemoryRepository:
 
         try:
             query = """
-                SELECT TOP (:limit)
-                    il.query        AS user_query,
-                    il.respuesta    AS respuesta,
-                    il.fechaEjecucion AS fecha
-                FROM abcmasplus..BotIAv2_InteractionLogs il
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON il.idUsuario = ut.idUsuario
-                WHERE ut.telegramChatId = :user_id AND ut.activo = 1
-                  AND il.mensajeError IS NULL
-                ORDER BY il.fechaEjecucion DESC
+                EXEC abcmasplus..BotIAv2_sp_GetMensajesRecientes
+                    @telegramChatId = :user_id,
+                    @limit          = :limit
             """
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id), "limit": limit})
 
@@ -185,19 +156,7 @@ class MemoryRepository:
             return {}
 
         try:
-            query = """
-                SELECT
-                    COUNT(*)                                             AS total,
-                    SUM(CASE WHEN il.mensajeError IS NULL THEN 1 ELSE 0 END)  AS exitosos,
-                    SUM(CASE WHEN il.mensajeError IS NOT NULL THEN 1 ELSE 0 END) AS errores,
-                    AVG(CAST(il.duracionMs AS FLOAT))                    AS avg_ms,
-                    MAX(il.duracionMs)                                   AS max_ms,
-                    MIN(il.fechaEjecucion)                               AS primera,
-                    MAX(il.fechaEjecucion)                               AS ultima
-                FROM abcmasplus..BotIAv2_InteractionLogs il
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON il.idUsuario = ut.idUsuario
-                WHERE ut.telegramChatId = :user_id AND ut.activo = 1
-            """
+            query = "EXEC abcmasplus..BotIAv2_sp_GetEstadisticasUsuario @telegramChatId = :user_id"
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id)})
             return results[0] if results else {}
         except Exception as e:

@@ -123,17 +123,10 @@ class SavePreferenceTool(BaseTool):
             )
 
         try:
-            # Primero obtener preferencias actuales
-            query_get = """
-                SELECT ump.preferencias
-                FROM abcmasplus..BotIAv2_UserMemoryProfiles ump
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
-                WHERE ut.telegramChatId = :user_id
-                  AND ut.activo = 1
-            """
-
+            # Obtener preferencias actuales
             results = self.db_manager.execute_query(
-                query_get, {"user_id": str(user_id)}
+                "EXEC abcmasplus..BotIAv2_sp_GetPreferenciasUsuario @telegramChatId = :user_id",
+                {"user_id": str(user_id)}
             )
 
             # Parsear preferencias existentes o crear nuevas
@@ -145,38 +138,16 @@ class SavePreferenceTool(BaseTool):
             else:
                 preferences = {}
 
-            # Actualizar preferencia
+            # Actualizar preferencia y guardar (upsert)
             preferences[key] = value
-
-            # Guardar preferencias actualizadas
-            query_update = """
-                UPDATE ump
-                SET ump.preferencias = :preferences,
-                    ump.ultimaActualizacion = GETDATE()
-                FROM abcmasplus..BotIAv2_UserMemoryProfiles ump
-                INNER JOIN abcmasplus..BotIAv2_UsuariosTelegram ut ON ump.idUsuario = ut.idUsuario
-                WHERE ut.telegramChatId = :user_id
-                  AND ut.activo = 1
-            """
-
-            # Si no existe registro, crear uno
-            if not results:
-                query_insert = """
-                    INSERT INTO abcmasplus..BotIAv2_UserMemoryProfiles (idUsuario, preferencias, numInteracciones)
-                    SELECT ut.idUsuario, :preferences, 0
-                    FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-                    WHERE ut.telegramChatId = :user_id
-                      AND ut.activo = 1
+            self.db_manager.execute_non_query(
                 """
-                self.db_manager.execute_non_query(
-                    query_insert,
-                    {"user_id": str(user_id), "preferences": json.dumps(preferences, ensure_ascii=False)}
-                )
-            else:
-                self.db_manager.execute_non_query(
-                    query_update,
-                    {"user_id": str(user_id), "preferences": json.dumps(preferences, ensure_ascii=False)}
-                )
+                EXEC abcmasplus..BotIAv2_sp_GuardarPreferenciasUsuario
+                    @telegramChatId = :user_id,
+                    @preferencias   = :preferences
+                """,
+                {"user_id": str(user_id), "preferences": json.dumps(preferences, ensure_ascii=False)}
+            )
 
             elapsed = (time.perf_counter() - start_time) * 1000
             logger.info(f"Preferencia guardada: {key}={value} para usuario {user_id}")
