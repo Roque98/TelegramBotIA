@@ -40,7 +40,10 @@ class DatabaseManager:
             self._host = settings.db_host
             self._db_type = settings.db_type
 
-        # Para operaciones síncronas con configuración optimizada
+        # Para operaciones síncronas con configuración optimizada.
+        # isolation_level="AUTOCOMMIT": evita que SQLAlchemy abra una transacción
+        # implícita antes de cada EXEC, lo que causaría que OPENDATASOURCE intente
+        # unirse a una transacción distribuida vía DTC (que está deshabilitado).
         self.engine = create_engine(
             self.database_url,
             echo=False,
@@ -49,6 +52,7 @@ class DatabaseManager:
             pool_timeout=20,          # Segundos esperando conexión del pool
             pool_recycle=3600,        # Reciclar conexiones cada hora (evita timeouts)
             pool_pre_ping=True,       # Verificar conexión antes de usar (previene errores)
+            isolation_level="AUTOCOMMIT",
             connect_args={
                 "timeout": 15,        # Timeout de conexión inicial (segundos)
             }
