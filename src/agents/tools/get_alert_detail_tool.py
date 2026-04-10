@@ -181,11 +181,13 @@ class GetAlertDetailTool(BaseTool):
                 ],
                 "contacto_atendedora": {
                     "gerencia": contacto_atendedora.gerencia,
+                    "responsable": evento.responsable_atendedor if evento else "",
                     "correos": contacto_atendedora.correos,
                     "extensiones": contacto_atendedora.extensiones,
                 } if contacto_atendedora else None,
                 "contacto_administradora": {
                     "gerencia": contacto_administradora.gerencia,
+                    "responsable": evento.responsable_administrador if evento else "",
                     "correos": contacto_administradora.correos,
                     "extensiones": contacto_administradora.extensiones,
                 } if contacto_administradora else None,

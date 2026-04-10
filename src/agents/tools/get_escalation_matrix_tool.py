@@ -154,12 +154,14 @@ class GetEscalationMatrixTool(BaseTool):
                 for n in matriz
             ]
 
-            def _contacto_dict(c):
+            def _contacto_dict(c, responsable: str = "") -> dict | None:
+                """Combina el contacto de área con el nombre del responsable del evento."""
                 if c is None or isinstance(c, type(None)):
                     return None
                 try:
                     return {
                         "gerencia": c.gerencia,
+                        "responsable": responsable,
                         "correos": c.correos,
                         "extensiones": c.extensiones,
                     }
@@ -177,8 +179,14 @@ class GetEscalationMatrixTool(BaseTool):
                     "equipo": evento.equipo if evento else None,
                     "template": template.aplicacion if template else None,
                     "gerencia_desarrollo": template.gerencia_desarrollo if template else None,
-                    "area_atendedora": _contacto_dict(contacto_atendedora),
-                    "area_administradora": _contacto_dict(contacto_administradora),
+                    "area_atendedora": _contacto_dict(
+                        contacto_atendedora,
+                        responsable=evento.responsable_atendedor if evento else "",
+                    ),
+                    "area_administradora": _contacto_dict(
+                        contacto_administradora,
+                        responsable=evento.responsable_administrador if evento else "",
+                    ),
                     "niveles": niveles,
                 },
                 execution_time_ms=elapsed,
