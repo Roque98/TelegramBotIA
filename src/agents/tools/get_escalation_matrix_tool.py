@@ -55,9 +55,11 @@ class GetEscalationMatrixTool(BaseTool):
                 {"ip": "10.118.57.142"},
             ],
             returns=(
-                "Dict con 'ip', 'template' (nombre de aplicación), 'gerencia_desarrollo' y "
+                "Dict con 'titulo' (formato '📌 #id nombre | instancia'), 'ip', "
+                "'template_id', 'template', 'instancia' (ABCEKT o ABCMASplus), "
+                "'gerencia_desarrollo', 'area_atendedora', 'area_administradora' y "
                 "'niveles' (list). Cada nivel tiene: nivel, nombre, puesto, extension, celular, "
-                "correo, tiempo_escalacion."
+                "correo, tiempo_escalacion. Usar 'titulo' como encabezado del resultado."
             ),
         )
 
@@ -189,11 +191,17 @@ class GetEscalationMatrixTool(BaseTool):
                 f"(template={template.aplicacion if template else 'N/A'}) en {elapsed:.0f}ms"
             )
 
+            etiqueta = template.etiqueta if template else ("ABCEKT" if usar_ekt else "ABCMASplus")
+            nombre_template = template.aplicacion if template else None
+            titulo = f"📌 #{tid} {nombre_template} | {etiqueta}" if nombre_template else f"📌 #{tid} | {etiqueta}"
+
             return ToolResult.success_result(
                 data={
+                    "titulo": titulo,
                     "ip": ip,
-                    "equipo": evento.equipo if evento else None,
-                    "template": template.aplicacion if template else None,
+                    "template_id": tid,
+                    "template": nombre_template,
+                    "instancia": etiqueta,
                     "gerencia_desarrollo": template.gerencia_desarrollo if template else None,
                     "area_atendedora": _contacto_dict(
                         contacto_atendedora,
