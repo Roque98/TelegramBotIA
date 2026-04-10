@@ -532,7 +532,23 @@ class ReActAgent(BaseAgent):
 
     def _build_react_response(self, data: dict, valid_tools: Optional[set[str]] = None) -> ReActResponse:
         """Construye ReActResponse desde un dict ya parseado."""
-        action = ActionType.from_string(data.get("action", "finish"), valid_tools=valid_tools)
+        try:
+            action = ActionType.from_string(data.get("action", "finish"), valid_tools=valid_tools)
+        except ValueError as e:
+            # El LLM inventó una acción desconocida. Redirigir a finish usando
+            # la mejor respuesta disponible en el payload para no perder contexto.
+            logger.warning(f"LLM returned unknown action, redirecting to finish: {e}")
+            answer = (
+                data.get("final_answer")
+                or (data.get("action_input") or {}).get("answer")
+                or data.get("thought", "")
+            )
+            return ReActResponse(
+                thought=data.get("thought", ""),
+                action=ActionType(ActionType.FINISH),
+                action_input={},
+                final_answer=answer or None,
+            )
         return ReActResponse(
             thought=data.get("thought", ""),
             action=action,

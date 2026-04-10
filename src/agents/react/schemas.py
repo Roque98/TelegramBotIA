@@ -47,6 +47,18 @@ class ActionType:
         "done": "finish",
         "end": "finish",
         "answer": "finish",
+        # Acciones de aclaración que el LLM puede inventar → redirigir a finish
+        "ask": "finish",
+        "ask_user": "finish",
+        "clarify": "finish",
+        "clarification": "finish",
+        "pedir_detalle": "finish",
+        "pedir_aclaracion": "finish",
+        "solicitar_detalle": "finish",
+        "preguntar": "finish",
+        "responder": "finish",
+        "respond": "finish",
+        "reply": "finish",
     }
 
     def __init__(self, value: str) -> None:
