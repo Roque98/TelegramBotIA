@@ -59,6 +59,14 @@ class ActionType:
         "responder": "finish",
         "respond": "finish",
         "reply": "finish",
+        # OpenAI function-calling nativo — el LLM envuelve la llamada real en action_input.
+        # Se manejan en _build_react_response para rescatar el tool real.
+        "call_tool": "_call_tool_wrapper",
+        "tool_call": "_call_tool_wrapper",
+        "use_tool": "_call_tool_wrapper",
+        "invoke": "_call_tool_wrapper",
+        "invoke_tool": "_call_tool_wrapper",
+        "function_call": "_call_tool_wrapper",
     }
 
     def __init__(self, value: str) -> None:
