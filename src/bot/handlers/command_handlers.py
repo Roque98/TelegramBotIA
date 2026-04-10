@@ -7,6 +7,7 @@ import logging
 from typing import Any, List, Dict, Optional
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes, Application
+from telegram.helpers import escape_markdown as _esc_md
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.knowledge import KnowledgeRepository
 from src.infra.database.connection import DatabaseManager
@@ -101,32 +102,35 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories = _get_categories_from_db(id_rol=id_rol)
     examples = _get_example_questions_from_db(4)
 
+    def _esc(v: object) -> str:
+        return _esc_md(str(v), version=2)
+
     # Construir lista de categorías
     categories_text = "\n".join([
-        f"{cat['icon']} {cat['display_name']}"
+        f"{cat['icon']} {_esc(cat['display_name'])}"
         for cat in categories
         if cat.get('entry_count', 0) > 0
     ])
 
     # Construir ejemplos
-    examples_text = "\n".join([f"• {q}" for q in examples])
+    examples_text = "\n".join([f"• {_esc(q)}" for q in examples])
 
     welcome_message = (
-        f"¡Hola {user.first_name}! 👋 Soy **IRIS**\n\n"
+        f"¡Hola {_esc(user.first_name)}\\! 👋 Soy *IRIS*\n\n"
         "Tu asistente del Centro de Operaciones aquí ✨\n\n"
         "Estoy para ayudarte con información sobre:\n"
         f"{categories_text}\n\n"
-        "**Ejemplos de lo que puedes preguntarme:**\n"
+        "*Ejemplos de lo que puedes preguntarme:*\n"
         f"{examples_text}\n\n"
-        "**Comandos disponibles:**\n"
-        "/help - Ver guía completa\n"
-        "/stats - Estadísticas de uso\n\n"
+        "*Comandos disponibles:*\n"
+        "/help \\- Ver guía completa\n"
+        "/stats \\- Estadísticas de uso\n\n"
         "¿En qué puedo ayudarte hoy? 🎯"
     )
 
     await update.message.reply_text(
         welcome_message,
-        parse_mode='Markdown'
+        parse_mode='MarkdownV2'
     )
 
 
@@ -165,39 +169,42 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     categories_section = ""
     emoji_num = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣"]
 
+    def _esc(v: object) -> str:
+        return _esc_md(str(v), version=2)
+
     for idx, cat in enumerate(categories[:7]):  # Máximo 7 categorías
         if cat.get('entry_count', 0) > 0:
-            categories_section += f"\n{emoji_num[idx]} **{cat['icon']} {cat['display_name']}:**\n"
+            categories_section += f"\n{emoji_num[idx]} *{cat['icon']} {_esc(cat['display_name'])}:*\n"
             categories_section += f"   Tengo {cat['entry_count']} respuestas sobre este tema\n"
 
     # Construir ejemplos agrupados
-    examples_text = "\n".join([f"   • {q}" for q in examples[:6]])
+    examples_text = "\n".join([f"   • {_esc(q)}" for q in examples[:6]])
 
     help_message = (
-        "**📖 Guía de Uso - IRIS te explica**\n\n"
-        "Hola de nuevo! Aquí está todo lo que puedo hacer por ti ✨\n\n"
-        "**Comandos Disponibles:**\n"
-        "/start - Volver a la bienvenida\n"
-        "/help - Mostrar esta guía\n"
-        "/stats - Ver estadísticas de uso\n"
-        "/ia [pregunta] - Hacer una consulta directa\n\n"
-        "**Temas sobre los que puedo ayudarte:**"
+        "*📖 Guía de Uso \\- IRIS te explica*\n\n"
+        "Hola de nuevo\\! Aquí está todo lo que puedo hacer por ti ✨\n\n"
+        "*Comandos Disponibles:*\n"
+        "/start \\- Volver a la bienvenida\n"
+        "/help \\- Mostrar esta guía\n"
+        "/stats \\- Ver estadísticas de uso\n"
+        "/ia \\[pregunta\\] \\- Hacer una consulta directa\n\n"
+        "*Temas sobre los que puedo ayudarte:*"
         f"{categories_section}\n\n"
-        "**Ejemplos de preguntas:**\n"
+        "*Ejemplos de preguntas:*\n"
         f"{examples_text}\n\n"
-        "**Consejos de IRIS:**\n"
+        "*Consejos de IRIS:*\n"
         "✅ Sé específico, me ayuda a ayudarte mejor\n"
         "✅ Puedo trabajar con lenguaje natural, no necesitas saber SQL\n"
         "✅ Si algo no está claro, pregúntame de nuevo\n\n"
-        "**Seguridad:**\n"
-        "🔒 Solo consulto datos (no los modifico)\n"
+        "*Seguridad:*\n"
+        "🔒 Solo consulto datos \\(no los modifico\\)\n"
         "🔒 Tus consultas son seguras y validadas\n\n"
         "¿Algo más en lo que pueda ayudarte? 💡"
     )
 
     await update.message.reply_text(
         help_message,
-        parse_mode='Markdown'
+        parse_mode='MarkdownV2'
     )
 
 
@@ -239,7 +246,7 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             stats_message = (
                 "*Tus estadísticas* 📊\n\n"
                 f"*Consultas totales:* {total}\n"
-                f"*Exitosas:* {exitosos} ({tasa:.0f}%)\n"
+                f"*Exitosas:* {exitosos} \\({tasa:.0f}%\\)\n"
                 f"*Errores:* {errores}\n\n"
                 f"*Tiempo de respuesta:*\n"
                 f"  Promedio: {avg_ms:.0f}ms\n"
@@ -250,12 +257,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.error(f"Error obteniendo estadísticas del usuario {user_id}: {e}")
-        stats_message = "Error obteniendo estadísticas. Intenta de nuevo."
+        stats_message = "Error obteniendo estadísticas\\. Intenta de nuevo\\."
 
     try:
-        await update.message.reply_text(stats_message, parse_mode='Markdown')
+        await update.message.reply_text(stats_message, parse_mode='MarkdownV2')
     except Exception:
-        await update.message.reply_text(stats_message)
+        await update.message.reply_text("Error obteniendo estadísticas. Intenta de nuevo.")
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -272,8 +279,8 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Usuario {user_id} ejecutó /cancel")
 
     await update.message.reply_text(
-        "✅ Operación cancelada.\n\n¿En qué más puedo ayudarte? 💡",
-        parse_mode='Markdown'
+        "✅ Operación cancelada\\.\n\n¿En qué más puedo ayudarte? 💡",
+        parse_mode='MarkdownV2'
     )
 
 
@@ -309,8 +316,11 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rows = await cost_repo.get_daily_costs(date.today().isoformat())
 
         if not rows:
-            await update.message.reply_text("_Sin datos de costo para hoy._", parse_mode="Markdown")
+            await update.message.reply_text("_Sin datos de costo para hoy\\._", parse_mode="MarkdownV2")
             return
+
+        def _esc(v: object) -> str:
+            return _esc_md(str(v), version=2)
 
         lines = ["*Costo del día por usuario* 💸\n"]
         total_usd = 0.0
@@ -323,12 +333,12 @@ async def costo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             usd = row.get("costo_usd") or 0.0
             total_usd += usd
             lines.append(
-                f"• *{nombre}*: {sesiones} sesiones | {llamadas} llamadas LLM | "
-                f"{inp+out:,} tokens | `${usd:.4f}`"
+                f"• *{_esc(nombre)}*: {sesiones} sesiones \\| {llamadas} llamadas LLM \\| "
+                f"{inp+out:,} tokens \\| `${_esc(f'{usd:.4f}')}`"
             )
 
-        lines.append(f"\n*Total: ${total_usd:.4f}*")
-        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+        lines.append(f"\n*Total: `${_esc(f'{total_usd:.4f}')}`*")
+        await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
     except Exception as e:
         logger.error(f"Error en /costo: {e}")
@@ -369,10 +379,10 @@ async def recargar_permisos_command(update: Update, context: ContextTypes.DEFAUL
             logger.info(f"Cache de permisos invalidado para user_id={profile['user_id']}")
 
         await update.message.reply_text(
-            "✅ *Permisos recargados.*\n\n"
-            "Tu cache de permisos fue reiniciado. "
-            "Los cambios tendrán efecto en tu próxima consulta.",
-            parse_mode="Markdown",
+            "✅ *Permisos recargados\\.*\n\n"
+            "Tu cache de permisos fue reiniciado\\. "
+            "Los cambios tendrán efecto en tu próxima consulta\\.",
+            parse_mode="MarkdownV2",
         )
 
     except Exception as e:
