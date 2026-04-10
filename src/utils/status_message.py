@@ -93,6 +93,38 @@ def _to_markdownv2(text: str) -> str:
     return ''.join(result)
 
 
+def _split_message(text: str, max_length: int = 4000) -> list[str]:
+    """
+    Divide texto en chunks de hasta max_length caracteres respetando párrafos.
+
+    Intenta cortar en párrafos (doble salto de línea), luego en líneas simples,
+    y como último recurso hace un corte duro.
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+
+    while len(remaining) > max_length:
+        # Buscar el último párrafo que quepa
+        cut = remaining.rfind('\n\n', 0, max_length)
+        if cut == -1:
+            # No hay doble salto: buscar salto de línea simple
+            cut = remaining.rfind('\n', 0, max_length)
+        if cut == -1:
+            # No hay salto de línea: corte duro
+            cut = max_length
+
+        chunks.append(remaining[:cut].strip())
+        remaining = remaining[cut:].strip()
+
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
+
+
 class StatusMessage:
     """
     Gestor de mensajes de estado progresivo.
@@ -372,16 +404,19 @@ class StatusMessage:
             full_message = safe_text + footer
 
             if len(full_message) > MAX_LENGTH:
-                # Si es muy largo, enviar mensaje nuevo y eliminar el de estado
+                # Si es muy largo, dividir en chunks y enviar como mensajes nuevos
+                chunks = _split_message(safe_text, MAX_LENGTH)
                 try:
-                    await self.update.message.reply_text(
-                        safe_text,
-                        parse_mode='MarkdownV2'
-                    )
+                    for chunk in chunks:
+                        await self.update.message.reply_text(
+                            chunk,
+                            parse_mode='MarkdownV2'
+                        )
                 except TelegramError as parse_error:
                     if "can't parse entities" in str(parse_error).lower():
                         # Reintento sin formato
-                        await self.update.message.reply_text(final_text)
+                        for chunk in _split_message(final_text, MAX_LENGTH):
+                            await self.update.message.reply_text(chunk)
                     else:
                         raise
                 await self._delete_status_message()
@@ -398,20 +433,22 @@ class StatusMessage:
             if "can't parse entities" in str(e).lower():
                 logger.warning(f"MarkdownV2 inválido tras conversión, enviando sin formato: {e}")
                 try:
-                    await self._status_message.edit_text(final_text)
+                    plain_chunks = _split_message(final_text, MAX_LENGTH)
+                    if len(plain_chunks) == 1:
+                        await self._status_message.edit_text(plain_chunks[0])
+                    else:
+                        for chunk in plain_chunks:
+                            await self.update.message.reply_text(chunk)
+                        await self._delete_status_message()
                     logger.debug(f"Mensaje enviado sin formato en {total_duration:.2f}s")
                 except TelegramError as e2:
-                    logger.error(f"Error al editar sin formato: {e2}")
-                    try:
-                        await self.update.message.reply_text(final_text)
-                        await self._delete_status_message()
-                    except TelegramError as e3:
-                        logger.error(f"Error al enviar mensaje final sin formato: {e3}")
+                    logger.error(f"Error al enviar sin formato: {e2}")
             else:
-                # Otro tipo de error, intentar enviar como mensaje nuevo
+                # Otro tipo de error, intentar enviar como mensajes nuevos (con split)
                 logger.error(f"Error al completar mensaje de estado: {e}")
                 try:
-                    await self.update.message.reply_text(final_text)
+                    for chunk in _split_message(final_text, MAX_LENGTH):
+                        await self.update.message.reply_text(chunk)
                     await self._delete_status_message()
                 except TelegramError as e2:
                     logger.error(f"Error al enviar mensaje final alternativo: {e2}")
