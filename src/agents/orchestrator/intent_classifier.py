@@ -77,7 +77,10 @@ class IntentClassifier:
         prompt = (
             f"Clasificá la consulta en UNA de estas categorías:\n"
             f"{opciones}\n"
-            f"- generalista: si no encaja claramente en ninguna de las anteriores\n\n"
+            f"- generalista: SOLO si la consulta no tiene ninguna relación con los dominios anteriores\n\n"
+            f"IMPORTANTE: Si la consulta menciona IPs, equipos, alertas, sensores, "
+            f"incidentes o infraestructura, preferí el agente especializado aunque "
+            f"el usuario use verbos de acción como 'solucionar', 'atender' o 'resolver'.\n\n"
             f"Respondé ÚNICAMENTE con el nombre de la categoría.\n\n"
             f"Consulta: {query[:500]}"
         )
