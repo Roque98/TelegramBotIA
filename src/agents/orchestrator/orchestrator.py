@@ -23,6 +23,7 @@ from src.agents.base.events import UserContext
 from src.agents.factory.agent_builder import AgentBuilder
 from src.domain.agent_config.agent_config_entity import AgentDefinition
 from src.domain.agent_config.agent_config_service import AgentConfigService
+from src.domain.cost.cost_tracker import CostTracker, reset_current_tracker, set_current_tracker
 
 from .intent_classifier import IntentClassifier
 
@@ -82,32 +83,49 @@ class AgentOrchestrator:
         t0 = time.perf_counter()
         t0_dt = datetime.datetime.utcnow()
 
+        # 1. Cargar agentes activos desde cache/BD
         try:
-            # 1. Cargar agentes activos desde cache/BD
             definitions = self.agent_config_service.get_active_agents()
-
-            # 2. Clasificar intent (retorna ClassifyResult con confianza y alternativas)
-            classify_result = await self.intent_classifier.classify(query, definitions)
-            classify_ms = int((time.perf_counter() - t0) * 1000)
-
-            # 3. Resolver definición (con fallback a generalista)
-            definition, used_fallback = self._resolve(classify_result.agent_name, definitions)
-
-            logger.info(
-                f"Orchestrator: '{query[:50]}' → '{definition.nombre}' "
-                f"(classify={classify_ms}ms, confidence={classify_result.confidence}, "
-                f"fallback={used_fallback})"
-            )
-
-            # 4. Construir / recuperar del cache la instancia del agente
-            agent = self.agent_builder.build(definition)
-
         except AgentConfigException as e:
             logger.error(f"AgentConfigException en orchestrator: {e}")
             return AgentResponse.error_response(
                 agent_name="orchestrator",
                 error="Servicio temporalmente no disponible. Por favor reintentá más tarde.",
             )
+
+        # 2. Clasificar intent con tracker propio para capturar tokens y costo
+        classify_tracker = CostTracker()
+        _classify_token = set_current_tracker(classify_tracker)
+        try:
+            classify_result = await self.intent_classifier.classify(query, definitions)
+        finally:
+            reset_current_tracker(_classify_token)
+        classify_ms = int((time.perf_counter() - t0) * 1000)
+
+        # Extraer costo del clasificador (None si el modelo no reportó usage)
+        classify_turn = classify_tracker.turns[0] if classify_tracker.turns else None
+        classify_tokens_in  = classify_turn.input_tokens  if classify_turn else None
+        classify_tokens_out = classify_turn.output_tokens if classify_turn else None
+        classify_cost_usd   = classify_turn.cost_usd      if classify_turn else None
+
+        # 3. Resolver definición (con fallback a generalista)
+        try:
+            definition, used_fallback = self._resolve(classify_result.agent_name, definitions)
+        except AgentConfigException as e:
+            logger.error(f"AgentConfigException en orchestrator: {e}")
+            return AgentResponse.error_response(
+                agent_name="orchestrator",
+                error="Servicio temporalmente no disponible. Por favor reintentá más tarde.",
+            )
+
+        logger.info(
+            f"Orchestrator: '{query[:50]}' → '{definition.nombre}' "
+            f"(classify={classify_ms}ms, confidence={classify_result.confidence}, "
+            f"fallback={used_fallback})"
+        )
+
+        # 4. Construir / recuperar del cache la instancia del agente
+        agent = self.agent_builder.build(definition)
 
         # 5. Ejecutar el agente seleccionado
         response = await agent.execute(
@@ -123,8 +141,7 @@ class AgentOrchestrator:
         response.agent_confidence = classify_result.confidence
         response.used_fallback = used_fallback or classify_result.used_fallback
 
-        # 7. Inyectar el step del clasificador al inicio de step_traces para
-        #    que el tiempo de clasificación quede reflejado en la medición total.
+        # 7. Inyectar step del clasificador en step_traces e incorporar su costo al total
         if response.data is not None:
             classifier_step = {
                 "stepNum": 0,
@@ -132,14 +149,26 @@ class AgentOrchestrator:
                 "nombre": getattr(self.intent_classifier.llm, "model", "classifier"),
                 "entrada": query[:4000],
                 "salida": classify_result.agent_name,
-                "tokensIn": None,
-                "tokensOut": None,
-                "costoUSD": None,
+                "tokensIn": classify_tokens_in,
+                "tokensOut": classify_tokens_out,
+                "costoUSD": classify_cost_usd,
                 "duracionMs": classify_ms,
                 "fechaInicio": t0_dt,
             }
             existing = response.data.get("step_traces") or []
             response.data["step_traces"] = [classifier_step] + existing
+
+            # Sumar costo del clasificador al resumen de costo del agente
+            cost_summary = response.data.get("cost")
+            if cost_summary and classify_turn:
+                cost_summary["input_tokens"]  = (cost_summary.get("input_tokens")  or 0) + classify_tokens_in
+                cost_summary["output_tokens"] = (cost_summary.get("output_tokens") or 0) + classify_tokens_out
+                cost_summary["cost_usd"]      = round(
+                    (cost_summary.get("cost_usd") or 0.0) + classify_cost_usd, 6
+                )
+                cost_summary["llm_calls"]     = (cost_summary.get("llm_calls") or 0) + 1
+                if cost_summary.get("model") and cost_summary["model"] != "mixed":
+                    cost_summary["model"] = "mixed"
 
         return response
 
