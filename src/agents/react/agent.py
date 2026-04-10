@@ -252,6 +252,16 @@ class ReActAgent(BaseAgent):
                         or react_response.action_input.get("answer")
                         or ""
                     )
+                    # Fallback: si finish llega vacío (system prompt sin definición de
+                    # final_answer), usar la última observación del scratchpad.
+                    if not answer and not scratchpad.is_empty():
+                        last_obs = scratchpad.get_last_observation()
+                        if last_obs:
+                            answer = last_obs
+                            logger.warning(
+                                "ReAct: finish con respuesta vacía — "
+                                "usando última observación como fallback"
+                            )
                     return AgentResponse.success_response(
                         agent_name=self.name,
                         message=answer,
