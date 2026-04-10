@@ -100,6 +100,8 @@ class GetInventoryByIpTool(BaseTool):
                 data={
                     "ip": item.ip,
                     "hostname": item.hostname,
+                    "id_area_atendedora": item.id_area_atendedora,
+                    "id_area_administradora": item.id_area_administradora,
                     "area_atendedora": item.area_atendedora,
                     "area_administradora": item.area_administradora,
                     "fuente": item.fuente,

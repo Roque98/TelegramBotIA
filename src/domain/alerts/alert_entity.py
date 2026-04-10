@@ -190,6 +190,8 @@ class InventoryItem(BaseModel):
 
     ip: str = Field(alias="ip", default="")
     hostname: str = Field(alias="hostname", default="")
+    id_area_atendedora: Optional[int] = Field(alias="id_area_atendedora", default=None)
+    id_area_administradora: Optional[int] = Field(alias="id_area_administradora", default=None)
     area_atendedora: str = Field(alias="area_atendedora", default="")
     area_administradora: str = Field(alias="area_administradora", default="")
     fuente: str = Field(alias="fuente", default="")           # "Fisico" | "Virtual"

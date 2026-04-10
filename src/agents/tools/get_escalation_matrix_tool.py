@@ -75,12 +75,12 @@ class GetEscalationMatrixTool(BaseTool):
             )
 
         try:
-            # Obtener evento activo y template_id en paralelo
-            events, template_id_row = await asyncio.gather(
-                self._repo.get_active_events(ip=ip),
+            # Obtener template_id e inventario en paralelo — el inventario es
+            # la fuente de verdad para área atendedora y administradora.
+            template_id_row, inventario = await asyncio.gather(
                 self._repo.get_template_id(ip=ip),
+                self._repo.get_inventory_by_ip(ip=ip),
             )
-            evento = events[0] if events else None
 
             if not template_id_row:
                 elapsed = (time.perf_counter() - t0) * 1000
@@ -117,30 +117,21 @@ class GetEscalationMatrixTool(BaseTool):
                 )
 
             # Obtener template y matriz en paralelo
-            usar_ekt_evento = evento.es_ekt if evento else usar_ekt
-
             template, matriz = await asyncio.gather(
                 self._repo.get_template_info(tid, usar_ekt=usar_ekt),
                 self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
             )
 
-            # Determinar id_gerencia atendedora: preferir el evento activo,
-            # caer al campo Atendedor_idGerencia del template si no hay evento.
-            id_atendedora = (
-                evento.id_area_atendedora if evento and evento.id_area_atendedora
-                else (template.atendedor_id_gerencia if template else None)
-            )
-            id_administradora = (
-                evento.id_area_administradora if evento and evento.id_area_administradora
-                else None
-            )
+            # IDs de área desde el inventario (fuente de verdad)
+            id_atendedora    = inventario.id_area_atendedora    if inventario else None
+            id_administradora = inventario.id_area_administradora if inventario else None
 
             contacto_atendedora_task = (
-                self._repo.get_contacto_gerencia(id_atendedora, usar_ekt=usar_ekt_evento)
+                self._repo.get_contacto_gerencia(id_atendedora, usar_ekt=usar_ekt)
                 if id_atendedora else asyncio.sleep(0)
             )
             contacto_administradora_task = (
-                self._repo.get_contacto_gerencia(id_administradora, usar_ekt=usar_ekt_evento)
+                self._repo.get_contacto_gerencia(id_administradora, usar_ekt=usar_ekt)
                 if id_administradora else asyncio.sleep(0)
             )
 
@@ -149,7 +140,6 @@ class GetEscalationMatrixTool(BaseTool):
                 contacto_administradora_task,
             )
 
-            # asyncio.sleep(0) retorna None; excepciones no deben romper el resultado
             if isinstance(contacto_atendedora, Exception):
                 contacto_atendedora = None
             if isinstance(contacto_administradora, Exception):
@@ -170,16 +160,13 @@ class GetEscalationMatrixTool(BaseTool):
                 for n in matriz
             ]
 
-            def _contacto_dict(c, responsable: str = "") -> dict | None:
-                """Combina el contacto de área con el nombre del responsable del evento."""
+            def _contacto_dict(c) -> dict | None:
                 if c is None or isinstance(c, type(None)):
                     return None
                 try:
-                    # Preferir responsable del evento; fallback al que devuelve el SP
-                    nombre = responsable or c.responsable
                     return {
                         "gerencia": c.gerencia,
-                        "responsable": nombre,
+                        "responsable": c.responsable,
                         "correos": c.correos,
                         "extensiones": c.extensiones,
                     }
@@ -203,14 +190,8 @@ class GetEscalationMatrixTool(BaseTool):
                     "template": nombre_template,
                     "instancia": etiqueta,
                     "gerencia_desarrollo": template.gerencia_desarrollo if template else None,
-                    "area_atendedora": _contacto_dict(
-                        contacto_atendedora,
-                        responsable=evento.responsable_atendedor if evento else "",
-                    ),
-                    "area_administradora": _contacto_dict(
-                        contacto_administradora,
-                        responsable=evento.responsable_administrador if evento else "",
-                    ),
+                    "area_atendedora": _contacto_dict(contacto_atendedora),
+                    "area_administradora": _contacto_dict(contacto_administradora),
                     "niveles": niveles,
                 },
                 execution_time_ms=elapsed,
