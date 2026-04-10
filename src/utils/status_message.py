@@ -21,6 +21,41 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_markdown(text: str) -> str:
+    """
+    Limpia el texto para que sea compatible con Markdown legacy de Telegram.
+
+    Telegram legacy Markdown falla si hay marcadores sin cerrar (*/_/`).
+    También reemplaza triple backtick (``` no soportado) por backtick simple.
+    """
+    import re
+
+    # Reemplazar bloques de código triple backtick por inline
+    text = re.sub(r'```[a-zA-Z]*\n?', '`', text)
+    text = text.replace('```', '`')
+
+    # Balancear asteriscos: si hay número impar, quitar el último suelto
+    # Contar * que no forman pares **
+    single_stars = len(re.findall(r'(?<!\*)\*(?!\*)', text))
+    if single_stars % 2 != 0:
+        # Quitar el último asterisco suelto
+        text = re.sub(r'(?<!\*)\*(?!\*)', '', text, count=1)
+
+    # Balancear guiones bajos
+    single_underscores = text.count('_')
+    if single_underscores % 2 != 0:
+        last = text.rfind('_')
+        text = text[:last] + text[last+1:]
+
+    # Balancear backticks simples
+    backtick_count = text.count('`')
+    if backtick_count % 2 != 0:
+        last = text.rfind('`')
+        text = text[:last] + text[last+1:]
+
+    return text
+
+
 class StatusMessage:
     """
     Gestor de mensajes de estado progresivo.
@@ -287,19 +322,20 @@ class StatusMessage:
         try:
             # Telegram tiene límite de 4096 caracteres
             MAX_LENGTH = 4000
-            full_message = final_text + footer
+            safe_text = _sanitize_markdown(final_text)
+            full_message = safe_text + footer
 
             if len(full_message) > MAX_LENGTH:
                 # Si es muy largo, enviar mensaje nuevo y eliminar el de estado
                 try:
                     await self.update.message.reply_text(
-                        final_text,
+                        safe_text,
                         parse_mode='Markdown'
                     )
                 except TelegramError as parse_error:
                     if "can't parse entities" in str(parse_error).lower():
                         # Reintento sin Markdown
-                        await self.update.message.reply_text(final_text)
+                        await self.update.message.reply_text(safe_text)
                     else:
                         raise
                 await self._delete_status_message()
@@ -314,10 +350,10 @@ class StatusMessage:
         except TelegramError as e:
             # Si falla el parseo de Markdown, intentar sin parse_mode
             if "can't parse entities" in str(e).lower():
-                logger.debug(f"Error parseando Markdown, reintentando sin formato: {e}")
+                logger.warning(f"Markdown inválido tras sanitización, enviando sin formato: {e}")
                 try:
                     # Intentar editar sin Markdown
-                    await self._status_message.edit_text(final_text + footer)
+                    await self._status_message.edit_text(safe_text + footer)
                     logger.debug(f"Mensaje enviado sin Markdown en {total_duration:.2f}s")
                 except TelegramError as e2:
                     logger.error(f"Error al editar sin Markdown: {e2}")
