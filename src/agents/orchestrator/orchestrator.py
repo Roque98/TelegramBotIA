@@ -12,6 +12,7 @@ La interfaz pública (.execute()) es idéntica a ReActAgent — MainHandler
 no sabe cuántos agentes existen.
 """
 
+import datetime
 import logging
 import time
 from typing import Any, Awaitable, Callable, Optional
@@ -79,6 +80,7 @@ class AgentOrchestrator:
             el nombre del agente que respondió.
         """
         t0 = time.perf_counter()
+        t0_dt = datetime.datetime.utcnow()
 
         try:
             # 1. Cargar agentes activos desde cache/BD
@@ -120,6 +122,26 @@ class AgentOrchestrator:
         response.classify_ms = classify_ms
         response.agent_confidence = classify_result.confidence
         response.used_fallback = used_fallback or classify_result.used_fallback
+
+        # 7. Inyectar el step del clasificador al inicio de step_traces para
+        #    que el tiempo de clasificación quede reflejado en la medición total.
+        if response.data is not None:
+            classifier_step = {
+                "stepNum": 0,
+                "tipo": "llm_call",
+                "nombre": getattr(self.intent_classifier.llm, "model", "classifier"),
+                "entrada": query[:4000],
+                "salida": classify_result.agent_name,
+                "tokensIn": None,
+                "tokensOut": None,
+                "costoUSD": None,
+                "duracionMs": classify_ms,
+                "fechaInicio": t0_dt,
+            }
+            existing = response.data.get("step_traces") or []
+            for step in existing:
+                step["stepNum"] = step.get("stepNum", 0) + 1
+            response.data["step_traces"] = [classifier_step] + existing
 
         return response
 
