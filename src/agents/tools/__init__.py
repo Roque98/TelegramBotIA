@@ -37,6 +37,7 @@ __all__ = [
     "CalculateTool",
     "DateTimeTool",
     "ReadAttachmentTool",
+    "AlertAnalysisTool",
 ]
 
 
@@ -57,4 +58,7 @@ def __getattr__(name: str):
     if name == "ReadAttachmentTool":
         from .read_attachment_tool import ReadAttachmentTool
         return ReadAttachmentTool
+    if name == "AlertAnalysisTool":
+        from .alert_analysis_tool import AlertAnalysisTool
+        return AlertAnalysisTool
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

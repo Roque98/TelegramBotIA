@@ -632,7 +632,7 @@ class ReActAgent(BaseAgent):
                 user_context=context,
             )
 
-            observation = result.to_observation()
+            observation = result.to_observation(max_length=8000)
             logger.debug(f"Tool result: {observation[:100]}...")
 
             return observation
