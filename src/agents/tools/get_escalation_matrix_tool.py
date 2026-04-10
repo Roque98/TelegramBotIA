@@ -55,10 +55,11 @@ class GetEscalationMatrixTool(BaseTool):
                 {"ip": "10.118.57.142"},
             ],
             returns=(
-                "Dict con 'template' (formato '📌 #id nombre | instancia'), "
-                "'gerencia_desarrollo', 'area_atendedora', 'area_administradora' y "
-                "'niveles' (list). Cada nivel tiene: nivel, nombre, puesto, extension, celular, "
-                "correo, tiempo_escalacion. Mostrar 'template' como '- Template: {valor}'."
+                "Dict con exactamente estos campos: 'template' (formato '📌 #id nombre | instancia'), "
+                "'gerencia_desarrollo', 'area_atendedora', 'area_administradora', 'niveles'. "
+                "Al presentar el resultado, mostrar SOLO '- Template: {valor}' y '- Gerencia de desarrollo: {valor}'. "
+                "NO mostrar IP, título, instancia ni template_id por separado — ya están dentro del campo 'template'. "
+                "Cada nivel tiene: nivel, nombre, puesto, extension, celular, correo, tiempo_escalacion."
             ),
         )
 
