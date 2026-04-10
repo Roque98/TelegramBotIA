@@ -23,7 +23,10 @@ from src.agents.tools.save_memory_tool import SaveMemoryTool
 from src.agents.tools.reload_permissions_tool import ReloadPermissionsTool
 from src.agents.tools.reload_agent_config_tool import ReloadAgentConfigTool
 from src.agents.tools.read_attachment_tool import ReadAttachmentTool
-from src.agents.tools.alert_analysis_tool import AlertAnalysisTool
+from src.agents.tools.get_active_alerts_tool import GetActiveAlertsTool
+from src.agents.tools.get_historical_tickets_tool import GetHistoricalTicketsTool
+from src.agents.tools.get_escalation_matrix_tool import GetEscalationMatrixTool
+from src.agents.tools.get_alert_detail_tool import GetAlertDetailTool
 from src.domain.alerts.alert_repository import AlertRepository
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.agents.factory.agent_builder import AgentBuilder
@@ -84,10 +87,18 @@ def _build_tool_catalog(
         "reload_permissions":    lambda: ReloadPermissionsTool(permission_service=permission_service),
         "reload_agent_config":   lambda: ReloadAgentConfigTool(agent_config_service=agent_config_service),
         "read_attachment":   lambda: ReadAttachmentTool(bot_token=token) if token else None,
-        "alert_analysis":    lambda: AlertAnalysisTool(
+        "get_active_alerts":      lambda: GetActiveAlertsTool(
             repo=AlertRepository(db_registry.get("monitoreo")),
-            llm=data_llm,
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo") and data_llm) else None,
+        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
+        "get_historical_tickets": lambda: GetHistoricalTicketsTool(
+            repo=AlertRepository(db_registry.get("monitoreo")),
+        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
+        "get_escalation_matrix":  lambda: GetEscalationMatrixTool(
+            repo=AlertRepository(db_registry.get("monitoreo")),
+        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
+        "get_alert_detail":       lambda: GetAlertDetailTool(
+            repo=AlertRepository(db_registry.get("monitoreo")),
+        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
     }
 
 
