@@ -9,8 +9,9 @@
 --
 -- Qué hace:
 --   1. Registra la tool 'alert_analysis' en BotIAv2_Recurso
---   2. Inserta el agente 'alertas' en BotIAv2_AgenteDef
---   3. Asigna la tool alert_analysis al scope del agente
+--   2. Asigna permisos por rol en BotIAv2_Permisos (mismos roles que otras tools)
+--   3. Inserta el agente 'alertas' en BotIAv2_AgenteDef
+--   4. Asigna la tool alert_analysis al scope del agente en BotIAv2_AgenteTools
 --
 -- Idempotente — se puede ejecutar más de una vez sin problema.
 -- ============================================================
@@ -32,7 +33,23 @@ ELSE
     PRINT 'tool:alert_analysis ya existe en BotIAv2_Recurso';
 GO
 
--- ── 2. Insertar agente 'alertas' en BotIAv2_AgenteDef ───────────────────────
+-- ── 2. Permisos por rol en BotIAv2_Permisos ─────────────────────────────────
+-- Mismos roles que las demás tools (1,2,3,4,7,8 = roles de usuarios autenticados).
+-- esPublico=0 en Recurso → el sistema verifica permisos antes de ejecutar la tool.
+DECLARE @idRecurso     INT = (SELECT idRecurso     FROM abcmasplus..BotIAv2_Recurso    WHERE recurso = 'tool:alert_analysis');
+DECLARE @idTipoEntidad INT = (SELECT idTipoEntidad FROM abcmasplus..BotIAv2_TipoEntidad WHERE nombre  = 'autenticado');
+
+INSERT INTO abcmasplus..BotIAv2_Permisos
+    (idTipoEntidad, idEntidad, idRecurso, idRolRequerido, permitido, activo)
+SELECT @idTipoEntidad, 0, @idRecurso, idRol, 1, 1
+FROM (VALUES (1),(2),(3),(4),(7),(8)) AS roles(idRol)
+WHERE NOT EXISTS (
+    SELECT 1 FROM abcmasplus..BotIAv2_Permisos
+    WHERE idRecurso = @idRecurso AND idRolRequerido = roles.idRol AND activo = 1
+);
+GO
+
+-- ── 3. Insertar agente 'alertas' en BotIAv2_AgenteDef ───────────────────────
 IF NOT EXISTS (SELECT 1 FROM abcmasplus..BotIAv2_AgenteDef WHERE nombre = 'alertas')
     INSERT INTO abcmasplus..BotIAv2_AgenteDef (
         nombre,
@@ -71,7 +88,7 @@ ELSE
     PRINT 'Agente alertas ya existe en BotIAv2_AgenteDef';
 GO
 
--- ── 3. Asignar tool alert_analysis al scope del agente ──────────────────────
+-- ── 4. Asignar tool alert_analysis al scope del agente ──────────────────────
 DECLARE @idAgente INT = (SELECT idAgente FROM abcmasplus..BotIAv2_AgenteDef WHERE nombre = 'alertas');
 
 IF @idAgente IS NOT NULL AND NOT EXISTS (
@@ -85,9 +102,15 @@ ELSE
 GO
 
 -- ── Verificación ─────────────────────────────────────────────────────────────
-SELECT 'BotIAv2_Recurso' AS tabla, recurso, tipoRecurso, esPublico, activo
+SELECT 'BotIAv2_Recurso' AS tabla, recurso, tipoRecurso, esPublico, activo, fechaCreacion
 FROM abcmasplus..BotIAv2_Recurso
 WHERE recurso = 'tool:alert_analysis';
+
+SELECT 'BotIAv2_Permisos' AS tabla, bp.idRolRequerido, bp.permitido, bp.activo
+FROM abcmasplus..BotIAv2_Permisos bp
+JOIN abcmasplus..BotIAv2_Recurso br ON bp.idRecurso = br.idRecurso
+WHERE br.recurso = 'tool:alert_analysis'
+ORDER BY bp.idRolRequerido;
 
 SELECT 'BotIAv2_AgenteDef' AS tabla, idAgente, nombre, descripcion, temperatura, maxIteraciones, esGeneralista, activo
 FROM abcmasplus..BotIAv2_AgenteDef
