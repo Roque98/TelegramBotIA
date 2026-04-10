@@ -278,15 +278,15 @@ class AlertRepository:
         params = {"ip": ip}
 
         candidates = [
-            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp @ip = :ip",    "Fisico",  False),
-            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp @ip = :ip", "Virtual", False),
-            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp_Ekt @ip = :ip",    "Fisico",  True),
-            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp_Ekt @ip = :ip", "Virtual", True),
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp @ip = :ip",    "Fisico"),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp @ip = :ip", "Virtual"),
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp_Ekt @ip = :ip",    "Fisico"),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp_Ekt @ip = :ip", "Virtual"),
         ]
 
-        for sp, fuente, autocommit in candidates:
+        for sp, fuente in candidates:
             try:
-                rows = await self._db.execute_query_async(sp, params, autocommit=autocommit)
+                rows = await self._db.execute_query_async(sp, params)
                 if not rows:
                     continue
                 row = rows[0]
