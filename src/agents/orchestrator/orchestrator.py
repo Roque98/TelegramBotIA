@@ -139,8 +139,6 @@ class AgentOrchestrator:
                 "fechaInicio": t0_dt,
             }
             existing = response.data.get("step_traces") or []
-            for step in existing:
-                step["stepNum"] = step.get("stepNum", 0) + 1
             response.data["step_traces"] = [classifier_step] + existing
 
         return response
