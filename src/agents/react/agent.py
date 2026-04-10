@@ -252,6 +252,16 @@ class ReActAgent(BaseAgent):
                         or react_response.action_input.get("answer")
                         or ""
                     )
+                    # Fallback: si finish llega vacío (system prompt sin definición de
+                    # final_answer), usar la última observación del scratchpad.
+                    if not answer and not scratchpad.is_empty():
+                        last_obs = scratchpad.get_last_observation()
+                        if last_obs:
+                            answer = last_obs
+                            logger.warning(
+                                "ReAct: finish con respuesta vacía — "
+                                "usando última observación como fallback"
+                            )
                     return AgentResponse.success_response(
                         agent_name=self.name,
                         message=answer,
@@ -564,6 +574,48 @@ class ReActAgent(BaseAgent):
                 action_input={},
                 final_answer=answer or None,
             )
+
+        # El LLM usó call_tool/tool_call — intenta rescatar el tool real
+        # que viene en action_input["name"] o action_input["tool"]
+        if action.value == "_call_tool_wrapper":
+            action_input = data.get("action_input") or {}
+            tool_name = (
+                action_input.get("name")
+                or action_input.get("tool")
+                or action_input.get("tool_name")
+                or action_input.get("function")
+            )
+            inner_args = (
+                action_input.get("arguments")
+                or action_input.get("args")
+                or action_input.get("parameters")
+                or {k: v for k, v in action_input.items()
+                    if k not in ("name", "tool", "tool_name", "function", "arguments", "args", "parameters")}
+            )
+            if tool_name:
+                try:
+                    rescued = ActionType.from_string(tool_name, valid_tools=valid_tools)
+                    logger.info(
+                        f"call_tool wrapper: rescatado tool '{rescued.value}' "
+                        f"desde action_input (args={list(inner_args.keys())})"
+                    )
+                    return ReActResponse(
+                        thought=data.get("thought", ""),
+                        action=rescued,
+                        action_input=inner_args if isinstance(inner_args, dict) else {},
+                        final_answer=None,
+                    )
+                except ValueError:
+                    pass
+            # No se pudo rescatar el tool — redirigir a finish
+            logger.warning(f"call_tool wrapper: no se pudo rescatar el tool (action_input={action_input})")
+            return ReActResponse(
+                thought=data.get("thought", ""),
+                action=ActionType(ActionType.FINISH),
+                action_input={},
+                final_answer=data.get("final_answer") or data.get("thought") or None,
+            )
+
         return ReActResponse(
             thought=data.get("thought", ""),
             action=action,
@@ -632,7 +684,7 @@ class ReActAgent(BaseAgent):
                 user_context=context,
             )
 
-            observation = result.to_observation()
+            observation = result.to_observation(max_length=8000)
             logger.debug(f"Tool result: {observation[:100]}...")
 
             return observation

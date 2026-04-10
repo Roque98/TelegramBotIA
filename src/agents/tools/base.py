@@ -25,6 +25,7 @@ class ToolCategory(str, Enum):
     CALCULATION = "calculation"
     DATETIME = "datetime"
     UTILITY = "utility"
+    MONITORING = "monitoring"
 
 
 class ToolParameter(BaseModel):
