@@ -62,7 +62,8 @@ plan/
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
 | [ARQ-35 Orchestrator con Agentes Dinámicos](02-activos/PLAN_ARQ_35_DYNAMIC_ORCHESTRATOR.md) | 0% | `feature/arq-35-dynamic-orchestrator` | Pendiente iniciar |
 | [AUTH-SP Migración Auth a Stored Procedures](02-activos/PLAN_AUTH_SP_MIGRATION.md) | 0% | `master` | Pendiente iniciar |
-| [FEAT-36 Workflow de Análisis de Alertas](02-activos/PLAN_FEAT_36_ALERT_WORKFLOW.md) | 0% | `feature/feat-36-alert-workflow` | Pendiente iniciar |
+| [FEAT-36 Workflow de Análisis de Alertas](02-activos/PLAN_FEAT_36_ALERT_WORKFLOW.md) | 100% | `develop` | Completado |
+| [FEAT-37 Refactor Alert Tools (4 tools)](02-activos/PLAN_FEAT_37_ALERT_TOOLS_REFACTOR.md) | 0% | `feature/feat-37-alert-tools-refactor` | Pendiente iniciar |
 
 ---
 
