@@ -115,13 +115,23 @@ class AlertRepository:
         """
         Obtiene los TOP 15 tickets históricos más recientes para el IP/sensor dado.
 
+        Estrategia de búsqueda:
+        1. Intenta con el sensor exacto (o vacío si no se conoce)
+        2. Si retorna vacío, reintenta con sensor=None (sin filtro, para SPs que aceptan NULL)
         Fallback automático a versión EKT si BAZ no retorna resultados.
         """
-        params = {"ip": ip, "sensor": sensor}
         sp_baz = "EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta @ip = :ip, @sensor = :sensor"
         sp_ekt = "EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta_EKT @ip = :ip, @sensor = :sensor"
 
-        rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, params)
+        rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, {"ip": ip, "sensor": sensor})
+
+        # Si no hay resultados, reintentar con sensor=NULL.
+        # Cubre el caso donde el evento ya no está activo (sensor desconocido = "")
+        # y el SP requiere un valor no vacío para filtrar.
+        if not rows:
+            rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, {"ip": ip, "sensor": None})
+            if rows:
+                logger.debug(f"AlertRepository: tickets para {ip} encontrados con sensor=NULL (sensor original: '{sensor}')")
 
         tickets = []
         for row in rows:
