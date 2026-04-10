@@ -123,6 +123,12 @@ class GetEscalationMatrixTool(BaseTool):
             )
 
             # IDs de área desde el inventario (fuente de verdad)
+            logger.info(
+                f"GetEscalationMatrixTool: inventario para {ip} → "
+                f"inventario={inventario!r} "
+                f"id_atendedora={inventario.id_area_atendedora if inventario else None} "
+                f"id_administradora={inventario.id_area_administradora if inventario else None}"
+            )
             id_atendedora    = inventario.id_area_atendedora    if inventario else None
             id_administradora = inventario.id_area_administradora if inventario else None
 
