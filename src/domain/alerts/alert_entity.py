@@ -180,6 +180,51 @@ class AreaContacto(BaseModel):
         return data
 
 
+class InventoryItem(BaseModel):
+    """
+    Equipo del inventario obtenido por IP.
+
+    Unifica EquiposFisicos y MaquinasVirtuales en un modelo común.
+    El campo 'fuente' indica la tabla de origen: 'Fisico' | 'Virtual'.
+    """
+
+    ip: str = Field(alias="ip", default="")
+    hostname: str = Field(alias="hostname", default="")
+    area_atendedora: str = Field(alias="area_atendedora", default="")
+    area_administradora: str = Field(alias="area_administradora", default="")
+    fuente: str = Field(alias="fuente", default="")           # "Fisico" | "Virtual"
+    tipo_equipo: str = Field(alias="tipo_equipo", default="") # solo EquiposFisicos
+    version_os: str = Field(alias="version_os", default="")
+    status: str = Field(alias="status", default="")
+    capa: str = Field(alias="capa", default="")
+    ambiente: str = Field(alias="ambiente", default="")
+    impacto: str = Field(alias="impacto", default="")
+    urgencia: str = Field(alias="urgencia", default="")
+    prioridad: str = Field(alias="prioridad", default="")
+    negocio: str = Field(alias="negocio", default="")         # solo EquiposFisicos
+    grupo_correo: str = Field(alias="grupo_correo", default="")  # solo EquiposFisicos
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for field in (
+            "ip", "hostname", "area_atendedora", "area_administradora",
+            "fuente", "tipo_equipo", "version_os", "status",
+            "capa", "ambiente", "impacto", "urgencia", "prioridad",
+            "negocio", "grupo_correo",
+        ):
+            v = data.get(field)
+            if v is None:
+                data[field] = ""
+            elif not isinstance(v, str):
+                data[field] = str(v)
+        return data
+
+
 class AlertContext(BaseModel):
     """
     Contexto completo de un evento de alerta, enriquecido con todos los datos

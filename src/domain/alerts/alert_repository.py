@@ -21,6 +21,7 @@ from src.domain.alerts.alert_entity import (
     AreaContacto,
     EscalationLevel,
     HistoricalTicket,
+    InventoryItem,
     Template,
 )
 
@@ -172,6 +173,16 @@ class AlertRepository:
 
         Fallback automático a versión EKT si BAZ no retorna resultados.
         """
+        return await self.get_template_by_id(template_id, usar_ekt=usar_ekt)
+
+    async def get_template_by_id(self, template_id: int, usar_ekt: bool = False) -> Optional[Template]:
+        """
+        Obtiene la información completa del template por su ID.
+
+        Usa Template_GetById que retorna todos los campos incluyendo
+        Atendedor_idGerencia y GerenciaAtendedora.
+        Fallback automático a versión EKT si BAZ no retorna resultados.
+        """
         params = {"id": template_id}
         sp_baz = "EXEC ABCMASplus.dbo.Template_GetById @id = :id"
         sp_ekt = "EXEC ABCMASplus.dbo.Template_GetById_EKT @id = :id"
@@ -186,7 +197,7 @@ class AlertRepository:
         try:
             return Template.model_validate(rows[0])
         except Exception as e:
-            logger.warning(f"AlertRepository.get_template_info({template_id}): {e}")
+            logger.warning(f"AlertRepository.get_template_by_id({template_id}): {e}")
             return None
 
     async def get_escalation_matrix(
@@ -201,10 +212,14 @@ class AlertRepository:
         sp_baz = "EXEC ABCMASplus.dbo.ObtenerMatriz @idTemplate = :idTemplate"
         sp_ekt = "EXEC ABCMASplus.dbo.ObtenerMatriz_EKT @idTemplate = :idTemplate"
 
+        logger.info(f"get_escalation_matrix: template_id={template_id!r} (type={type(template_id).__name__}), usar_ekt={usar_ekt}")
+
         if usar_ekt:
             rows, _ = await self._run_sp_with_fallback(sp_ekt, sp_baz, params)
         else:
             rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, params)
+
+        logger.info(f"get_escalation_matrix: {len(rows)} filas retornadas para template_id={template_id!r}")
 
         levels = []
         for row in rows:
@@ -243,6 +258,83 @@ class AlertRepository:
         except Exception as e:
             logger.warning(f"AlertRepository.get_contacto_gerencia({id_gerencia}): {e}")
             return None
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Inventario
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def get_inventory_by_ip(self, ip: str) -> Optional[InventoryItem]:
+        """
+        Busca un equipo por IP en el inventario.
+
+        Orden de búsqueda:
+          1. EquiposFisicos_GetByIp       (BAZ)
+          2. MaquinasVirtuales_GetByIp    (BAZ)
+          3. EquiposFisicos_GetByIp_Ekt   (EKT)
+          4. MaquinasVirtuales_GetByIp_Ekt (EKT)
+
+        Retorna el primer resultado encontrado o None.
+        """
+        params = {"ip": ip}
+
+        candidates = [
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp @ip = :ip",    "Fisico",  False),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp @ip = :ip", "Virtual", False),
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp_Ekt @ip = :ip",    "Fisico",  True),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp_Ekt @ip = :ip", "Virtual", True),
+        ]
+
+        for sp, fuente, autocommit in candidates:
+            try:
+                rows = await self._db.execute_query_async(sp, params, autocommit=autocommit)
+                if not rows:
+                    continue
+                row = rows[0]
+                # Normalizar nombres de columnas según tabla de origen
+                if fuente == "Fisico":
+                    normalized = {
+                        "ip":                  row.get("ip", ""),
+                        "hostname":            row.get("hostname", ""),
+                        "area_atendedora":     row.get("AreaAtendedora", ""),
+                        "area_administradora": row.get("AreaAdministradora", ""),
+                        "fuente":              fuente,
+                        "tipo_equipo":         row.get("TipoEquipoFisico", ""),
+                        "version_os":          row.get("VersionOS", ""),
+                        "status":              row.get("Status", ""),
+                        "capa":                row.get("Capa", ""),
+                        "ambiente":            row.get("Ambiente", ""),
+                        "impacto":             row.get("Impacto", ""),
+                        "urgencia":            row.get("Urgencia", ""),
+                        "prioridad":           row.get("prioridad", ""),
+                        "negocio":             row.get("Negocio", ""),
+                        "grupo_correo":        row.get("GrupoDeCorreo", ""),
+                    }
+                else:
+                    normalized = {
+                        "ip":                  row.get("IPMaquinaVirtual", ""),
+                        "hostname":            row.get("Hostname", ""),
+                        "area_atendedora":     row.get("AreaAtiende", ""),
+                        "area_administradora": row.get("AreaAdmin", ""),
+                        "fuente":              fuente,
+                        "tipo_equipo":         "",
+                        "version_os":          row.get("VersionOS", ""),
+                        "status":              row.get("Status", ""),
+                        "capa":                row.get("Capa", ""),
+                        "ambiente":            row.get("Ambiente", ""),
+                        "impacto":             row.get("Impacto", ""),
+                        "urgencia":            row.get("Urgencia", ""),
+                        "prioridad":           row.get("Prioridad", ""),
+                        "negocio":             "",
+                        "grupo_correo":        "",
+                    }
+                logger.info(f"AlertRepository.get_inventory_by_ip({ip}): encontrado en {sp.split()[1]}")
+                return InventoryItem.model_validate(normalized)
+            except Exception as e:
+                logger.warning(f"AlertRepository.get_inventory_by_ip({ip}) [{sp.split()[1]}]: {e}")
+                continue
+
+        logger.warning(f"AlertRepository.get_inventory_by_ip({ip}): no encontrado en ningún inventario")
+        return None
 
     # ─────────────────────────────────────────────────────────────────────────
     # Helpers privados

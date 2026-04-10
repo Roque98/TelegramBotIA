@@ -43,6 +43,7 @@ __all__ = [
     "GetAlertDetailTool",
     "GetTemplateByIdTool",
     "GetContactoGerenciaTool",
+    "GetInventoryByIpTool",
 ]
 
 
@@ -81,4 +82,7 @@ def __getattr__(name: str):
     if name == "GetContactoGerenciaTool":
         from .get_contacto_gerencia_tool import GetContactoGerenciaTool
         return GetContactoGerenciaTool
+    if name == "GetInventoryByIpTool":
+        from .get_inventory_by_ip_tool import GetInventoryByIpTool
+        return GetInventoryByIpTool
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
