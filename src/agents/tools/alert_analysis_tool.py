@@ -124,11 +124,23 @@ class AlertAnalysisTool(BaseTool):
 
         try:
             # ── 1. Obtener eventos activos ─────────────────────────────────
-            events = await self._repo.get_active_events(
-                ip=ip,
-                equipo=equipo,
-                solo_down=solo_down,
-            )
+            try:
+                events = await self._repo.get_active_events(
+                    ip=ip,
+                    equipo=equipo,
+                    solo_down=solo_down,
+                )
+            except ConnectionError as conn_err:
+                elapsed = (time.perf_counter() - t0) * 1000
+                logger.error(f"AlertAnalysisTool: error de conectividad con monitoreo: {conn_err}")
+                return ToolResult.error_result(
+                    error=(
+                        "⚠️ No se pudo conectar a la instancia de monitoreo (BAZ_CDMX/EKT). "
+                        "Verifica que el servidor está accesible y las credenciales en .env son correctas.\n"
+                        f"Detalle técnico: {conn_err}"
+                    ),
+                    execution_time_ms=elapsed,
+                )
 
             if not events:
                 elapsed = (time.perf_counter() - t0) * 1000

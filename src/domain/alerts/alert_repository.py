@@ -287,25 +287,41 @@ class AlertRepository:
 
         Returns:
             (filas_combinadas, origen)
+
+        Raises:
+            ConnectionError: Si todos los SPs fallaron con excepción
+                (indica problema de conectividad, no ausencia de datos)
         """
         rows_baz: list[dict] = []
+        errors_baz: list[Exception] = []
         for sp in sps_principal:
             try:
                 result = await self._db.execute_query_async(sp, None)
                 rows_baz.extend(result or [])
             except Exception as e:
                 logger.warning(f"AlertRepository SP '{sp}' falló: {e}")
+                errors_baz.append(e)
 
         if rows_baz:
             return rows_baz, "BAZ_CDMX"
 
         # Fallback a EKT
         rows_ekt: list[dict] = []
+        errors_ekt: list[Exception] = []
         for sp in sps_fallback:
             try:
                 result = await self._db.execute_query_async(sp, None)
                 rows_ekt.extend(result or [])
             except Exception as e:
                 logger.warning(f"AlertRepository SP EKT '{sp}' falló: {e}")
+                errors_ekt.append(e)
+
+        # Si todos fallaron con excepción → problema de conectividad
+        all_failed = len(errors_baz) == len(sps_principal) and len(errors_ekt) == len(sps_fallback)
+        if all_failed and not rows_ekt:
+            raise ConnectionError(
+                f"No se pudo conectar a la instancia de monitoreo. "
+                f"Último error: {errors_baz[-1] if errors_baz else errors_ekt[-1]}"
+            )
 
         return rows_ekt, "EKT"
