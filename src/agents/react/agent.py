@@ -528,6 +528,21 @@ class ReActAgent(BaseAgent):
                 except json.JSONDecodeError:
                     pass
 
+        # Intento 3: el modelo respondió texto plano (sin JSON).
+        # Ocurre cuando el modelo ignora el formato solicitado.
+        # Tratar el texto como respuesta final para no abortar la sesión.
+        if text:
+            logger.warning(
+                f"LLM returned plain text instead of JSON — wrapping as finish. "
+                f"Preview: {text[:120]!r}"
+            )
+            return ReActResponse(
+                thought="(respuesta en texto plano del LLM)",
+                action=ActionType(ActionType.FINISH),
+                action_input={},
+                final_answer=text,
+            )
+
         raise json.JSONDecodeError("Cannot parse LLM response as JSON", text, 0)
 
     def _build_react_response(self, data: dict, valid_tools: Optional[set[str]] = None) -> ReActResponse:
