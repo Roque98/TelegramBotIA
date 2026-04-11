@@ -170,3 +170,7 @@ pipeline/factory ──► agents/react/agent
                  ──► domain/auth/permission_service
                  ──► infra/observability/sql_repository
 ```
+
+---
+
+[Índice](README.md) · **Siguiente →** [Flujos del sistema](flujos.md)

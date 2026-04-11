@@ -25,3 +25,7 @@ Si es la primera vez que lees el código, el orden sugerido es:
 2. [Flujos del sistema](flujos.md) — cómo fluye una consulta de punta a punta
 3. [Agente ReAct](agente-react.md) — el corazón del sistema
 4. El módulo específico que necesitas modificar
+
+---
+
+[← Documentación principal](../index.md)

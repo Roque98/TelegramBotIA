@@ -183,3 +183,7 @@ Los scripts están en `database/migrations/` y deben ejecutarse en orden numéri
 | `11_BotPermisos_DatosIniciales.sql` | Datos iniciales de permisos por rol |
 | `20_DropLegacyPermisosSPs.sql` | Elimina stored procedures legacy |
 | `21_DropLegacyPermisosTablas.sql` | Elimina tablas legacy de permisos |
+
+---
+
+**← Anterior** [Infraestructura](infraestructura.md) · [Índice](README.md) · **Siguiente →** [Cómo extender](como-extender.md)

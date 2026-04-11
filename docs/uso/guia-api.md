@@ -171,3 +171,7 @@ print(result["response"])
 - El campo `numero_empleado` en la respuesta confirma qué usuario procesó la request.
 - No hay paginación: si la respuesta es muy larga, Amber la divide en múltiples párrafos
   dentro del mismo campo `response`.
+
+---
+
+**← Anterior** [Guía de administrador](guia-administrador.md) · [Índice](README.md) · **Siguiente →** [Configuración y despliegue](configuracion.md)

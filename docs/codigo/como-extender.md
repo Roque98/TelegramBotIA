@@ -206,3 +206,7 @@ Antes de hacer merge de cualquier extensión:
 - [ ] La factory inyecta la nueva dependencia
 - [ ] Se actualizó `.claude/context/` con los archivos correspondientes (TOOLS.md, HANDLERS.md, etc.)
 - [ ] Commit con tipo correcto: `feat(tools)`, `feat(bot)`, etc.
+
+---
+
+**← Anterior** [Base de datos](base-de-datos.md) · [Índice](README.md)

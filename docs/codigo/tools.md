@@ -282,3 +282,7 @@ registry.register(MiTool())
 
 Y agregar el recurso en la BD para que el sistema de permisos la controle
 (ver [guia-administrador.md](../uso/guia-administrador.md) — sección Permisos).
+
+---
+
+**← Anterior** [Agente ReAct](agente-react.md) · [Índice](README.md) · **Siguiente →** [Pipeline y factory](pipeline.md)

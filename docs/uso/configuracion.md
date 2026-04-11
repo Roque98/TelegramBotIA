@@ -162,3 +162,7 @@ GPT5/
 ├── logs/                    ← Logs locales (si LOG_LEVEL=DEBUG)
 └── docs/                    ← Esta documentación
 ```
+
+---
+
+**← Anterior** [Guía del API REST](guia-api.md) · [Índice](README.md)

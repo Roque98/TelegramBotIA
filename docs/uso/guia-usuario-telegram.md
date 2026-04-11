@@ -159,3 +159,7 @@ Las respuestas de datos siempre terminan con una oferta de seguimiento:
 | Respuesta lenta | El LLM está procesando | Esperá unos segundos |
 | Resultado incorrecto | La consulta fue ambigua | Reformulá con más detalle |
 | Código de verificación no llegó | Email incorrecto en sistema | Contactar RRHH |
+
+---
+
+**← Anterior** [Qué puede hacer](que-puede-hacer.md) · [Índice](README.md) · **Siguiente →** [Guía de administrador](guia-administrador.md)

@@ -189,3 +189,7 @@ status = StatusMessage(context, chat_id)
 await status.show("Consultando la base de datos...")
 # El mensaje se edita in-place cuando llega la respuesta real
 ```
+
+---
+
+**← Anterior** [Dominio](dominio.md) · [Índice](README.md) · **Siguiente →** [Base de datos](base-de-datos.md)

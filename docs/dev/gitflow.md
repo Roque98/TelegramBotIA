@@ -105,3 +105,7 @@ Versionado semántico: `MAJOR.MINOR.PATCH`
 - `MAJOR`: cambios de arquitectura o incompatibilidad
 - `MINOR`: nuevas funcionalidades
 - `PATCH`: bug fixes
+
+---
+
+**← Anterior** [Setup local](setup.md) · [Índice](README.md) · **Siguiente →** [Testing](testing.md)

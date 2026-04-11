@@ -169,3 +169,7 @@ bot.run()  # polling activo
 # El handler se inicializa en el primer request o en startup
 handler = get_handler_manager().handler
 ```
+
+---
+
+**← Anterior** [Sistema de tools](tools.md) · [Índice](README.md) · **Siguiente →** [Dominio](dominio.md)

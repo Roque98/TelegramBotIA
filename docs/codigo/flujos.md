@@ -185,3 +185,7 @@ El `ToolRegistry` usa `permisos_loaded` para filtrar:
 - Si `permisos_loaded=True`: muestra solo tools con `permisos["tool:nombre"] == True`
 - Si `permisos_loaded=False`: muestra solo tools marcadas como siempre visibles
   (`reload_permissions`, `finish`)
+
+---
+
+**← Anterior** [Arquitectura](arquitectura.md) · [Índice](README.md) · **Siguiente →** [Agente ReAct](agente-react.md)

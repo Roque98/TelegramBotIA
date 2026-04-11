@@ -138,3 +138,7 @@ GPT5/
 ├── .claude/context/             ← Contexto para Claude Code (siempre actualizado)
 └── plan/                        ← Planes del proyecto
 ```
+
+---
+
+[Índice](README.md) · **Siguiente →** [GitFlow del proyecto](gitflow.md)

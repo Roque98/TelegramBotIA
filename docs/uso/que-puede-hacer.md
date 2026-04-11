@@ -100,3 +100,7 @@ Amber puede guardar hechos relevantes del usuario:
 - Acceder a sistemas externos a la empresa
 - Responder con datos que no estén en la BD o la base de conocimiento
   (si no sabe algo, lo dice explícitamente)
+
+---
+
+[Índice](README.md) · **Siguiente →** [Guía de usuario Telegram](guia-usuario-telegram.md)

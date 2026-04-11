@@ -12,3 +12,7 @@ del bot, e integradores que usan el API REST. No es necesario leer código para 
 | [Guía de administrador](guia-administrador.md) | Admins | Gestión de usuarios, permisos, base de conocimiento |
 | [Guía del API REST](guia-api.md) | Integradores | Endpoint, tokens, ejemplos de código |
 | [Configuración y despliegue](configuracion.md) | DevOps | Variables de entorno, base de datos, arranque |
+
+---
+
+[← Documentación principal](../index.md)

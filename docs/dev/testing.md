@@ -147,3 +147,7 @@ for name, tool in registry._tools.items():
 ```bash
 python check_config.py
 ```
+
+---
+
+**← Anterior** [GitFlow del proyecto](gitflow.md) · [Índice](README.md)

@@ -376,4 +376,7 @@ WHERE fechaEjecucion >= DATEADD(DAY, -7, GETDATE())
 GROUP BY agenteNombre
 ORDER BY consultas DESC;
 ```
-```
+
+---
+
+**← Anterior** [Guía de usuario Telegram](guia-usuario-telegram.md) · [Índice](README.md) · **Siguiente →** [Guía del API REST](guia-api.md)

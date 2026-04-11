@@ -210,3 +210,7 @@ class CostTracker:
 ```
 
 El `MainHandler` crea un `CostTracker` por request y lo persiste al finalizar.
+
+---
+
+**← Anterior** [Pipeline y factory](pipeline.md) · [Índice](README.md) · **Siguiente →** [Infraestructura](infraestructura.md)

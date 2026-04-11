@@ -175,3 +175,7 @@ class AgentTimeoutException(AgentException): ... # Timeout global del agente
 
 Los errores de LLM y BD tienen retry automático configurado en `settings.py`
 (`RETRY_LLM_MAX_ATTEMPTS`, `RETRY_DB_MAX_ATTEMPTS`).
+
+---
+
+**← Anterior** [Flujos del sistema](flujos.md) · [Índice](README.md) · **Siguiente →** [Sistema de tools](tools.md)
