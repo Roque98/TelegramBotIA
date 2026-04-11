@@ -1,19 +1,19 @@
 # Plan: ARQ-38 — Reorganización de archivos mal ubicados
 
-> **Estado**: ⚪ No iniciado
+> **Estado**: 🟢 Completado
 > **Última actualización**: 2026-04-11
-> **Rama Git**: develop (cambios directos — sin rama feature por ser refactor puro de imports)
+> **Commit**: `d56357c`
 
 ## Resumen de Progreso
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Mover admin_notifier a dominio | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 2: Mover orchestrator y factory a pipeline | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 3: Mover personality y logging_config | ░░░░░░░░░░ 0% | ⏳ Pendiente |
-| Fase 4: Limpiar scripts y raíz | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Mover admin_notifier a dominio | ██████████ 100% | ✅ Completada |
+| Fase 2: Mover orchestrator y factory a pipeline | ██████████ 100% | ✅ Completada |
+| Fase 3: Mover personality y logging_config | ██████████ 100% | ✅ Completada |
+| Fase 4: Limpiar scripts y raíz | ██████████ 100% | ✅ Completada |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/24 tareas)
+**Progreso Total**: ██████████ 100% (24/24 tareas)
 
 ---
 
