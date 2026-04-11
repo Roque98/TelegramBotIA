@@ -30,6 +30,7 @@ from src.agents.tools.get_alert_detail_tool import GetAlertDetailTool
 from src.agents.tools.get_template_by_id_tool import GetTemplateByIdTool
 from src.agents.tools.get_contacto_gerencia_tool import GetContactoGerenciaTool
 from src.agents.tools.get_inventory_by_ip_tool import GetInventoryByIpTool
+from src.agents.tools.alert_analysis_tool import AlertAnalysisTool
 from src.domain.alerts.alert_repository import AlertRepository
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.agents.factory.agent_builder import AgentBuilder
@@ -111,6 +112,10 @@ def _build_tool_catalog(
         "get_inventory_by_ip":    lambda: GetInventoryByIpTool(
             repo=AlertRepository(db_registry.get("monitoreo")),
         ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
+        "alert_analysis":         lambda: AlertAnalysisTool(
+            repo=AlertRepository(db_registry.get("monitoreo")),
+            llm=data_llm,
+        ) if (db_registry is not None and db_registry.is_configured("monitoreo") and data_llm) else None,
     }
 
 
