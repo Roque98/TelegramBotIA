@@ -18,7 +18,8 @@ Adaptación vs GS-prod:
 from src.domain.alerts.alert_entity import AlertContext
 
 DISCLAIMER = (
-    "\n\n⚠️ *Las sugerencias anteriores son orientativas.* "
+    "\n\n---\n"
+    "⚠️ Las sugerencias anteriores son orientativas. "
     "La decisión de ejecutar cualquier acción es responsabilidad exclusiva del operador. "
     "Valide siempre el impacto antes de actuar."
 )
@@ -122,31 +123,86 @@ class AlertPromptBuilder:
         e = ctx.evento
         t = ctx.template
 
-        template_header = ""
+        # ── Cabecera con template ──────────────────────────────────────────
         if t and t.id_template:
-            template_header = f"📌 *{t.aplicacion}* #{t.id_template} | {t.etiqueta}\n\n"
+            header_line = f"📌 {t.aplicacion} #{t.id_template} | {t.etiqueta}"
+        else:
+            header_line = ""
+
+        # ── Sección de áreas responsables ─────────────────────────────────
+        area_lines = []
+        # Atendedora
+        area_lines.append(f"Atendedora: {e.area_atendedora}")
+        area_lines.append(f"👤 {e.responsable_atendedor}")
+        if ctx.contacto_atendedora:
+            ca = ctx.contacto_atendedora
+            if ca.correos:
+                area_lines.append(f"📧 {ca.correos}")
+            if ca.extensiones:
+                area_lines.append(f"☎️ Ext: {ca.extensiones}")
+        # Administradora
+        area_lines.append(f"Administradora: {e.area_administradora}")
+        area_lines.append(f"👤 {e.responsable_administrador}")
+        if ctx.contacto_administradora:
+            cm = ctx.contacto_administradora
+            if cm.correos:
+                area_lines.append(f"📧 {cm.correos}")
+            if cm.extensiones:
+                area_lines.append(f"☎️ Ext: {cm.extensiones}")
+
+        # ── Matriz de escalamiento ─────────────────────────────────────────
+        if ctx.matriz:
+            matriz_lines = []
+            for nivel in ctx.matriz:
+                matriz_lines.append(
+                    f"Nivel {nivel.nivel} — {nivel.nombre}\n"
+                    f"{nivel.puesto} | Ext: {nivel.extension} | "
+                    f"Cel: {nivel.celular} | ⏱ {nivel.tiempo_escalacion} min"
+                )
+            matriz_str = "\n\n".join(matriz_lines)
+        else:
+            matriz_str = "Sin matriz de escalamiento registrada."
+
+        # ── Construcción del prompt ────────────────────────────────────────
+        estructura = []
+        if header_line:
+            estructura.append(header_line)
+        estructura.append(f"🔴 ALERTA: {e.equipo} ({e.ip})")
+        estructura.append(f"📡 Sensor: {e.sensor} — [descripción breve del problema según el mensaje de alerta]")
+        estructura.append("")
+        estructura.append("👥 Área responsable en operaciones")
+        estructura.extend(area_lines)
+        estructura.append("")
+        estructura.append("📞 Matriz de escalamiento")
+        estructura.append(matriz_str)
+        estructura.append("")
+        estructura.append(
+            "🛠 Acciones recomendadas\n"
+            "1. [acción concreta basada en tickets históricos; incluye comandos de terminal si aplica]\n"
+            "2. [acción]\n"
+            "...\n"
+            "(máximo 5 acciones)"
+        )
+        estructura.append("")
+        estructura.append(
+            "🔍 Posible causa raíz\n"
+            "[1-2 oraciones basadas en el historial de tickets o procedimiento estándar]"
+        )
+        estructura.append("")
+        estructura.append(
+            "📋 Contexto histórico\n"
+            "[Una oración sobre los tickets usados como base o el procedimiento estándar aplicado]"
+        )
+
+        formato = "\n".join(estructura)
 
         return (
             f"## INSTRUCCIÓN\n"
-            f"Genera el análisis de esta alerta en Markdown para Telegram usando "
-            f"EXACTAMENTE esta estructura:\n\n"
-            f"{template_header}"
-            f"🔴 *ALERTA: {e.equipo} ({e.ip})*\n"
-            f"📡 *Sensor:* {e.sensor} — [resumen breve del problema]\n\n"
-            f"👥 *Área responsable en operaciones*\n"
-            f"*Atendedora:* {e.area_atendedora} | 👤 {e.responsable_atendedor}\n"
-            f"*Administradora:* {e.area_administradora} | 👤 {e.responsable_administrador}\n\n"
-            f"💻 *Área responsable desarrollo*\n"
-            f"[GerenciaDesarrollo del template si existe]\n\n"
-            f"📞 *Matriz de escalamiento*\n"
-            f"[Niveles con nombre, puesto, contacto y tiempo]\n\n"
-            f"🛠 *Acciones recomendadas* (máximo 5, basadas en tickets históricos)\n"
-            f"1. [acción]\n2. [acción]\n...\n\n"
-            f"🔍 *Posible causa raíz*\n"
-            f"[1-2 oraciones basadas en el historial de tickets]\n\n"
-            f"📋 *Contexto histórico*\n"
-            f"[Una sola oración sobre los tickets usados o el procedimiento estándar]\n\n"
-            f"Sé directo y conciso. Usa `código` solo para comandos de terminal. "
-            f"No uses emojis fuera de los indicados. "
+            f"Genera el análisis usando EXACTAMENTE esta estructura. "
+            f"No uses asteriscos (*) para negrita. "
+            f"Usa bloques de código (```) para comandos de terminal. "
+            f"No agregues secciones adicionales. "
+            f"No repitas datos ya incluidos en la estructura.\n\n"
+            f"{formato}\n\n"
             f"Consulta del operador: \"{ctx.query_usuario}\""
         )
