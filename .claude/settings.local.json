@@ -21,7 +21,12 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
       "Bash(git commit -m \"docs\\(plan\\): crear PLAN_ARQ_29_CLAUDE_CODE_PATTERNS — 33 tareas en 7 fases:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git merge feature/db-37-multi-database --no-ff -m ':*)",
+      "Bash(xargs grep:*)"
     ],
     "deny": [],
     "ask": []
