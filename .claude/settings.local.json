@@ -20,7 +20,8 @@
       "Bash(git push:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:github.com)",
-      "Bash(git commit -m \"docs\\(plan\\): crear PLAN_ARQ_29_CLAUDE_CODE_PATTERNS — 33 tareas en 7 fases:*)"
+      "Bash(git commit -m \"docs\\(plan\\): crear PLAN_ARQ_29_CLAUDE_CODE_PATTERNS — 33 tareas en 7 fases:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -155,7 +155,7 @@ class MainHandler:
             )
             # Notificar al admin — error crítico no controlado en el pipeline
             try:
-                from src.bot.notifications.admin_notifier import notify_admin
+                from src.domain.notifications.admin_notifier import notify_admin
                 user_info = (
                     str(update.effective_user.id)
                     if update and update.effective_user

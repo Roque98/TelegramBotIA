@@ -14,7 +14,7 @@ from .agent_config_repository import AgentConfigRepository
 from src.infra.observability import get_metrics
 
 if TYPE_CHECKING:
-    from src.agents.factory.agent_builder import AgentBuilder
+    from src.pipeline.agent_factory.agent_builder import AgentBuilder
 
 logger = logging.getLogger(__name__)
 

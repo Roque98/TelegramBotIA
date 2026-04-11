@@ -23,8 +23,8 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
 from src.infra.database.connection import DatabaseManager
 from src.domain.agent_config.agent_config_repository import AgentConfigRepository
 from src.domain.agent_config.agent_config_service import AgentConfigService
-from src.agents.orchestrator.intent_classifier import IntentClassifier
-from src.agents.orchestrator.orchestrator import AgentOrchestrator
+from src.pipeline.orchestrator.intent_classifier import IntentClassifier
+from src.pipeline.orchestrator.orchestrator import AgentOrchestrator
 
 
 async def test_config_load():
@@ -101,7 +101,7 @@ async def test_agent_builder(agents):
     print("\n[TEST 4] AgentBuilder — construcción de instancias")
     from src.config.settings import settings
     from src.agents.tools.registry import ToolRegistry
-    from src.agents.factory.agent_builder import AgentBuilder
+    from src.pipeline.agent_factory.agent_builder import AgentBuilder
 
     if not settings.openai_api_key:
         print("  [SKIP] Sin OPENAI_API_KEY — omitiendo test de construcción")

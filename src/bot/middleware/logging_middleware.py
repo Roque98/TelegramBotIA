@@ -99,7 +99,7 @@ class LoggingMiddleware:
 
         # Notificar al admin via Telegram (fire-and-forget, no bloquea el error handler)
         try:
-            from src.bot.notifications.admin_notifier import notify_admin
+            from src.domain.notifications.admin_notifier import notify_admin
             db_manager = context.bot_data.get("db_manager") if context.bot_data else None
             asyncio.create_task(
                 notify_admin(

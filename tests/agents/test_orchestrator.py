@@ -5,8 +5,8 @@ Tests para AgentOrchestrator e IntentClassifier (ARQ-35 — N-way dinámico).
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.agents.orchestrator import AgentOrchestrator, IntentClassifier
-from src.agents.orchestrator.orchestrator import AgentConfigException
+from src.pipeline.orchestrator import AgentOrchestrator, IntentClassifier
+from src.pipeline.orchestrator.orchestrator import AgentConfigException
 from src.agents.base.events import UserContext
 from src.agents.base.agent import AgentResponse
 from src.domain.agent_config.agent_config_entity import AgentDefinition
@@ -262,7 +262,7 @@ class TestAgentBuilder:
 
     def test_build_sets_tool_scope_for_specialist(self):
         """Agentes especializados deben tener tool_scope."""
-        from src.agents.factory.agent_builder import AgentBuilder
+        from src.pipeline.agent_factory.agent_builder import AgentBuilder
         from src.agents.tools.registry import ToolRegistry
 
         ToolRegistry.reset()
@@ -277,7 +277,7 @@ class TestAgentBuilder:
 
     def test_build_no_tool_scope_for_generalista(self):
         """Agente generalista debe tener tool_scope=None."""
-        from src.agents.factory.agent_builder import AgentBuilder
+        from src.pipeline.agent_factory.agent_builder import AgentBuilder
         from src.agents.tools.registry import ToolRegistry
 
         ToolRegistry.reset()
@@ -292,7 +292,7 @@ class TestAgentBuilder:
 
     def test_cache_returns_same_instance(self):
         """build() dos veces con misma (id, version) retorna la misma instancia."""
-        from src.agents.factory.agent_builder import AgentBuilder
+        from src.pipeline.agent_factory.agent_builder import AgentBuilder
         from src.agents.tools.registry import ToolRegistry
 
         ToolRegistry.reset()
@@ -308,7 +308,7 @@ class TestAgentBuilder:
 
     def test_clear_instance_cache(self):
         """clear_instance_cache vacía el cache de instancias."""
-        from src.agents.factory.agent_builder import AgentBuilder
+        from src.pipeline.agent_factory.agent_builder import AgentBuilder
         from src.agents.tools.registry import ToolRegistry
 
         ToolRegistry.reset()

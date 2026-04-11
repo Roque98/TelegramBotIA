@@ -26,9 +26,9 @@ from src.agents.tools.read_attachment_tool import ReadAttachmentTool
 from src.agents.tools.alert_analysis_tool import AlertAnalysisTool
 from src.domain.alerts.alert_repository import AlertRepository
 from src.agents.providers.openai_provider import OpenAIProvider
-from src.agents.factory.agent_builder import AgentBuilder
-from src.agents.orchestrator.orchestrator import AgentOrchestrator
-from src.agents.orchestrator.intent_classifier import IntentClassifier
+from src.pipeline.agent_factory.agent_builder import AgentBuilder
+from src.pipeline.orchestrator.orchestrator import AgentOrchestrator
+from src.pipeline.orchestrator.intent_classifier import IntentClassifier
 from src.domain.agent_config.agent_config_repository import AgentConfigRepository
 from src.domain.agent_config.agent_config_service import AgentConfigService
 from src.domain.knowledge import KnowledgeService
@@ -39,7 +39,7 @@ from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
 from src.infra.observability.sql_repository import ObservabilityRepository
-from src.config.logging_config import get_sql_handler
+from src.infra.observability.logging_config import get_sql_handler
 
 from .handler import MainHandler
 

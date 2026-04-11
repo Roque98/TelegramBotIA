@@ -10,7 +10,7 @@ Cobertura:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.bot.notifications.admin_notifier import (
+from src.domain.notifications.admin_notifier import (
     notify_admin,
     reset_rate_cache,
     _build_message,
