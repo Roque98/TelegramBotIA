@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Por qué se migró a Iris Bot v2</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-2: #22263a;
+      --border: #2e3352;
+      --accent: #6c8ef5;
+      --accent-dim: #3d4f99;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #e2e8f0;
+      --text-muted: #8892b0;
+      --code-bg: #141720;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #12162a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 0 40px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    header h1 span { color: var(--accent); }
+
+    header p {
+      color: var(--text-muted);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ── Context section ── */
+    .context-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin: 40px 0;
+    }
+
+    .context-box h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 10px;
+    }
+
+    .context-box p { color: var(--text-muted); }
+    .context-box code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .88em;
+      color: #a5b4fc;
+    }
+
+    /* ── Section heading ── */
+    .section-title {
+      text-align: center;
+      margin: 56px 0 32px;
+    }
+
+    .section-title h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .section-title p {
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-size: .9rem;
+    }
+
+    /* ── Cards ── */
+    .cards { display: flex; flex-direction: column; gap: 20px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+
+    .card:hover { border-color: var(--accent-dim); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 24px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: .9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .card-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .card-body { padding: 20px 24px; }
+
+    .card-body .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 0;
+    }
+
+    .pill {
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .pill-problem {
+      background: rgba(248, 113, 113, .08);
+      border: 1px solid rgba(248, 113, 113, .25);
+    }
+
+    .pill-solution {
+      background: rgba(74, 222, 128, .07);
+      border: 1px solid rgba(74, 222, 128, .22);
+    }
+
+    .pill-label {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .pill-problem .pill-label { color: var(--red); }
+    .pill-solution .pill-label { color: var(--green); }
+
+    .pill p { font-size: .88rem; color: var(--text-muted); line-height: 1.6; }
+    .pill strong { color: var(--text); }
+    .pill code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: .82em;
+      color: #a5b4fc;
+    }
+
+    .pill ul {
+      list-style: none;
+      margin-top: 6px;
+    }
+
+    .pill ul li {
+      font-size: .88rem;
+      color: var(--text-muted);
+      padding: 3px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .pill ul li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--green);
+      font-size: .8em;
+    }
+
+    /* code block inside pill */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: .8rem;
+      color: #94a3b8;
+      line-height: 1.7;
+      white-space: pre;
+    }
+
+    .code-block .arrow { color: var(--accent); }
+    .code-block .kw { color: #f472b6; }
+    .code-block .comment { color: #4b5563; font-style: italic; }
+
+    /* ── Observability table ── */
+    .obs-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: .85rem;
+    }
+
+    .obs-table th {
+      text-align: left;
+      padding: 8px 12px;
+      color: var(--text-muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .obs-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid rgba(46, 51, 82, .5);
+      color: var(--text-muted);
+    }
+
+    .obs-table td:first-child {
+      color: #a5b4fc;
+      font-family: 'Consolas', monospace;
+      font-size: .82rem;
+    }
+
+    .obs-table tr:last-child td { border-bottom: none; }
+
+    /* ── Summary table ── */
+    .summary-section {
+      margin: 56px 0;
+    }
+
+    .summary-section h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+
+    .summary-table thead tr {
+      background: var(--surface-2);
+    }
+
+    .summary-table th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .summary-table th:first-child { border-radius: var(--radius) 0 0 0; }
+    .summary-table th:last-child  { border-radius: 0 var(--radius) 0 0; }
+
+    .summary-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .summary-table td:first-child { color: var(--text); font-weight: 500; }
+
+    .summary-table .v1 { color: var(--red); }
+    .summary-table .v2 { color: var(--green); }
+
+    .summary-table tbody tr:hover td {
+      background: rgba(108, 142, 245, .04);
+    }
+
+    /* ── Kept section ── */
+    .kept-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin: 40px 0 60px;
+    }
+
+    .kept-section h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--yellow);
+      margin-bottom: 16px;
+    }
+
+    .kept-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .kept-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .88rem;
+      color: var(--text-muted);
+    }
+
+    .kept-item .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--yellow);
+      flex-shrink: 0;
+      margin-top: 6px;
+    }
+
+    .kept-item strong { color: var(--text); display: block; margin-bottom: 2px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: .82rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      header h1 { font-size: 1.6rem; }
+      .card-body .cols { grid-template-columns: 1fr; }
+      .kept-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="badge">Decisión de Arquitectura</div>
+    <h1>Por qué se migró a <span>Iris Bot v2</span></h1>
+    <p>Limitaciones de la primera versión y cómo cada decisión de diseño en v2 responde a un problema concreto.</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Contexto -->
+  <div class="context-box">
+    <h2>Contexto</h2>
+    <p>
+      La primera versión (<code>TelegramBotIA_GS</code>) fue construida como prueba de concepto:
+      un asistente que recibía un mensaje, clasificaba su intención y generaba una respuesta.
+      Funcionó bien para consultas simples, pero mostró sus límites cuando los requerimientos
+      crecieron: más herramientas, más usuarios, distintos roles, trazabilidad de costos y
+      comportamientos diferenciados por área.
+    </p>
+  </div>
+
+  <!-- Cards -->
+  <div class="section-title">
+    <h2>Limitaciones de v1 y su solución en v2</h2>
+    <p>Cada mejora responde directamente a una fricción encontrada en producción.</p>
+  </div>
+
+  <div class="cards">
+
+    <!-- 1 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">1</div>
+        <h3>El agente solo sabía hacer una cosa por mensaje</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>El flujo era <strong>lineal</strong> — clasifica → genera SQL o busca en Knowledge → responde. Si la respuesta requería combinar dos fuentes o calcular sobre un resultado, era imposible en un solo mensaje.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p>Se adoptó el paradigma <strong>ReAct</strong> (Reasoning + Acting). El agente razona paso a paso y puede invocar múltiples herramientas en secuencia: consultar BD, calcular un porcentaje y formatear, todo en un mensaje.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">2</div>
+        <h3>Agregar una herramienta nueva requería modificar código</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>Las herramientas (<code>/ia</code>, <code>/alertas</code>) eran handlers de Telegram hardcoded. Añadir una nueva: editar varios archivos, hacer deploy, reiniciar el bot.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p>Las herramientas son clases independientes registradas en <code>ToolRegistry</code>. El agente las descubre desde el catálogo <code>BotIAv2_Recurso</code> en BD. Agregar una tool: crear la clase, registrarla en <code>factory.py</code>, insertar una fila.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">3</div>
+        <h3>El comportamiento del agente era hardcoded</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>El system prompt, temperatura e instrucciones vivían en plantillas Jinja2 en el código. Ajustar el tono del bot requería un pull request y un redeploy.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p>Cada agente está definido en <code>BotIAv2_AgenteDef</code>. El system prompt, temperatura y max iteraciones se editan directamente en BD. Los cambios toman efecto en el siguiente mensaje. El historial de versiones se guarda vía trigger automático.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">4</div>
+        <h3>No había memoria entre sesiones</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>Cada mensaje era independiente. El bot no recordaba que un usuario había preguntado lo mismo ayer, ni sus preferencias, ni su contexto laboral.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p><strong>3 capas de memoria</strong> en <code>UserMemoryProfiles</code>:</p>
+            <ul>
+              <li>Contexto laboral del usuario</li>
+              <li>Temas recientes consultados</li>
+              <li>Historial breve de interacciones</li>
+            </ul>
+            <p style="margin-top:8px">Más preferencias explícitas via <code>save_preference</code>: alias, idioma, formato.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">5</div>
+        <h3>Los permisos eran todo o nada por comando</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>Un usuario tenía permiso para <code>/alertas</code> o no lo tenía. No era posible diferencias como "solo Gerencia de Infraestructura puede ver alertas críticas" sin código adicional.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2 — SEC-01</div>
+            <div class="code-block"><span class="kw">usuario</span>  <span class="arrow">→</span> override definitivo
+<span class="kw">rol</span>      <span class="arrow">→</span> permisivo
+<span class="kw">gerencia</span> <span class="arrow">→</span> permisivo
+<span class="kw">dirección</span><span class="arrow">→</span> permisivo
+<span class="comment">sin regla → denegado por defecto</span></div>
+            <p style="margin-top:10px; font-size:.85rem">Cada permiso tiene fecha de expiración. Todo administrable desde BD.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">6</div>
+        <h3>No había visibilidad de costos ni de lo que hacía el agente</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>Se sabía si una operación fue exitosa o falló, pero no cuántos tokens consumió, cuánto costó en USD, cuántos pasos dio el agente ni qué herramienta usó.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <table class="obs-table">
+              <thead>
+                <tr><th>Tabla</th><th>Qué guarda</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>InteractionLogs</td><td>Tokens, costo, latencia por etapa, agente usado</td></tr>
+                <tr><td>InteractionSteps</td><td>Cada paso del loop ReAct: thought, tool, tokens</td></tr>
+                <tr><td>CostSesiones</td><td>Costo USD por sesión desglosado por modelo</td></tr>
+                <tr><td>AgentRouting</td><td>Qué agente eligió el clasificador y con qué confianza</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">7</div>
+        <h3>Un solo agente para todos los casos de uso</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>El mismo agente respondía datos, RRHH, alertas y conversación casual con el mismo prompt. Optimizar un flujo afectaba los demás.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p><strong>IntentClassifier</strong> elige el agente según la intención:</p>
+            <ul>
+              <li><strong>Datos</strong> — SQL y análisis numérico</li>
+              <li><strong>Conocimiento</strong> — base institucional</li>
+              <li><strong>Casual</strong> — conversacional sin tools</li>
+              <li><strong>Generalista</strong> — fallback automático</li>
+            </ul>
+            <p style="margin-top:8px; font-size:.85rem">Cada agente tiene su propio prompt, temperatura y tools asignadas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-num">8</div>
+        <h3>Todo el acceso a BD era SQL directo en el código</h3>
+      </div>
+      <div class="card-body">
+        <div class="cols">
+          <div class="pill pill-problem">
+            <div class="pill-label">Problema v1</div>
+            <p>Los queries de auth, permisos y operaciones vivían como strings SQL en archivos Python. Cambiar la estructura de una tabla implicaba buscar en todo el código.</p>
+          </div>
+          <div class="pill pill-solution">
+            <div class="pill-label">Solución v2</div>
+            <p><strong>28 stored procedures</strong> con prefijo homologado <code>BotIAv2_sp_*</code>. El código solo llama:</p>
+            <div class="code-block">EXEC BotIAv2_sp_GetUsuarioByChatId
+    @telegramChatId = :chat_id</div>
+            <p style="margin-top:10px; font-size:.85rem">Si cambia la estructura interna, solo se actualiza el SP. La aplicación no se toca.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /cards -->
+
+  <!-- Summary table -->
+  <div class="summary-section">
+    <h2>Tabla comparativa</h2>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th>V1</th>
+          <th>V2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Paradigma del agente</td>
+          <td class="v1">Clasificar → responder</td>
+          <td class="v2">ReAct: razonar → actuar → observar</td>
+        </tr>
+        <tr>
+          <td>Herramientas</td>
+          <td class="v1">2 (hardcoded como comandos)</td>
+          <td class="v2">10 (extensibles, registradas en BD)</td>
+        </tr>
+        <tr>
+          <td>Comportamiento configurable</td>
+          <td class="v1">Solo via código + deploy</td>
+          <td class="v2">System prompt y parámetros editables en BD</td>
+        </tr>
+        <tr>
+          <td>Memoria</td>
+          <td class="v1">Sin persistencia</td>
+          <td class="v2">Summaries + historial + preferencias</td>
+        </tr>
+        <tr>
+          <td>Permisos</td>
+          <td class="v1">Por comando, binario</td>
+          <td class="v2">Por recurso, entidad y jerarquía</td>
+        </tr>
+        <tr>
+          <td>Observabilidad</td>
+          <td class="v1">Log básico</td>
+          <td class="v2">Tokens, costos, pasos y ruteo registrados</td>
+        </tr>
+        <tr>
+          <td>Multi-agente</td>
+          <td class="v1">No</td>
+          <td class="v2">Sí, con clasificador de intención</td>
+        </tr>
+        <tr>
+          <td>Acceso a BD</td>
+          <td class="v1">SQL directo en código</td>
+          <td class="v2">28 stored procedures homologados</td>
+        </tr>
+        <tr>
+          <td>Agentes en producción</td>
+          <td class="v1">1</td>
+          <td class="v2">N (configurable desde BD)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Kept -->
+  <div class="kept-section">
+    <h2>Lo que se mantuvo de v1</h2>
+    <div class="kept-grid">
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>python-telegram-bot</strong>Framework de integración con Telegram</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>SQLAlchemy 2.0</strong>ORM y gestor de pool de conexiones</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>Pydantic v2</strong>Validación y configuración tipada</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>Strategy pattern</strong>Proveedores LLM intercambiables</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>Pool de conexiones</strong>Reconexión automática, soporte multi-BD</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>Middlewares</strong>Auth y logging sobre handlers de Telegram</div>
+      </div>
+      <div class="kept-item">
+        <div class="dot"></div>
+        <div><strong>ToolRegistry</strong>Concepto mejorado y generalizado en v2</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  <div class="container">
+    Iris Bot v2 — Documentación interna &nbsp;·&nbsp; Generado desde <code>docs/v2-justificacion.md</code>
+  </div>
+</footer>
+
+</body>
+</html>
