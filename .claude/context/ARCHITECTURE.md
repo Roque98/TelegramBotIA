@@ -38,7 +38,7 @@
 │  │                          ConversationEvent, UserContext      │
 │  ├── react/               → ReActAgent, Scratchpad, schemas    │
 │  ├── providers/           → OpenAIProvider (LLMProvider)       │
-│  └── tools/               → BaseTool, ToolRegistry + 5 tools  │
+│  └── tools/               → BaseTool, ToolRegistry + 10 tools │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -50,8 +50,11 @@
 │  │                          UserService                        │
 │  ├── memory/              → UserProfile, MemoryRepository,     │
 │  │                          MemoryService                      │
-│  └── knowledge/           → KnowledgeEntry, KnowledgeRepository│
-│                             KnowledgeService                   │
+│  ├── knowledge/           → KnowledgeEntry, KnowledgeRepository│
+│  │                          KnowledgeService                   │
+│  ├── alerts/              → AlertEntity, AlertRepository,      │
+│  │                          AlertPromptBuilder (FEAT-36/37)    │
+│  └── cost/                → CostSession, CostRepository        │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼

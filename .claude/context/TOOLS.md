@@ -4,7 +4,7 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Tools registradas | 5 |
+| Tools registradas | 10 |
 | Ubicación | `src/agents/tools/` |
 | Patrón | BaseTool abstracta + ToolRegistry singleton |
 
@@ -46,12 +46,6 @@ Categoría: KNOWLEDGE
 Parámetros:
   - query (string, required): Término o pregunta a buscar
 Requiere: KnowledgeService
-```
-
-**Flujo**:
-```
-1. KnowledgeService.search(query) → list[KnowledgeEntry]
-2. Retorna las entradas más relevantes como observación
 ```
 
 ---
@@ -99,19 +93,108 @@ Requiere: DatabaseManager
 
 ---
 
+### 6. ReadAttachmentTool — `read_attachment`
+
+**Archivo**: `src/agents/tools/read_attachment_tool.py`
+**Descripción**: Lee archivos adjuntos enviados por el usuario (imágenes, PDFs, etc.)
+
+```yaml
+Nombre: "read_attachment"
+Categoría: UTILITY
+Parámetros:
+  - file_id (string, required): ID del archivo en Telegram
+```
+
+---
+
+### 7. AlertAnalysisTool — `alert_analysis`
+
+**Archivo**: `src/agents/tools/alert_analysis_tool.py`
+**Descripción**: Analiza alertas activas de monitoreo PRTG. Consulta eventos activos,
+tickets históricos y matriz de escalamiento para generar un diagnóstico estructurado.
+
+```yaml
+Nombre: "alert_analysis"
+Categoría: MONITORING
+Parámetros:
+  - filtro (string, optional): Equipo, IP o sensor a filtrar
+Requiere: AlertRepository, OpenAIProvider (data_llm)
+Requiere alias BD: "monitoreo" (DB_CONNECTIONS=core,monitoreo)
+Estado: desactivada en BotIAv2_Recurso (reemplazada por FEAT-37)
+```
+
+**Flujo**:
+```
+1. AlertRepository.get_active_events() — BAZ_CDMX → EKT fallback
+2. Seleccionar evento más crítico que coincida con filtro
+3. Enriquecer: tickets históricos, template, escalamiento, contactos
+4. AlertPromptBuilder.build_prompt(context) → prompt enriquecido
+5. LLM (data_llm) genera análisis estructurado Markdown
+6. Retorna análisis + DISCLAIMER al agente
+```
+
+---
+
+### 8. ReloadPermissionsTool — `reload_permissions`
+
+**Archivo**: `src/agents/tools/reload_permissions_tool.py`
+**Descripción**: Invalida el cache de permisos del usuario y los recarga desde BD
+
+```yaml
+Nombre: "reload_permissions"
+Categoría: UTILITY
+Parámetros: (ninguno)
+esPublico: true
+```
+
+---
+
+### 9. ReloadAgentConfigTool — `reload_agent_config`
+
+**Archivo**: `src/agents/tools/reload_agent_config_tool.py`
+**Descripción**: Recarga la configuración de agentes desde BotIAv2_AgenteDef
+
+```yaml
+Nombre: "reload_agent_config"
+Categoría: UTILITY
+Parámetros: (ninguno)
+```
+
+---
+
+### 10. SaveMemoryTool — `save_memory`
+
+**Archivo**: `src/agents/tools/save_memory_tool.py`
+**Descripción**: Persiste un resumen o dato importante en la memoria del usuario
+
+```yaml
+Nombre: "save_memory"
+Categoría: UTILITY
+Parámetros:
+  - content (string, required): Dato a memorizar
+Requiere: MemoryRepository
+```
+
+---
+
 ## Estructura del Sistema
 
 ### Archivos
 
 ```
 src/agents/tools/
-├── base.py            ← BaseTool, ToolResult, ToolDefinition, ToolCategory
-├── registry.py        ← ToolRegistry (singleton, thread-safe)
-├── database_tool.py   ← DatabaseTool
-├── knowledge_tool.py  ← KnowledgeTool
-├── calculate_tool.py  ← CalculateTool
-├── datetime_tool.py   ← DateTimeTool
-└── preference_tool.py ← SavePreferenceTool
+├── base.py                    ← BaseTool, ToolResult, ToolDefinition, ToolCategory
+├── registry.py                ← ToolRegistry (singleton, thread-safe)
+├── database_tool.py           ← DatabaseTool
+├── knowledge_tool.py          ← KnowledgeTool
+├── calculate_tool.py          ← CalculateTool
+├── datetime_tool.py           ← DateTimeTool
+├── preference_tool.py         ← SavePreferenceTool
+├── read_attachment_tool.py    ← ReadAttachmentTool
+├── alert_analysis_tool.py     ← AlertAnalysisTool (FEAT-36/37)
+├── reload_permissions_tool.py ← ReloadPermissionsTool
+├── reload_agent_config_tool.py← ReloadAgentConfigTool
+└── save_memory_tool.py        ← SaveMemoryTool
 ```
 
 ---

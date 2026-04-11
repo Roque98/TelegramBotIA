@@ -211,7 +211,51 @@ CREATE TABLE ChatMensajes (
 
 ## Stored Procedures
 
-### sp_search_knowledge
+### BotIAv2_sp_* — Stored Procedures del Bot (prefijo homologado)
+
+> Todos los queries de autenticación, memoria, preferencias, costos y observabilidad
+> pasan por SPs. No hay SQL directo en los repositorios para estas operaciones.
+
+#### Auth — usuarios y cuentas Telegram (migration 006)
+
+| SP | Descripción |
+|----|-------------|
+| `BotIAv2_sp_GetUsuarioByChatId` | Obtiene usuario por Telegram chat ID |
+| `BotIAv2_sp_GetUsuarioByNumEmpleado` | Obtiene usuario por número de empleado |
+| `BotIAv2_sp_GetUsuarioById` | Obtiene usuario por ID interno |
+| `BotIAv2_sp_GetUsuarios` | Lista todos los usuarios activos |
+| `BotIAv2_sp_ExisteUsuarioByChatId` | Verifica si existe una cuenta Telegram |
+| `BotIAv2_sp_InsertarCuentaTelegram` | Registra nueva cuenta Telegram |
+| `BotIAv2_sp_ActualizarCuentaTelegram` | Actualiza datos de cuenta Telegram |
+| `BotIAv2_sp_GetCuentaTelegramByChatId` | Obtiene cuenta Telegram por chat ID |
+| `BotIAv2_sp_SetCodigoVerificacion` | Guarda código de verificación |
+| `BotIAv2_sp_GetCodigoVerificacion` | Obtiene código de verificación |
+| `BotIAv2_sp_VerificarCuentaTelegram` | Marca cuenta como verificada |
+| `BotIAv2_sp_GetRolUsuario` | Obtiene rol del usuario |
+| `BotIAv2_sp_GetGerenciasUsuario` | Obtiene gerencias del usuario |
+| `BotIAv2_sp_GetPermisosUsuario` | Obtiene permisos filtrados por rol/gerencia (dynamic SQL para IN clauses) |
+| `BotIAv2_sp_GetPerfilUsuario` | Perfil completo: rol + gerencias como CSV |
+| `BotIAv2_sp_GetTodosLosPermisos` | Lista todos los permisos del sistema |
+| `BotIAv2_sp_RegistrarAcceso` | Registra último acceso del usuario |
+| `BotIAv2_sp_UpdateLastSeen` | Actualiza fecha de último acceso |
+| `BotIAv2_sp_GetRecentUsers` | Usuarios activos recientes |
+| `BotIAv2_sp_GetUserStats` | Estadísticas de un usuario |
+| `BotIAv2_sp_SearchUsers` | Búsqueda de usuarios por término |
+
+#### Memoria, preferencias, costos y observabilidad (migration 007)
+
+| SP | Descripción |
+|----|-------------|
+| `BotIAv2_sp_GetPerfilMemoria` | Perfil de memoria del usuario (summaries + preferencias + rol) |
+| `BotIAv2_sp_GetMensajesRecientes` | Mensajes recientes del usuario |
+| `BotIAv2_sp_GetEstadisticasUsuario` | Estadísticas de uso desde InteractionLogs |
+| `BotIAv2_sp_GetPreferenciasUsuario` | Preferencias JSON del usuario |
+| `BotIAv2_sp_GuardarPreferenciasUsuario` | Upsert de preferencias JSON (UPDATE + INSERT si @@ROWCOUNT=0) |
+| `BotIAv2_sp_GetCostosDiarios` | Gasto del día agrupado por usuario |
+| `BotIAv2_sp_GuardarInteraccion` | Persiste interacción completa en InteractionLogs (resuelve idUsuario internamente desde telegramChatId) |
+
+#### Knowledge (legacy)
+
 ```sql
 EXEC sp_search_knowledge
     @query = 'política devoluciones',
@@ -226,43 +270,6 @@ EXEC sp_search_knowledge
 
 ## Queries Comunes
 
-### Buscar en Knowledge Base
-```python
-# KnowledgeRepository.search_entries()
-query = """
-SELECT e.*, c.name as category_name
-FROM knowledge_entries e
-JOIN knowledge_categories c ON e.category_id = c.id
-WHERE e.active = 1 AND c.active = 1
-  AND (e.question LIKE ? OR e.keywords LIKE ?)
-ORDER BY e.priority DESC
-"""
-```
-
-### Obtener perfil de memoria
-```python
-# MemoryRepository.get_user_memory_profile()
-query = """
-SELECT * FROM UserMemoryProfiles
-WHERE idUsuario = :user_id
-"""
-```
-
-### Guardar perfil de memoria
-```python
-# MemoryRepository.save_memory_profile()
-# INSERT si no existe, UPDATE si existe
-query = """
-MERGE INTO UserMemoryProfiles AS target
-USING (SELECT :user_id AS idUsuario) AS source
-ON target.idUsuario = source.idUsuario
-WHEN MATCHED THEN
-    UPDATE SET resumenContextoLaboral = :contexto, ...
-WHEN NOT MATCHED THEN
-    INSERT (idUsuario, ...) VALUES (:user_id, ...)
-"""
-```
-
 ### Verificar permisos (SEC-01)
 ```python
 # PermissionService.can() — nuevo sistema
@@ -273,6 +280,29 @@ tiene_permiso = permisos.get("tool:database_query", False)
 
 # Cache LRU TTL 60s por user_id
 # Invalidar: permission_service.invalidate(user_id)
+```
+
+### Obtener perfil de usuario (via SP)
+```python
+# UserQueryRepository.get_by_chat_id()
+query = "EXEC abcmasplus..BotIAv2_sp_GetUsuarioByChatId @telegramChatId = :chat_id"
+rows = await db_manager.execute_query_async(query, {"chat_id": chat_id})
+```
+
+### Obtener permisos con gerencias
+```python
+# PermissionRepository — lista → CSV para el SP
+gerencias_str = ",".join(str(g) for g in gerencia_ids) if gerencia_ids else None
+query = """EXEC abcmasplus..BotIAv2_sp_GetPermisosUsuario
+    @idUsuario = :user_id, @idRol = :role_id,
+    @gerenciaIds = :gerencia_ids, @direccionIds = :direccion_ids"""
+```
+
+### Guardar interacción completa
+```python
+# ObservabilityRepository.save_interaction()
+sql = "EXEC abcmasplus..BotIAv2_sp_GuardarInteraccion @correlationId=:correlation_id, @telegramChatId=:chat_id_int, ..."
+# El SP resuelve idUsuario internamente desde telegramChatId
 ```
 
 ---
@@ -380,11 +410,18 @@ VALUES (@idUsuario, 15, @idRecurso, NULL, 0);
 
 ```
 database/migrations/
-├── 09_PreMigracionCheck.sql          -- Verificación pre-migración
-├── 10_BotPermisos.sql                -- Crear BotTipoEntidad, BotRecurso, BotPermisos, BotPermisosAudit
-├── 11_BotPermisos_DatosIniciales.sql -- Datos iniciales por rol (1–8)
-├── 20_DropLegacyPermisosSPs.sql      -- DROP sp_VerificarPermisoOperacion, sp_ObtenerOperacionesUsuario
-└── 21_DropLegacyPermisosTablas.sql   -- DROP RolesOperaciones, RolesIA, GerenciasRolesIA
+├── 09_PreMigracionCheck.sql              -- Verificación pre-migración
+├── 10_BotPermisos.sql                    -- Crear BotTipoEntidad, BotRecurso, BotPermisos, BotPermisosAudit
+├── 11_BotPermisos_DatosIniciales.sql     -- Datos iniciales por rol (1–8)
+├── 20_DropLegacyPermisosSPs.sql          -- DROP sp_VerificarPermisoOperacion, sp_ObtenerOperacionesUsuario
+└── 21_DropLegacyPermisosTablas.sql       -- DROP RolesOperaciones, RolesIA, GerenciasRolesIA
+
+scripts/migrations/
+├── 006_auth_stored_procedures.sql        -- 21 BotIAv2_sp_* para auth (usuarios, telegram, permisos)
+├── 007_auth_sp_extended.sql              -- 7 BotIAv2_sp_* para memoria, preferencias, costos, observabilidad
+├── 008_feat36_alert_analysis_tool.sql    -- Registra tool:alert_analysis en BotIAv2_Recurso (FEAT-36)
+├── 009_fix_alertas_system_prompt.sql     -- Corrige system prompt del agente de alertas
+└── 010_feat37_alert_tools_refactor.sql   -- Registra 4 tools granulares de alertas; desactiva alert_analysis (FEAT-37)
 ```
 
 ---
