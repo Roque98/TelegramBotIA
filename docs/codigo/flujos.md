@@ -28,9 +28,13 @@
    ├── MessageGateway.from_telegram() → ConversationEvent
    ├── MemoryService.get_context(user_id) → UserContext
    │   └── Incluye permisos cargados de PermissionService
-   └── ReActAgent.execute(query, user_context) → AgentResponse
+   └── AgentOrchestrator.execute(query, user_context) → AgentResponse
+       └── Expone la misma interfaz que ReActAgent (.execute())
 
-6. ReActAgent ejecuta loop ReAct (ver sección siguiente)
+5b. AgentOrchestrator rutea dinámicamente (ver sección siguiente)
+    └── src/agents/orchestrator/orchestrator.py
+
+6. ReActAgent seleccionado ejecuta loop ReAct (ver sección Loop ReAct)
    └── src/agents/react/agent.py
 
 7. MainHandler registra observabilidad (no bloqueante)
@@ -43,6 +47,76 @@
 
 9. Respuesta enviada al usuario vía Telegram
    └── Si > 4000 chars: se divide en múltiples mensajes
+```
+
+---
+
+## Flujo de orquestación dinámica (ARQ-35)
+
+Cuando `MainHandler` delega al `AgentOrchestrator`, éste selecciona el agente correcto
+antes de ejecutar el loop ReAct. `MainHandler` no sabe cuántos agentes existen —
+`AgentOrchestrator` expone la misma interfaz `.execute()`.
+
+```
+AgentOrchestrator.execute(query, user_context)
+└── src/agents/orchestrator/orchestrator.py
+
+1. AgentConfigService.get_active_agents()
+   └── Carga definiciones desde BotIAv2_AgenteDef (cache en memoria)
+       Campos relevantes: nombre, descripcion, systemPrompt, temperatura,
+                          maxIteraciones, esGeneralista, tools
+
+2. IntentClassifier.classify(query, definitions)
+   └── src/agents/orchestrator/intent_classifier.py
+   ├── Llama a modelo nano (gpt-5.4-mini o similar) con un prompt compacto
+   │   que lista los agentes especializados y sus descripciones
+   ├── Respuesta esperada: nombre de un agente o "generalista"
+   └── ClassifyResult(agent_name, confidence, used_fallback)
+
+3. AgentOrchestrator._resolve(agent_name, definitions)
+   ├── Busca la AgentDefinition por nombre exacto
+   └── Si no existe → fallback al agente con esGeneralista=1
+
+4. AgentBuilder.build(definition)
+   └── src/agents/factory/agent_builder.py
+   ├── Cache hit (idAgente, version)? → retorna instancia existente
+   └── Cache miss → construye nuevo ReActAgent:
+       ├── OpenAIProvider con definition.modeloOverride o openai_loop_model
+       ├── temperature = definition.temperatura
+       ├── max_iterations = definition.maxIteraciones
+       ├── system_prompt_override = definition.systemPrompt
+       └── tool_scope = set(definition.tools) [None para generalista]
+
+5. ReActAgent.execute(query, user_context)
+   └── Loop Think-Act-Observe con la configuración del agente seleccionado
+       (ver sección "El loop ReAct")
+
+6. AgentOrchestrator enriquece AgentResponse:
+   ├── response.routed_agent = definition.nombre
+   ├── response.classify_ms  = duración del clasificador
+   ├── response.agent_confidence = confidence del ClassifyResult
+   └── Inyecta step del clasificador en response.data["step_traces"]
+```
+
+### Diagrama de componentes
+
+```
+MainHandler
+    │
+    └── AgentOrchestrator.execute(query, context)
+            │
+            ├── AgentConfigService ──→ BD: BotIAv2_AgenteDef
+            │
+            ├── IntentClassifier ──→ LLM nano
+            │       └── ClassifyResult(agent_name="datos", confidence=0.95)
+            │
+            ├── _resolve() ──→ AgentDefinition("datos")
+            │
+            ├── AgentBuilder.build(definition)
+            │       └── ReActAgent(system_prompt=..., temp=0.1, tools=["database_query",...])
+            │
+            └── ReActAgent.execute(query, context)
+                    └── AgentResponse (routed_agent="datos")
 ```
 
 ---

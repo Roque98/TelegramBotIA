@@ -1,6 +1,6 @@
 # Dominio
 
-El dominio contiene la lógica de negocio. Está organizado en 4 subdominios bajo `src/domain/`.
+El dominio contiene la lógica de negocio. Está organizado en 6 subdominios bajo `src/domain/`.
 Cada subdominio sigue el patrón Repository + Service.
 
 ---
@@ -210,6 +210,200 @@ class CostTracker:
 ```
 
 El `MainHandler` crea un `CostTracker` por request y lo persiste al finalizar.
+
+---
+
+## Alerts — `src/domain/alerts/`
+
+Gestiona el acceso a datos de alertas PRTG con fallback automático entre instancias BAZ_CDMX y EKT.
+
+### Entidades
+
+```python
+# alert_entity.py
+
+class AlertEvent(BaseModel):
+    """Evento activo de monitoreo PRTG."""
+    equipo: str          # alias: "Equipo"
+    ip: str              # alias: "IP"
+    sensor: str          # alias: "Sensor"
+    status: str          # alias: "Status"
+    mensaje: str         # alias: "Mensaje"
+    prioridad: int       # alias: "Prioridad"
+    id_area_atendedora: Optional[int]
+    id_area_administradora: Optional[int]
+    area_atendedora: str
+    responsable_atendedor: str
+    area_administradora: str
+    responsable_administrador: str
+    origen: str          # alias: "_origen" — "BAZ_CDMX" | "EKT"
+
+    @property
+    def es_ekt(self) -> bool: ...
+    @property
+    def es_url_sensor(self) -> bool: ...
+
+class HistoricalTicket(BaseModel):
+    """Ticket histórico de un evento similar al activo."""
+    ticket: Optional[str]
+    alerta: str
+    detalle: str
+    accion_correctiva: str
+
+    @property
+    def accion_formateada(self) -> str: ...   # Reemplaza [Salto] por \n
+
+class Template(BaseModel):
+    """Template de la aplicación asociada al evento."""
+    id_template: Optional[int]
+    aplicacion: str
+    gerencia_desarrollo: str
+    instancia: str   # "BAZ", "COMERCIO" o vacío
+
+    @property
+    def etiqueta(self) -> str: ...   # "ABCEKT" | "ABCMASplus"
+    @property
+    def es_ekt(self) -> bool: ...
+
+class EscalationLevel(BaseModel):
+    """Un nivel de la matriz de escalamiento del template."""
+    nivel: int
+    nombre: str
+    puesto: str
+    extension: str
+    celular: str
+    correo: str
+    tiempo_escalacion: str
+
+class AreaContacto(BaseModel):
+    """Datos de contacto de una gerencia."""
+    gerencia: str
+    correos: str        # alias: "direccion_correo"
+    extensiones: str
+
+class AlertContext(BaseModel):
+    """Agregado completo de un evento enriquecido — se pasa al PromptBuilder."""
+    evento: AlertEvent
+    tickets: list[HistoricalTicket]
+    template: Optional[Template]
+    matriz: list[EscalationLevel]
+    contacto_atendedora: Optional[AreaContacto]
+    contacto_administradora: Optional[AreaContacto]
+    query_usuario: str
+```
+
+### Repositorio
+
+```python
+class AlertRepository:
+    def __init__(self, db_manager) -> None: ...
+    # Recibe el DatabaseManager del alias "monitoreo" (BAZ_CDMX)
+
+    async def get_active_events(
+        ip: Optional[str] = None,
+        equipo: Optional[str] = None,
+        solo_down: bool = False,
+    ) -> list[AlertEvent]
+    # Combina PrtgObtenerEventosEnriquecidos + ...Performance
+    # Fallback automático a versiones _EKT si BAZ retorna vacío
+
+    async def get_historical_tickets(ip: str, sensor: str) -> list[HistoricalTicket]
+    # TOP 15 tickets históricos; fallback a versión EKT
+
+    async def get_template_id(ip: str, url: Optional[str] = None) -> Optional[dict]
+    # Obtiene idTemplate e instancia para el IP o URL dado
+
+    async def get_template_info(template_id: int, usar_ekt: bool = False) -> Optional[Template]
+    # Fallback automático a versión EKT
+
+    async def get_escalation_matrix(template_id: int, usar_ekt: bool = False) -> list[EscalationLevel]
+    # Ordenada por nivel; fallback automático a versión EKT
+
+    async def get_contacto_gerencia(id_gerencia: int, usar_ekt: bool = False) -> Optional[AreaContacto]
+```
+
+**Estrategia de fallback**: todos los métodos intentan primero los SPs de la instancia BAZ_CDMX. Si retornan vacío, reintenta con los SPs `_EKT` que usan `OPENDATASOURCE` internamente. Nunca lanza excepciones al llamador — retorna `[]` o `None` en caso de error.
+
+### AlertPromptBuilder
+
+`AlertPromptBuilder` construye el par `(system_prompt, user_prompt)` listo para pasar al LLM. Recibe un `AlertContext` completo y genera un prompt enriquecido con cuatro secciones:
+
+1. **ALERTA ACTIVA** — datos del evento, IP, sensor, áreas responsables y contactos
+2. **TICKETS HISTÓRICOS** — hasta 15 tickets previos con acciones correctivas (`[Salto]` → `\n`)
+3. **TEMPLATE Y ESCALAMIENTO** — nombre de aplicación, gerencia de desarrollo y matriz de escalamiento por niveles
+4. **INSTRUCCIÓN** — estructura Markdown exacta que debe seguir el LLM para su respuesta en Telegram
+
+```python
+class AlertPromptBuilder:
+    def build(self, context: AlertContext) -> tuple[str, str]
+    # Retorna (system_prompt, user_prompt)
+```
+
+---
+
+## AgentConfig — `src/domain/agent_config/`
+
+Gestiona la configuración dinámica de agentes LLM almacenada en BD, con cache LRU de 5 minutos.
+
+### Entidad
+
+```python
+# agent_config_entity.py
+class AgentDefinition(BaseModel):
+    id: int
+    nombre: str
+    descripcion: str
+    system_prompt: str       # Debe contener {tools_description} y {usage_hints}
+    temperatura: float
+    max_iteraciones: int
+    modelo_override: Optional[str]   # None → usa el modelo default del sistema
+    es_generalista: bool             # True → accede a todas sus tools permitidas
+    tools: list[str]                 # Nombres de tools en scope (vacío para el generalista)
+    activo: bool
+    version: int                     # Incrementado por trigger TR_AgenteDef_VersionHistorial
+```
+
+### Repositorio
+
+```python
+# agent_config_repository.py
+class AgentConfigRepository:
+    def __init__(self, db_manager: Any) -> None: ...
+
+    def get_all_active(self) -> list[AgentDefinition]
+    # Consulta BotIAv2_AgenteDef JOIN BotIAv2_AgenteTools — solo activo=1
+
+    def get_by_nombre(self, nombre: str) -> Optional[AgentDefinition]
+
+    def get_generalista(self) -> Optional[AgentDefinition]
+    # Filtra por esGeneralista=1 AND activo=1
+```
+
+Las tools de cada agente se obtienen mediante `STRING_AGG` en una subconsulta sobre `BotIAv2_AgenteTools` y se deserializan como `list[str]`.
+
+### Servicio y cache LRU
+
+```python
+# agent_config_service.py
+class AgentConfigService:
+    def __init__(
+        self,
+        repository: AgentConfigRepository,
+        cache_ttl_seconds: int = 300,   # TTL de 5 minutos
+    ) -> None: ...
+
+    def set_builder(self, builder: "AgentBuilder") -> None
+    # Inyección tardía para evitar dependencia circular con AgentBuilder
+
+    def get_active_agents(self) -> list[AgentDefinition]
+    # Retorna agentes activos desde cache (LRU) o BD
+    # Excluye agentes cuyo systemPrompt no contenga {tools_description} y {usage_hints}
+
+    def invalidate_cache(self) -> None
+    # Invalida el cache del service Y el cache de instancias del AgentBuilder
+```
+
+El cache es thread-safe (`threading.Lock`). Al invocar `invalidate_cache()`, también se llama a `AgentBuilder.clear_instance_cache()` para forzar la reconstrucción de todas las instancias de agentes activos. Las métricas de cache hits/misses se reportan a `get_metrics()`.
 
 ---
 

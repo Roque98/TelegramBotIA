@@ -65,6 +65,14 @@ Las tablas sin prefijo son del sistema legacy empresarial que el bot consulta (s
 | `pasosTomados` | INT | Iteraciones del loop ReAct |
 | `error` | NVARCHAR(MAX) | Descripción del error si exitoso=0 |
 | `fechaInteraccion` | DATETIME2 | — |
+| `agenteNombre` | VARCHAR(100) NULL | Agente LLM que procesó la interacción (ARQ-35) |
+| `totalInputTokens` | INT NULL | Tokens enviados al LLM en el request (OBS-36) |
+| `totalOutputTokens` | INT NULL | Tokens recibidos del LLM en el request (OBS-36) |
+| `llmIteraciones` | INT NULL | Cantidad de iteraciones del loop ReAct (OBS-36) |
+| `usedFallback` | BIT DEFAULT 0 | 1=el orchestrator usó el agente generalista como fallback (OBS-36) |
+| `classifyMs` | INT NULL | Latencia del IntentClassifier en ms (OBS-36) |
+| `agentConfidence` | DECIMAL(5,4) NULL | Confianza del clasificador, rango 0.0–1.0 (OBS-36) |
+| `costUSD` | DECIMAL(10,6) NULL | Costo total del request en USD (OBS-36) |
 
 ### BotIAv2_InteractionSteps — pasos del loop ReAct
 
@@ -103,6 +111,69 @@ Las tablas sin prefijo son del sistema legacy empresarial que el bot consulta (s
 | `tokensCompletion` | INT | Tokens recibidos |
 | `costoUSD` | DECIMAL(10,6) | Costo calculado en dólares |
 | `modelo` | VARCHAR(100) | Modelo LLM usado |
+| `fechaCreacion` | DATETIME2 | — |
+
+---
+
+## Tablas de orquestación multi-agente (ARQ-35 / OBS-36)
+
+### BotIAv2_AgenteDef — definición de agentes LLM
+
+Catálogo de agentes disponibles. El orchestrator carga esta tabla al iniciar para construir los agentes dinámicamente.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `idAgente` | INT PK | — |
+| `nombre` | VARCHAR(100) UNIQUE | Identificador del agente: `datos`, `conocimiento`, `casual`, `generalista` |
+| `descripcion` | VARCHAR(500) | Texto usado por el IntentClassifier para rutear |
+| `systemPrompt` | NVARCHAR(MAX) | System prompt; debe contener `{tools_description}` y `{usage_hints}` |
+| `temperatura` | DECIMAL(3,2) | Temperatura del LLM; default 0.1 |
+| `maxIteraciones` | INT | Máximo de iteraciones del loop ReAct; default 10 |
+| `modeloOverride` | VARCHAR(100) NULL | NULL = usa `openai_loop_model` del sistema |
+| `esGeneralista` | BIT | 1 = ignora `tool_scope`, usa permisos directos del usuario |
+| `activo` | BIT | 1 = habilitado |
+| `version` | INT | Auto-incrementado por trigger al cambiar `systemPrompt` |
+| `fechaActualizacion` | DATETIME2 | — |
+
+### BotIAv2_AgenteTools — tools en el scope de cada agente
+
+Asociación entre agentes y las tools que pueden usar. Los agentes con `esGeneralista=1` no tienen filas aquí.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `idAgenteTools` | INT PK | — |
+| `idAgente` | INT FK → AgenteDef | — |
+| `nombreTool` | VARCHAR(100) | Nombre de la tool: `database_query`, `knowledge_search`, etc. |
+| `activo` | BIT | 1 = tool habilitada para este agente |
+
+### BotIAv2_AgentePromptHistorial — auditoría de cambios de prompt
+
+Tabla append-only. El trigger `TR_AgenteDef_VersionHistorial` inserta automáticamente la versión anterior cada vez que se modifica `systemPrompt` en `AgenteDef`.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `idHistorial` | INT PK | — |
+| `idAgente` | INT FK → AgenteDef | — |
+| `systemPrompt` | NVARCHAR(MAX) | Texto del prompt anterior al cambio |
+| `version` | INT | Número de versión del prompt guardado |
+| `razonCambio` | VARCHAR(500) | Descripción del motivo del cambio |
+| `modificadoPor` | VARCHAR(100) | Usuario de BD que realizó el UPDATE (`SYSTEM_USER`) |
+| `fechaCreacion` | DATETIME2 | — |
+
+### BotIAv2_AgentRouting — auditoría de decisiones de ruteo
+
+Una fila por request. Registra qué agente eligió el orchestrator y con qué confianza.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `idRouting` | INT PK | — |
+| `correlationId` | VARCHAR(50) | Correlación con `InteractionLogs` |
+| `query` | NVARCHAR(1000) NULL | Texto de la consulta (truncado) |
+| `agenteSeleccionado` | VARCHAR(100) | Nombre del agente elegido |
+| `confianza` | DECIMAL(5,4) NULL | Score 0.0–1.0; NULL si no disponible |
+| `alternativas` | NVARCHAR(500) NULL | JSON: `[{"agente":"x","score":0.3}]` |
+| `classifyMs` | INT | Latencia del clasificador en ms |
+| `usedFallback` | BIT DEFAULT 0 | 1 = se usó el agente generalista como fallback |
 | `fechaCreacion` | DATETIME2 | — |
 
 ---
@@ -174,7 +245,7 @@ EXEC sp_search_knowledge
 
 ## Migraciones
 
-Los scripts están en `database/migrations/` y deben ejecutarse en orden numérico:
+### `database/migrations/` — migraciones por feature
 
 | Script | Descripción |
 |--------|-------------|
@@ -183,6 +254,25 @@ Los scripts están en `database/migrations/` y deben ejecutarse en orden numéri
 | `11_BotPermisos_DatosIniciales.sql` | Datos iniciales de permisos por rol |
 | `20_DropLegacyPermisosSPs.sql` | Elimina stored procedures legacy |
 | `21_DropLegacyPermisosTablas.sql` | Elimina tablas legacy de permisos |
+| `arq35_dynamic_orchestrator.sql` | ARQ-35: crea AgenteDef, AgenteTools, AgentePromptHistorial; agrega columna `agenteNombre` a InteractionLogs; trigger de versionado; 4 agentes iniciales |
+| `arq35_trigger_fix.sql` | ARQ-35: versión corregida del trigger `TR_AgenteDef_VersionHistorial` (sin prefijo de BD para compatibilidad con SQL Server) |
+| `obs36_multiagent_observability.sql` | OBS-36: agrega columnas de observabilidad a InteractionLogs (`totalInputTokens`, `totalOutputTokens`, `llmIteraciones`, `usedFallback`, `classifyMs`, `agentConfidence`, `costUSD`); crea BotIAv2_AgentRouting |
+| `obs36_sp_ultima_interaccion.sql` | OBS-36: actualiza `BotIAv2_sp_UltimaInteraccion` para incluir datos de AgentRouting y columnas OBS-36 |
+
+### `scripts/migrations/` — migraciones numeradas
+
+| Script | Descripción |
+|--------|-------------|
+| `001_add_application_logs.sql` | Crea BotIAv2_ApplicationLogs |
+| `002_add_transaction_logs.sql` | Crea BotIAv2_InteractionSteps |
+| `003_sec01_cmd_costo.sql` | Registra `cmd:/costo` en SEC-01 (reemplaza admin_chat_ids hardcodeados) |
+| `004_sec01_tool_read_attachment.sql` | Registra `tool:read_attachment` en SEC-01 |
+| `005_tool_catalog_in_recurso.sql` | Registra todas las tools del catálogo en BotIAv2_Recurso |
+| `006_auth_stored_procedures.sql` | Stored procedures de autenticación (BotIAv2_sp_*) |
+| `007_auth_sp_extended.sql` | SPs extendidos de auth: memoria, preferencias, costos, observabilidad |
+| `008_feat36_alert_analysis_tool.sql` | FEAT-36: tool de análisis de alertas PRTG |
+| `009_fix_alertas_system_prompt.sql` | Corrige el system prompt del agente `alertas` |
+| `010_feat37_alert_tools_refactor.sql` | FEAT-37: refactor de alert tools (4 tools estructuradas) |
 
 ---
 

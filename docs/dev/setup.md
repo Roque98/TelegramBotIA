@@ -103,12 +103,15 @@ GPT5/
 │   ├── agents/                  ← ReActAgent, tools, providers
 │   │   ├── base/                ← Contratos: AgentResponse, UserContext, ConversationEvent
 │   │   ├── react/               ← ReActAgent, prompts, scratchpad, schemas
-│   │   ├── tools/               ← 8 tools + ToolRegistry
+│   │   ├── tools/               ← Tools + ToolRegistry
+│   │   ├── orchestrator/        ← AgentOrchestrator, IntentClassifier
+│   │   ├── factory/             ← AgentBuilder
 │   │   └── providers/           ← OpenAIProvider
 │   ├── bot/
 │   │   ├── handlers/            ← Comandos y mensajes de Telegram
 │   │   ├── keyboards/           ← Teclados inline y de respuesta
 │   │   ├── middleware/          ← Auth, logging, token
+│   │   ├── notifications/       ← AdminNotifier
 │   │   └── telegram_bot.py      ← Arranque del bot
 │   ├── api/
 │   │   └── chat_endpoint.py     ← REST API Flask
@@ -121,7 +124,9 @@ GPT5/
 │   │   ├── auth/                ← Usuarios, permisos
 │   │   ├── memory/              ← Contexto conversacional
 │   │   ├── knowledge/           ← Base de conocimiento
-│   │   └── cost/                ← Tracking de costos LLM
+│   │   ├── cost/                ← Tracking de costos LLM
+│   │   ├── alerts/              ← Módulo de alertas PRTG
+│   │   └── agent_config/        ← Configuración dinámica de agentes
 │   ├── infra/
 │   │   ├── database/            ← DatabaseManager, SQLValidator
 │   │   ├── observability/       ← Tracer, Metrics, SQLRepository

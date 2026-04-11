@@ -29,6 +29,47 @@ strings está prohibida para evitar SQL injection.
 
 ---
 
+## DatabaseRegistry — `src/infra/database/registry.py`
+
+Gestiona múltiples conexiones a SQL Server de forma lazy y thread-safe.
+Cada alias se conecta solo cuando se solicita por primera vez.
+
+```python
+class DatabaseRegistry:
+    @classmethod
+    def from_settings(cls) -> "DatabaseRegistry"
+    # Crea el registry con las conexiones definidas en .env.
+    # Siempre incluye "core" (DB_HOST/NAME/...). Aliases adicionales desde DB_CONNECTIONS.
+
+    def get(self, alias: str = "core") -> DatabaseManager
+    # Retorna el DatabaseManager para el alias. Crea la instancia lazy en el primer llamado.
+    # Lanza KeyError si el alias no está configurado.
+
+    def get_aliases(self) -> list[str]
+    # Lista de alias configurados (conectados o no).
+
+    def get_active_aliases(self) -> list[str]
+    # Lista de alias con conexión activa (ya inicializados).
+
+    def is_configured(self, alias: str) -> bool
+    # True si el alias está en la configuración.
+
+    def close_all(self) -> None
+    # Cierra todas las conexiones activas. Llamar en shutdown del bot.
+```
+
+Ejemplo de uso:
+
+```python
+registry = DatabaseRegistry.from_settings()
+db = registry.get("ventas")          # lazy — crea la conexión al primer uso
+db_core = registry.get()             # "core" es el default
+rows = db_core.execute_query("SELECT TOP 5 * FROM Clientes")
+registry.close_all()                 # shutdown
+```
+
+---
+
 ## SQLValidator — `src/infra/database/sql_validator.py`
 
 Valida que el SQL generado por el LLM sea seguro antes de ejecutarlo.
@@ -188,6 +229,52 @@ Mensajes de estado progresivo que Telegram muestra mientras el agente procesa.
 status = StatusMessage(context, chat_id)
 await status.show("Consultando la base de datos...")
 # El mensaje se edita in-place cuando llega la respuesta real
+```
+
+---
+
+## AdminNotifier — `src/bot/notifications/admin_notifier.py`
+
+Envía notificaciones de errores críticos al administrador vía Telegram.
+
+**Propósito**: alertar en tiempo real cuando ocurren errores en el bot, sin depender de `admin_chat_ids` hardcodeados en settings.
+
+**Cómo funciona**:
+
+- Resuelve los destinatarios dinámicamente consultando en BD los usuarios con rol Administrador que tengan Telegram verificado y activo.
+- Aplica **rate limiting**: máximo 1 notificación por tipo de error cada 5 minutos (clave `NIVEL:TipoExcepcion`) para evitar spam.
+- Si no hay admins con Telegram verificado, loggea un warning y retorna sin fallar.
+
+```python
+async def notify_admin(
+    bot: Any,
+    db_manager: Any = None,
+    level: str = "ERROR",           # "ERROR", "CRITICAL", "WARNING"
+    error: Optional[BaseException] = None,
+    message: str = "",
+    user_info: str = "desconocido",
+) -> None
+# Envía el mensaje a todos los admins Telegram activos.
+```
+
+Ejemplo de uso (desde el middleware de logging):
+
+```python
+await notify_admin(
+    bot=context.bot,
+    db_manager=context.bot_data.get("db_manager"),
+    level="ERROR",
+    error=context.error,
+    user_info="12345 (@juan)",
+)
+```
+
+El mensaje incluye nivel, timestamp, usuario afectado, tipo de excepción y el último frame del traceback. Usa Markdown de Telegram.
+
+Función auxiliar para tests:
+
+```python
+reset_rate_cache()   # Limpia el cache de rate limiting
 ```
 
 ---

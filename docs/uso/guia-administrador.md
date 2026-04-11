@@ -187,6 +187,7 @@ VALUES (3, (SELECT id FROM knowledge_categories WHERE name = 'RECURSOS_HUMANOS')
 SELECT TOP 50
     il.correlationId,
     il.telegramChatId,
+    il.agenteNombre,
     il.mensajeUsuario,
     il.respuestaBot,
     il.exitoso,
@@ -221,6 +222,7 @@ SELECT
 FROM abcmasplus..BotIAv2_CostSesiones cs
 GROUP BY CAST(cs.fechaCreacion AS DATE)
 ORDER BY fecha DESC;
+```
 
 ---
 

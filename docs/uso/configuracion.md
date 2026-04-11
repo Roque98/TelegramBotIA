@@ -36,6 +36,47 @@ Todas las variables son leídas por `src/config/settings.py` usando Pydantic Set
 | `RETRY_DB_MIN_WAIT` | `1` | Espera mínima entre reintentos BD (segundos) |
 | `RETRY_DB_MAX_WAIT` | `15` | Espera máxima entre reintentos BD (segundos) |
 
+### Multi-base de datos (DB-37)
+
+El bot soporta conexiones a múltiples bases de datos simultáneamente. La conexión `core`
+(variables `DB_*`) siempre está disponible. Las conexiones adicionales se declaran con
+`DB_CONNECTIONS` y se configuran con prefijo `DB_<ALIAS>_`.
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `DB_CONNECTIONS` | `core` | Lista de aliases activos separados por coma. `core` siempre está disponible. Ejemplo: `core,monitoreo` |
+
+Para cada alias adicional, definir sus variables con el prefijo `DB_<ALIAS>_`:
+
+| Variable | Descripción |
+|----------|-------------|
+| `DB_<ALIAS>_HOST` | Host del servidor |
+| `DB_<ALIAS>_PORT` | Puerto TCP/IP |
+| `DB_<ALIAS>_INSTANCE` | Instancia nombrada (opcional) |
+| `DB_<ALIAS>_NAME` | Nombre de la base de datos |
+| `DB_<ALIAS>_USER` | Usuario de conexión |
+| `DB_<ALIAS>_PASSWORD` | Contraseña |
+| `DB_<ALIAS>_TYPE` | Motor: `mssql`, `mysql`, `postgresql` |
+
+### Módulo de alertas PRTG (FEAT-36)
+
+Para activar el agente de alertas se requiere una segunda conexión a la instancia de
+monitoreo (BAZ_CDMX). Los SPs internos usan `OPENDATASOURCE` para acceder a `ABCMASplus`,
+por lo que no se necesita un tercer alias.
+
+Para activar, agregar `monitoreo` a `DB_CONNECTIONS`:
+
+```dotenv
+DB_CONNECTIONS=core,monitoreo
+DB_MONITOREO_HOST=10.53.34.130
+DB_MONITOREO_PORT=1533
+DB_MONITOREO_INSTANCE=
+DB_MONITOREO_NAME=consolamonitoreo
+DB_MONITOREO_USER=usrmon
+DB_MONITOREO_PASSWORD=your_password
+DB_MONITOREO_TYPE=mssql
+```
+
 ### Ejemplo de `.env`
 
 ```dotenv

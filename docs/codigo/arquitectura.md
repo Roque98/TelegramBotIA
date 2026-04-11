@@ -32,12 +32,18 @@ dependen de inferiores, nunca al revés).
 ┌─────────────────────────────────────────────────────────────────┐
 │                    CAPA 3: AGENTES LLM                          │
 │                                                                 │
+│  src/agents/orchestrator/      → AgentOrchestrator (ruteo N-   │
+│                                  way por intent), Intentclassi-│
+│                                  fier (nano LLM → agent name)  │
+│  src/agents/factory/           → AgentBuilder (construye y     │
+│                                  cachea instancias ReActAgent   │
+│                                  desde AgentDefinition en BD)  │
 │  src/agents/react/agent.py     → ReActAgent (loop principal)   │
 │  src/agents/react/prompts.py   → System/user/continue prompts  │
 │  src/agents/react/scratchpad.py→ Historial de pasos del loop   │
 │  src/agents/react/schemas.py   → ReActResponse (Pydantic)      │
 │  src/agents/providers/         → OpenAIProvider (LLMProvider)  │
-│  src/agents/tools/             → ToolRegistry + 8 tools        │
+│  src/agents/tools/             → ToolRegistry + 10 tools       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -49,15 +55,25 @@ dependen de inferiores, nunca al revés).
 │  src/domain/memory/            → UserContext, MemoryService    │
 │  src/domain/knowledge/         → KnowledgeEntry, KnowledgeSvc  │
 │  src/domain/cost/              → CostTracker, CostRepository   │
+│  src/domain/alerts/            → AlertEvent, AlertRepository,  │
+│                                  AlertPromptBuilder (PRTG)     │
+│  src/domain/agent_config/      → AgentDefinition,              │
+│                                  AgentConfigRepository,        │
+│                                  AgentConfigService            │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                  CAPA 5: INFRAESTRUCTURA                        │
 │                                                                 │
-│  src/infra/database/           → DatabaseManager, SQLValidator  │
+│  src/infra/database/           → DatabaseManager, SQLValidator, │
+│                                  DatabaseRegistry (multi-conn  │
+│                                  lazy por alias desde .env)    │
 │  src/infra/observability/      → Tracer, Metrics, SQLRepo       │
 │  src/infra/events/             → EventBus                      │
+│  src/bot/notifications/        → AdminNotifier (notify_admin   │
+│                                  con rate-limiting, admins     │
+│                                  desde BD)                     │
 │  src/config/                   → Settings (Pydantic), logging  │
 │  src/utils/                    → encryption, rate_limiter,     │
 │                                  retry, input_validator        │
@@ -140,6 +156,43 @@ class ToolResult(BaseModel):
         """Texto que el agente incluye en el scratchpad."""
 ```
 
+### `AgentDefinition` — configuración de un agente desde BD
+
+```python
+# src/domain/agent_config/agent_config_entity.py
+class AgentDefinition(BaseModel):
+    id: int
+    nombre: str                       # Clave de ruteo del orchestrator
+    descripcion: str                  # Descripción para el IntentClassifier
+    system_prompt: str                # Prompt inyectado al construir el agente
+    modelo_override: Optional[str]    # Modelo específico o None para usar el default
+    max_iteraciones: int
+    temperatura: float
+    es_generalista: bool              # True → agente de fallback, ve todas las tools permitidas
+    tools: list[str]                  # Nombres de tools en scope (especialistas)
+    version: int                      # Incrementado por trigger al editar el prompt
+```
+
+### `AgentOrchestrator` — punto de entrada al sistema de agentes
+
+```python
+# src/agents/orchestrator/orchestrator.py
+class AgentOrchestrator:
+    """
+    Expone la misma interfaz que ReActAgent (.execute()) pero rutea
+    la consulta al agente especializado correcto usando IntentClassifier.
+    MainHandler no sabe cuántos agentes existen.
+    """
+    async def execute(
+        self,
+        query: str,
+        context: UserContext,
+        event_callback: Optional[Callable] = None,
+        **kwargs,
+    ) -> AgentResponse:
+        ...
+```
+
 ---
 
 ## Dependencias entre módulos
@@ -152,19 +205,29 @@ bot/handlers ──────────────────────�
                                                    gateway/               domain/memory/
                                                  message_gateway          memory_service
                                                           │
-                                                   agents/react/
-                                                      agent
+                                                 agents/orchestrator
+                                                  AgentOrchestrator
                                                           │
-                                              ┌───────────┴───────────┐
-                                       agents/tools/              agents/providers/
-                                        registry                  openai_provider
-                                              │
-                              ┌───────────────┼───────────────┐
-                         infra/database   domain/knowledge   (calculate, datetime)
+                                          ┌───────────────┴───────────────┐
+                                   IntentClassifier               agents/factory/
+                                   (nano LLM)                     AgentBuilder
+                                                                          │
+                                                                   agents/react/
+                                                                      agent
+                                                                          │
+                                                          ┌───────────────┴───────────┐
+                                                   agents/tools/              agents/providers/
+                                                    registry                  openai_provider
+                                                          │
+                                          ┌───────────────┼───────────────┐
+                                     infra/database   domain/knowledge   (calculate, datetime)
 
-pipeline/factory ──► agents/react/agent
+pipeline/factory ──► agents/orchestrator/AgentOrchestrator
+                 ──► agents/factory/AgentBuilder
+                 ──► agents/react/agent (construido por AgentBuilder)
                  ──► agents/providers/openai_provider
-                 ──► agents/tools/* (registra 8 tools)
+                 ──► agents/tools/* (registra 10 tools)
+                 ──► domain/agent_config/agent_config_service
                  ──► domain/memory/memory_service
                  ──► domain/knowledge/knowledge_service
                  ──► domain/auth/permission_service

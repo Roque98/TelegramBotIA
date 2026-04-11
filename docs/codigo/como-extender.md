@@ -54,11 +54,31 @@ class MiTool(BaseTool):
 
 ### Paso 2 — Registrar en la factory
 
+Agregar una entrada en `_build_tool_catalog()` dentro de `src/pipeline/factory.py`.
+El valor debe ser un **lambda** que retorne la instancia (o `None` si falta alguna
+dependencia — la factory omite silenciosamente las tools que retornan `None`):
+
 ```python
-# src/pipeline/factory.py → create_tool_registry()
+# src/pipeline/factory.py → _build_tool_catalog()
 from src.agents.tools.mi_tool import MiTool
 
-registry.register(MiTool(servicio_externo=mi_servicio))
+return {
+    # ... tools existentes ...
+    "mi_tool": lambda: MiTool(servicio_externo=mi_servicio) if mi_servicio else None,
+}
+```
+
+La clave debe coincidir exactamente con el sufijo del campo `recurso` en `BotIAv2_Recurso`
+(formato `tool:<clave>`). La factory instancia solo las tools cuya clave aparece en BD
+con `activo=1`.
+
+Si la tool necesita acceso a otra base de datos, usar `db_registry.get("alias")` en
+lugar de `db_manager`:
+
+```python
+"mi_tool": lambda: MiTool(
+    db=db_registry.get("mi_alias")
+) if (db_registry is not None and db_registry.is_configured("mi_alias")) else None,
 ```
 
 ### Paso 3 — Registrar el recurso en BD
@@ -194,6 +214,97 @@ inventario_service = InventarioService(InventarioRepository(db))
 ```
 
 Si el subdominio necesita una tool asociada, seguir también la Receta 1.
+
+---
+
+## Receta 4: Nuevo agente especializado
+
+El sistema de orquestación dinámica (ARQ-35) carga los agentes desde BD al arrancar.
+Agregar un nuevo agente no requiere tocar código Python — solo BD y un reload.
+
+### Paso 1 — Insertar en `BotIAv2_AgenteDef`
+
+```sql
+INSERT INTO abcmasplus..BotIAv2_AgenteDef
+    (nombre, descripcion, systemPrompt, temperatura, maxIteraciones, esGeneralista, activo)
+VALUES (
+    'mi_agente',
+    'Descripción usada por IntentClassifier para rutear — ser específico y diferenciador',
+    N'Eres Amber, una asistente especializada en [dominio].
+
+## Tu Personalidad
+...
+
+## Herramientas Disponibles
+{tools_description}
+
+- **finish**: Termina con tu respuesta final
+  - Parameters: {"answer": "Tu respuesta al usuario"}
+
+## Instrucciones
+1. **Para saludos**: Usa "finish" directamente
+{usage_hints}
+
+## Formato de Respuesta
+SIEMPRE responde con este JSON:
+```json
+{
+  "thought": "Tu razonamiento",
+  "action": "nombre_accion",
+  "action_input": {},
+  "final_answer": null
+}
+```',
+    0.1,   -- temperatura
+    10,    -- maxIteraciones
+    0,     -- esGeneralista: 0 = especialista (respeta tool_scope)
+    1      -- activo
+);
+```
+
+Campos clave:
+- `nombre`: identificador único; el `IntentClassifier` lo retorna como nombre de ruta.
+- `descripcion`: texto corto que el clasificador usa para decidir el ruteo. Ser específico sobre el dominio.
+- `systemPrompt`: debe contener `{tools_description}` y `{usage_hints}` (requerido).
+- `esGeneralista`: `0` para especialistas (usa `tool_scope`), `1` para el agente de fallback (no filtrar tools).
+- `modeloOverride`: dejar `NULL` para usar `openai_loop_model` del sistema, o especificar un modelo diferente.
+
+### Paso 2 — Asignar tools en `BotIAv2_AgenteTools`
+
+```sql
+INSERT INTO abcmasplus..BotIAv2_AgenteTools (idAgente, nombreTool)
+SELECT idAgente, tool
+FROM abcmasplus..BotIAv2_AgenteDef
+CROSS JOIN (VALUES ('database_query'), ('calculate'), ('datetime')) AS t(tool)
+WHERE nombre = 'mi_agente';
+```
+
+Las `nombreTool` deben coincidir con las claves del catálogo en `_build_tool_catalog()`.
+El `AgentBuilder` construye el `tool_scope` a partir de esta lista e intersecciona con
+los permisos del usuario en cada request.
+
+### Paso 3 — Recargar sin reiniciar el bot
+
+El agente administrador puede enviar el comando al bot:
+
+```
+/ia reload_agent_config
+```
+
+O ejecutar la tool `reload_agent_config` vía mensaje natural (requiere rol Admin).
+Esto llama a `AgentConfigService.invalidate_cache()` + `AgentBuilder.clear_instance_cache()`,
+forzando que la próxima consulta lea la nueva configuración desde BD.
+
+### Paso 4 — Verificar el ruteo
+
+Enviar una consulta del dominio del nuevo agente y revisar los logs:
+
+```
+Orchestrator: 'consulta de prueba' → 'mi_agente' (classify=45ms, confidence=0.95, fallback=False)
+```
+
+Si `fallback=True`, el `IntentClassifier` no reconoció el agente — revisar que la
+`descripcion` en BD sea lo suficientemente específica y diferenciada de los otros agentes.
 
 ---
 

@@ -6,6 +6,13 @@ hasta tener suficiente información para responder.
 
 **Archivo**: `src/agents/react/agent.py`
 
+> **Nota (ARQ-35):** El `ReActAgent` no se instancia directamente en producción.
+> Es seleccionado y configurado por el `AgentOrchestrator` a través del `AgentBuilder`.
+> Cada instancia puede tener un `system_prompt`, temperatura y set de tools diferente
+> según su definición en BD (`BotIAv2_AgenteDef`). El `MainHandler` solo conoce la
+> interfaz `.execute()` — no distingue si habla con un agente especializado o con el
+> generalista.
+
 ---
 
 ## Componentes internos
@@ -39,9 +46,34 @@ para la tarea que requiere mayor precisión: traducir lenguaje natural a SQL.
 ## El system prompt
 
 El system prompt define la identidad, el formato esperado y las instrucciones de uso.
-Se construye dinámicamente en cada request via `build_system_prompt()`.
+Se construye dinámicamente en cada request.
 
-### Secciones del prompt
+### Origen del prompt base (ARQ-35)
+
+El prompt base ya no está hardcodeado en el código. Viene del campo `systemPrompt`
+de `AgentDefinition` (tabla `BotIAv2_AgenteDef` en BD), que el `AgentBuilder` pasa
+como `system_prompt_override` al construir el `ReActAgent`:
+
+```python
+# src/agents/factory/agent_builder.py → _do_build()
+agent = ReActAgent(
+    llm=llm,
+    tool_registry=self.tool_registry,
+    max_iterations=definition.max_iteraciones,
+    temperature=float(definition.temperatura),
+    system_prompt_override=definition.system_prompt,  # ← viene de BD
+    tool_scope=tool_scope,
+)
+```
+
+El prompt almacenado en BD **debe contener** los placeholders `{tools_description}` y
+`{usage_hints}` — el agente los rellena en cada request con la lista de tools filtrada
+por permisos del usuario.
+
+Si `system_prompt_override` es `None` (caso sin orquestador), se usa `build_system_prompt()`
+con el prompt por defecto del código (comportamiento anterior a ARQ-35).
+
+### Secciones típicas del prompt (por convención)
 
 1. **Personalidad de Amber**: tono, idioma, uso de emojis
 2. **Formato de mensajes Telegram**: cuándo usar negrita, listas, bloques de código
@@ -52,16 +84,21 @@ Se construye dinámicamente en cada request via `build_system_prompt()`.
    - `{usage_hints}`: cuándo usar cada tool (dinámico, filtrado por permisos)
    - Reglas de contexto conversacional
 7. **Formato de respuesta**: JSON estructurado obligatorio
-8. **Ejemplos**: casos de uso concretos
 
-### Inyección dinámica (ARQ-33)
+### Inyección dinámica en cada request
 
 ```python
-# src/agents/react/agent.py (~línea 167)
-system_prompt = build_system_prompt(
-    tools_description=self.tools.get_tools_prompt(user_context=context),
-    usage_hints=self.tools.get_usage_hints(user_context=context),
-)
+# src/agents/react/agent.py
+if self.system_prompt_override:
+    system_prompt = self.system_prompt_override.format(
+        tools_description=tools_description,
+        usage_hints=usage_hints,
+    )
+else:
+    system_prompt = build_system_prompt(
+        tools_description=tools_description,
+        usage_hints=usage_hints,
+    )
 ```
 
 Ambos valores son generados por `ToolRegistry` filtrando por los permisos del usuario.

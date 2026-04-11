@@ -9,16 +9,18 @@ específica y expone una interfaz uniforme para que el `ToolRegistry` las gestio
 
 ```
 src/agents/tools/
-├── base.py                  ← BaseTool, ToolDefinition, ToolResult, ToolCategory
-├── registry.py              ← ToolRegistry (singleton, thread-safe)
-├── database_tool.py         ← DatabaseTool (database_query)
-├── knowledge_tool.py        ← KnowledgeTool (knowledge_search)
-├── calculate_tool.py        ← CalculateTool (calculate)
-├── datetime_tool.py         ← DateTimeTool (datetime)
-├── preference_tool.py       ← SavePreferenceTool (save_preference)
-├── save_memory_tool.py      ← SaveMemoryTool (save_memory)
-├── reload_permissions_tool.py ← ReloadPermissionsTool (reload_permissions)
-└── read_attachment_tool.py  ← ReadAttachmentTool (read_attachment)
+├── base.py                     ← BaseTool, ToolDefinition, ToolResult, ToolCategory
+├── registry.py                 ← ToolRegistry (singleton, thread-safe)
+├── database_tool.py            ← DatabaseTool (database_query)
+├── knowledge_tool.py           ← KnowledgeTool (knowledge_search)
+├── calculate_tool.py           ← CalculateTool (calculate)
+├── datetime_tool.py            ← DateTimeTool (datetime)
+├── preference_tool.py          ← SavePreferenceTool (save_preference)
+├── save_memory_tool.py         ← SaveMemoryTool (save_memory)
+├── reload_permissions_tool.py  ← ReloadPermissionsTool (reload_permissions)
+├── read_attachment_tool.py     ← ReadAttachmentTool (read_attachment)
+├── alert_analysis_tool.py      ← AlertAnalysisTool (alert_analysis)
+└── reload_agent_config_tool.py ← ReloadAgentConfigTool (reload_agent_config)
 ```
 
 ---
@@ -74,11 +76,12 @@ class ToolCategory(str, Enum):
     CALCULATION = "calculation"
     DATETIME    = "datetime"
     UTILITY     = "utility"
+    MONITORING  = "monitoring"
 ```
 
 ---
 
-## Las 8 tools
+## Las 10 tools
 
 ### 1. database_query
 
@@ -210,6 +213,65 @@ Descarga el archivo vía Bot API y retorna su contenido como texto.
 
 ---
 
+### 9. alert_analysis
+
+**Clase**: `AlertAnalysisTool` | **Archivo**: `alert_analysis_tool.py` | **Categoría**: `MONITORING`
+
+Analiza alertas activas de monitoreo PRTG. Consulta eventos activos, tickets históricos,
+template de escalamiento y contactos de área para generar un diagnóstico estructurado
+con acciones recomendadas. Usa un LLM secundario (`data_llm`) para construir el análisis.
+
+Requiere que la conexión `monitoreo` esté configurada en `DB_CONNECTIONS`.
+
+| Parámetro | Tipo | Requerido | Descripción |
+|-----------|------|-----------|-------------|
+| `query` | string | Sí | Consulta del operador sobre las alertas |
+| `ip` | string | No | Filtrar por IP exacta del equipo |
+| `equipo` | string | No | Filtrar por nombre parcial del equipo |
+| `solo_down` | boolean | No | Si `true`, solo incluye equipos con status `down` (default `false`) |
+
+**Flujo interno**:
+1. `AlertRepository.get_active_events()` — obtiene eventos activos con fallback BAZ_CDMX → EKT
+2. Selecciona el evento más crítico (posición 0 de la lista)
+3. En paralelo: tickets históricos + template ID
+4. Si hay template: carga `template_info` y `escalation_matrix` en paralelo
+5. Carga contactos de gerencia (área atendedora y administradora)
+6. `AlertPromptBuilder.build(context)` — construye system prompt + user prompt enriquecido
+7. Llama al `data_llm` con los mensajes construidos
+8. Retorna análisis Markdown con `DISCLAIMER` adjunto
+
+**Retorna**: Análisis estructurado en Markdown con equipo afectado, área responsable,
+matriz de escalamiento, acciones recomendadas y posible causa raíz.
+
+**Cuándo usarla**: Cuando el usuario pregunta por alertas activas, equipos caídos
+o problemas de red/infraestructura en PRTG.
+
+---
+
+### 10. reload_agent_config
+
+**Clase**: `ReloadAgentConfigTool` | **Archivo**: `reload_agent_config_tool.py` | **Categoría**: `UTILITY`
+
+Recarga la configuración de agentes LLM desde la base de datos invalidando el cache.
+Invalida el cache de `AgentConfigService` y el cache de instancias de `AgentBuilder`,
+forzando que la próxima consulta use los prompts y configuraciones actualizados.
+
+Sin parámetros. **Solo disponible para administradores** (`esPublico=0` en `BotIAv2_Recurso`).
+
+**Retorna**: Confirmación de recarga con lista de agentes activos cargados desde BD
+(nombre, tools, `es_generalista`, `version`).
+
+**Cuándo usarla**: Después de modificar `systemPrompt` en `BotIAv2_AgenteDef`,
+agregar/desactivar agentes o cambiar el scope de tools de un agente. Permite aplicar
+cambios sin reiniciar el bot (el trigger de BD incrementa la versión automáticamente).
+
+**Uso típico**:
+1. Admin edita `systemPrompt` en `BotIAv2_AgenteDef` (trigger incrementa `version`)
+2. Admin invoca `reload_agent_config` vía el bot
+3. La próxima consulta de cualquier usuario usa el prompt actualizado
+
+---
+
 ## ToolRegistry
 
 **Archivo**: `src/agents/tools/registry.py`
@@ -238,6 +300,8 @@ ToolRegistry.reset()
 ```
 
 Las tools se registran en `pipeline/factory.py → create_tool_registry()`.
+Las 10 tools disponibles cubren las categorías: `database`, `knowledge`, `calculation`,
+`datetime`, `utility` y `monitoring`.
 
 ---
 
