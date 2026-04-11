@@ -562,7 +562,7 @@ class ReActAgent(BaseAgent):
     def _build_react_response(self, data: dict, valid_tools: Optional[set[str]] = None) -> ReActResponse:
         """Construye ReActResponse desde un dict ya parseado."""
         try:
-            action = ActionType.from_string(data.get("action", "finish"), valid_tools=valid_tools)
+            action = ActionType.from_string(data.get("action") or "finish", valid_tools=valid_tools)
         except ValueError as e:
             # El LLM inventó una acción desconocida. Redirigir a finish usando
             # la mejor respuesta disponible en el payload para no perder contexto.
