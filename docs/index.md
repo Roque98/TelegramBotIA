@@ -18,6 +18,12 @@ procedimientos, sin necesidad de conocer SQL ni sistemas internos.
 
 ---
 
+## Migración desde v1
+
+- [Por qué se migró a Iris Bot v2](v2-justificacion.md) — Limitaciones de la versión anterior y cómo las resuelve esta arquitectura
+
+---
+
 ## Enfoques de documentación
 
 ### [Uso](uso/README.md) — Para usuarios, administradores e integradores
