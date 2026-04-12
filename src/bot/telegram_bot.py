@@ -42,7 +42,7 @@ class TelegramBot:
 
         # Inicializar MainHandler (ReActAgent + MemoryService)
         logger.info("Inicializando MainHandler (ReAct)...")
-        self.main_handler = create_main_handler(self.db_manager)
+        self.main_handler, self._get_admin_ids = create_main_handler(self.db_manager)
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
@@ -55,6 +55,7 @@ class TelegramBot:
         # Inyectar dependencias en bot_data para acceso global
         self.application.bot_data['db_manager'] = self.db_manager
         self.application.bot_data['main_handler'] = self.main_handler
+        self.application.bot_data['get_admin_ids'] = self._get_admin_ids
 
         # Configurar middleware
         self._setup_middleware()

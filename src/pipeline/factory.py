@@ -284,7 +284,7 @@ def create_agent_orchestrator(
 
 def create_main_handler(
     db_manager: Optional[Any] = None,
-) -> MainHandler:
+) -> tuple[MainHandler, Any]:
     """Crea el handler principal con todas sus dependencias."""
     from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
@@ -371,7 +371,7 @@ def create_main_handler(
     )
 
     logger.info("MainHandler created with AgentOrchestrator (ARQ-35 dynamic N-way)")
-    return handler
+    return handler, _get_admin_ids
 
 
 class HandlerManager:

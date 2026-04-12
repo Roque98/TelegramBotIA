@@ -100,21 +100,17 @@ class LoggingMiddleware:
         # Notificar al admin via Telegram (fire-and-forget, no bloquea el error handler)
         try:
             from src.infra.notifications.admin_notifier import notify_admin
-            from src.domain.auth.user_query_repository import UserQueryRepository
-            db_manager = context.bot_data.get("db_manager") if context.bot_data else None
-            async def _get_admin_ids() -> list[int]:
-                if not db_manager:
-                    return []
-                return await UserQueryRepository(db_manager).get_admin_chat_ids()
-            asyncio.create_task(
-                notify_admin(
-                    bot=context.bot,
-                    get_admin_ids=_get_admin_ids,
-                    level="ERROR",
-                    error=error,
-                    user_info=user_info,
+            get_admin_ids = context.bot_data.get("get_admin_ids") if context.bot_data else None
+            if get_admin_ids:
+                asyncio.create_task(
+                    notify_admin(
+                        bot=context.bot,
+                        get_admin_ids=get_admin_ids,
+                        level="ERROR",
+                        error=error,
+                        user_info=user_info,
+                    )
                 )
-            )
         except Exception as notify_err:
             logger.debug(f"AdminNotifier no disponible: {notify_err}")
 
