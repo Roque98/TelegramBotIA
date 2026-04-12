@@ -1,6 +1,6 @@
 # Infraestructura
 
-Contiene todo lo que no es lógica de negocio: acceso a datos, observabilidad, eventos y utilidades.
+Contiene todo lo que no es lógica de negocio: acceso a datos, observabilidad y utilidades.
 
 ---
 
@@ -13,19 +13,42 @@ class DatabaseManager:
     # Pool: 5 conexiones base + 10 overflow, timeout 20s
 
     def execute_query(sql: str, params: dict = None) -> list[dict]
-    # Ejecuta SELECT y retorna lista de dicts
+    # Ejecuta SELECT o EXEC y retorna lista de dicts
 
     def execute_non_query(sql: str, params: dict = None) -> int
-    # Ejecuta INSERT/UPDATE/DELETE y retorna filas afectadas
+    # Ejecuta INSERT/UPDATE/DELETE/MERGE/EXEC y retorna filas afectadas
 
-    def execute_stored_procedure(proc_name: str, params: dict = None) -> list[dict]
+    async def execute_query_async(sql: str, params=None) -> list[dict]
+    async def execute_non_query_async(sql: str, params=None) -> int
+    # Versiones async (delegan a asyncio.to_thread)
 
-    async def health_check() -> bool
-    # Verifica que la conexión está activa
+    def get_schema() -> str
+    # Delega a SchemaIntrospector — retorna tablas y columnas en formato texto
+
+    def close() -> None
 ```
 
 Usa queries parametrizadas siempre (`params` como dict). La concatenación directa de
 strings está prohibida para evitar SQL injection.
+
+---
+
+## SchemaIntrospector — `src/infra/database/schema_introspector.py`
+
+Introspección del esquema de la BD (tablas y columnas). Extraído de `DatabaseManager`
+para respetar el principio de responsabilidad única.
+
+```python
+class SchemaIntrospector:
+    def __init__(self, engine) -> None: ...
+
+    def get_schema() -> str
+    # Retorna descripción de todas las tablas y sus columnas.
+    # Incluye @db_retry automático.
+```
+
+`DatabaseManager.get_schema()` es un wrapper que instancia `SchemaIntrospector(self.engine)`
+y delega.
 
 ---
 
@@ -73,17 +96,18 @@ registry.close_all()                 # shutdown
 ## SQLValidator — `src/infra/database/sql_validator.py`
 
 Valida que el SQL generado por el LLM sea seguro antes de ejecutarlo.
+Es usado internamente por `DatabaseTool`.
 
-**Permitido**: `SELECT`, `WITH`, `EXEC`
+**Permitido**: solo `SELECT`
 
 **Rechazado**:
-- `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`
-- Comentarios: `--`, `/*`, `*/`
+- `INSERT`, `UPDATE`, `DELETE`, `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, `EXEC`
+- Comandos de sistema: `xp_cmdshell`, `sp_executesql`, `openrowset`
 - Múltiples statements: `;` dentro del SQL
-- Acceso a tablas del sistema: `sys.`, `information_schema`
+- Comentarios sospechosos: `/* ... */` con keywords prohibidos
 
 ```python
-# src/agents/tools/database_tool.py
+# Usado en src/agents/tools/database_tool.py
 validator = SQLValidator()
 is_valid, reason = validator.validate(sql)
 if not is_valid:
@@ -111,37 +135,21 @@ result = tracer.end_trace()
 
 ### Metrics — `metrics.py`
 
+Organizado con patrón facade: `MetricsCollector` compone tres clases internas
+(`_RequestMetrics`, `_ToolMetrics`, `_CacheMetrics`). La API pública no cambia.
+
 ```python
 metrics = get_metrics()
 
 metrics.record_request(channel="telegram", duration_ms=1250, steps=3, success=True)
 metrics.record_tool_usage("database_query")
-metrics.record_llm_call(model="gpt-5.4-mini", tokens=450, duration_ms=800)
+metrics.record_cache_hit()
 
 stats = metrics.get_stats()
-# → {total_requests, success_rate, avg_duration_ms, tool_usage_counts, ...}
+# → {requests, latency, steps, errors_by_type, tools_usage, cache}
 ```
 
-### ObservabilityRepository — `sql_repository.py`
-
-Persiste los datos de observabilidad en las tablas `BotIAv2_*` de SQL Server:
-
-```python
-class ObservabilityRepository:
-    async def save_interaction_log(
-        correlation_id, user_id, channel, query, response,
-        success, duration_ms, steps_taken, error=None
-    )
-    # → BotIAv2_InteractionLogs
-
-    async def save_interaction_steps(correlation_id, steps: list[dict])
-    # → BotIAv2_InteractionSteps (un registro por paso del loop ReAct)
-
-    async def save_application_log(level, message, module, exception=None)
-    # → BotIAv2_ApplicationLogs
-```
-
-### SqlLogHandler — `src/config/logging_config.py`
+### SqlLogHandler — `src/infra/observability/logging_config.py`
 
 Handler de logging Python estándar que escribe a `BotIAv2_ApplicationLogs`.
 Se inyecta en el logger raíz al arrancar, por lo que todos los `logger.error()`
@@ -149,28 +157,12 @@ del sistema quedan persistidos automáticamente.
 
 ```python
 sql_handler = get_sql_handler()
-sql_handler.set_repository(obs_repo)
+sql_handler.set_repository(interaction_repo)  # InteractionRepository
 # A partir de aquí, logger.error("msg") → BotIAv2_ApplicationLogs
 ```
 
----
-
-## EventBus — `src/infra/events/bus.py`
-
-Bus de eventos pub/sub en memoria para comunicación desacoplada entre componentes.
-
-```python
-bus = EventBus()
-
-# Suscribir
-bus.subscribe("user_registered", handler_func)
-
-# Publicar
-await bus.publish("user_registered", {"user_id": "123", "channel": "telegram"})
-```
-
-Actualmente usado principalmente para eventos de registro de usuario y errores críticos
-que deben notificarse al admin.
+> La persistencia SQL está en `src/domain/interaction/InteractionRepository.save_log_sync()`.
+> `sql_repository.py` es solo un re-export stub por compatibilidad.
 
 ---
 
@@ -233,7 +225,7 @@ await status.show("Consultando la base de datos...")
 
 ---
 
-## AdminNotifier — `src/bot/notifications/admin_notifier.py`
+## AdminNotifier — `src/domain/notifications/admin_notifier.py`
 
 Envía notificaciones de errores críticos al administrador vía Telegram.
 

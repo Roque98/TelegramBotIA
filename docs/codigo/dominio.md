@@ -1,6 +1,6 @@
 # Dominio
 
-El dominio contiene la lógica de negocio. Está organizado en 6 subdominios bajo `src/domain/`.
+El dominio contiene la lógica de negocio y **toda la persistencia SQL**. Está organizado en 8 subdominios bajo `src/domain/`.
 Cada subdominio sigue el patrón Repository + Service.
 
 ---
@@ -337,6 +337,65 @@ class AlertRepository:
 class AlertPromptBuilder:
     def build(self, context: AlertContext) -> tuple[str, str]
     # Retorna (system_prompt, user_prompt)
+```
+
+---
+
+## Interaction — `src/domain/interaction/`
+
+Centraliza toda la persistencia SQL relacionada con interacciones del bot.
+Todas las consultas a las tablas `BotIAv2_*` pasan por aquí (ARQ-39).
+
+```python
+class InteractionRepository:
+    def __init__(self, db_manager) -> None: ...
+
+    async def save_interaction(
+        correlation_id, user_id, username, query, respuesta,
+        channel, memory_ms, react_ms, save_ms, total_ms,
+        error_message=None, tools_used=None, steps_count=0,
+        agente_nombre=None, total_input_tokens=None,
+        total_output_tokens=None, llm_iteraciones=None,
+        used_fallback=False, classify_ms=None,
+        agent_confidence=None, cost_usd=None,
+    ) -> bool
+    # → BotIAv2_InteractionLogs (via SP BotIAv2_sp_GuardarInteraccion)
+
+    async def save_agent_routing(
+        correlation_id, query, agente_seleccionado, classify_ms,
+        confidence=None, alternatives=None, used_fallback=False,
+    ) -> bool
+    # → BotIAv2_AgentRouting
+
+    async def save_steps(correlation_id, steps: list[dict]) -> bool
+    # → BotIAv2_InteractionSteps (un INSERT por cada paso del loop ReAct)
+
+    def save_log_sync(
+        level, event, message, correlation_id=None,
+        user_id=None, module=None, duration_ms=None, extra=None,
+    ) -> bool
+    # → BotIAv2_ApplicationLogs (síncrono, llamado desde threads de logging)
+```
+
+`InteractionRepository` se instancia en `pipeline/factory.py` y se inyecta en
+`MainHandler` (para los tres primeros métodos) y en `SqlLogHandler`
+(para `save_log_sync`).
+
+---
+
+## Notifications — `src/domain/notifications/`
+
+Envío de alertas al administrador vía Telegram.
+
+```python
+async def notify_admin(
+    bot, db_manager=None,
+    level="ERROR",
+    error=None,
+    message="",
+    user_info="desconocido",
+) -> None
+# Resuelve admins desde BD y envía mensaje con rate limiting (1 por tipo cada 5 min)
 ```
 
 ---

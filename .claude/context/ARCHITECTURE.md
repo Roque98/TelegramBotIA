@@ -26,7 +26,9 @@
 │                                                                 │
 │  src/pipeline/                                                  │
 │  ├── handler.py           → MainHandler (orquesta el flujo)    │
-│  └── factory.py           → Construcción de dependencias (DI)  │
+│  ├── factory.py           → Construcción de dependencias (DI)  │
+│  ├── orchestrator/        → AgentOrchestrator, IntentClassifier│
+│  └── agent_factory/       → AgentBuilder                       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -54,7 +56,10 @@
 │  │                          KnowledgeService                   │
 │  ├── alerts/              → AlertEntity, AlertRepository,      │
 │  │                          AlertPromptBuilder (FEAT-36/37)    │
-│  └── cost/                → CostSession, CostRepository        │
+│  ├── cost/                → CostSession, CostRepository        │
+│  ├── interaction/         → InteractionRepository (todo el SQL │
+│  │                          de BotIAv2_Interaction/Steps/Logs) │
+│  └── notifications/       → AdminNotifier (notify_admin)       │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -62,11 +67,12 @@
 │                  CAPA 5: INFRAESTRUCTURA                        │
 │                                                                 │
 │  src/infra/                                                     │
-│  ├── database/            → DatabaseManager, SQLValidator       │
-│  ├── events/              → EventBus                           │
-│  └── observability/       → Tracer, MetricsCollector           │
+│  ├── database/            → DatabaseManager, SQLValidator,      │
+│  │                          SchemaIntrospector, DatabaseRegistry│
+│  └── observability/       → Tracer, MetricsCollector,          │
+│                              SqlLogHandler, logging_config      │
 │                                                                 │
-│  src/config/              → Settings (Pydantic), personality   │
+│  src/config/              → Settings (Pydantic)                │
 │  src/utils/               → encryption, rate_limiter, retry,   │
 │                             input_validator, status_message     │
 └─────────────────────────────────────────────────────────────────┘

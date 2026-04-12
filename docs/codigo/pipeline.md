@@ -48,7 +48,7 @@ class MainHandler:
         self,
         react_agent: Any,  # AgentOrchestrator (o ReActAgent) — ambos exponen .execute()
         memory_service: MemoryService,
-        observability_repo: ObservabilityRepository,
+        observability_repo: InteractionRepository,  # src/domain/interaction/
         cost_repository: CostRepository,
     )
 
