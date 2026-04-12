@@ -23,7 +23,6 @@ from .tracing import (
     configure_tracing,
     get_tracer,
 )
-from .sql_repository import ObservabilityRepository
 
 __all__ = [
     # Tracing
@@ -41,6 +40,4 @@ __all__ = [
     "MetricsMiddleware",
     "get_metrics",
     "reset_metrics",
-    # SQL persistence
-    "ObservabilityRepository",
 ]

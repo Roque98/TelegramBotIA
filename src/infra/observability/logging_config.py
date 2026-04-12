@@ -10,8 +10,8 @@ Uso:
     sql_handler = configure_logging()
 
     # Cuando la BD esté disponible (en factory.py):
-    from src.infra.observability.sql_repository import ObservabilityRepository
-    sql_handler.set_repository(ObservabilityRepository(db_manager))
+    from src.domain.interaction.interaction_repository import InteractionRepository
+    sql_handler.set_repository(InteractionRepository(db_manager))
 """
 
 import json

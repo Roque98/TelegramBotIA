@@ -38,7 +38,7 @@ from src.domain.auth.permission_service import PermissionService
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
-from src.infra.observability.sql_repository import ObservabilityRepository
+from src.domain.interaction.interaction_repository import InteractionRepository
 from src.infra.observability.logging_config import get_sql_handler
 
 from .handler import MainHandler
@@ -343,13 +343,13 @@ def create_main_handler(
         reload_tool._agent_config_service = agent_config_service
         logger.info("ReloadAgentConfigTool: agent_config_service inyectado")
 
-    obs_repo = ObservabilityRepository(db_manager=db)
+    obs_repo = InteractionRepository(db_manager=db)
     cost_repo = CostRepository(db_manager=db)
 
     sql_handler = get_sql_handler()
     if sql_handler:
         sql_handler.set_repository(obs_repo)
-        logger.info("SqlLogHandler wired to ObservabilityRepository")
+        logger.info("SqlLogHandler wired to InteractionRepository")
 
     handler = MainHandler(
         react_agent=orchestrator,

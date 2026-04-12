@@ -148,7 +148,7 @@ class MemoryRepository:
             return []
 
     # save_interaction eliminado — las interacciones ahora las persiste
-    # ObservabilityRepository.save_interaction() en BotIAv2_InteractionLogs (OBS-31)
+    # InteractionRepository.save_interaction() en BotIAv2_InteractionLogs (OBS-31)
 
     async def get_user_stats(self, user_id: str) -> dict:
         """Retorna estadísticas de uso del usuario desde InteractionLogs."""

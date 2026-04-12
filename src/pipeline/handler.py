@@ -24,7 +24,7 @@ from src.domain.cost.cost_entity import CostSession
 from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.gateway.message_gateway import MessageGateway
-from src.infra.observability.sql_repository import ObservabilityRepository
+from src.domain.interaction.interaction_repository import InteractionRepository
 
 try:
     from src.infra.observability import get_tracer
@@ -71,7 +71,7 @@ class MainHandler:
         memory_service: MemoryService,
         fallback_agent: Optional[FallbackAgent] = None,
         use_fallback_on_error: bool = True,
-        observability_repo: Optional[ObservabilityRepository] = None,
+        observability_repo: Optional[InteractionRepository] = None,
         cost_repository: Optional[CostRepository] = None,
     ):
         """

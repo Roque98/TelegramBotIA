@@ -177,7 +177,7 @@ class MemoryService:
     # -------------------------------------------------------------------------
 
     # record_interaction eliminado — las interacciones las persiste
-    # ObservabilityRepository.save_interaction() directamente (OBS-31)
+    # InteractionRepository.save_interaction() directamente (OBS-31)
 
     async def update_summary(self, user_id: str, new_summary: str) -> bool:
         try:
