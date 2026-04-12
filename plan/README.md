@@ -25,7 +25,7 @@ plan/
 | Metrica | Valor |
 |---------|-------|
 | Planes completados | 18 |
-| Planes activos | 4 |
+| Planes activos | 6 |
 | Ideas documentadas | 10 |
 
 ---
@@ -64,6 +64,8 @@ plan/
 | [AUTH-SP Migración Auth a Stored Procedures](02-activos/PLAN_AUTH_SP_MIGRATION.md) | 0% | `master` | Pendiente iniciar |
 | [FEAT-36 Workflow de Análisis de Alertas](02-activos/PLAN_FEAT_36_ALERT_WORKFLOW.md) | 100% | `develop` | Completado |
 | [FEAT-37 Refactor Alert Tools (4 tools)](02-activos/PLAN_FEAT_37_ALERT_TOOLS_REFACTOR.md) | 0% | `feature/feat-37-alert-tools-refactor` | Pendiente iniciar |
+| [ARQ-38 Reorganización de archivos mal ubicados](02-activos/PLAN_ARQ_38_FILE_ORGANIZATION.md) | 100% | `develop` | Completado |
+| [ARQ-39 Refactorización infra SRP](02-activos/PLAN_ARQ_39_INFRA_REFACTOR.md) | 0% | `develop` | Pendiente iniciar |
 
 ---
 
