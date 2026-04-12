@@ -1,14 +1,11 @@
 """
 AdminNotifier — Notificaciones de errores críticos al administrador via Telegram.
 
-Capa 5 (infraestructura pura): no importa nada de capas superiores.
-- Recibe `bot: Any` como parámetro — no importa telegram.
-- Recibe `get_admin_ids: Callable` como parámetro — no importa domain.
+Envía mensajes a todos los admins con Telegram verificado y activo.
+Los destinatarios se resuelven dinámicamente via el callable `get_admin_ids`
+inyectado al crear el notifier — ver factory.py.
 
-La resolución de admins (UserQueryRepository) la inyecta factory.py (Capa 2),
-que sí puede importar de ambas capas.
-
-Rate limiting: máximo 1 notificación por tipo de error cada 5 minutos.
+Rate limiting: máximo 1 notificación por tipo de error cada 5 minutos para evitar spam.
 """
 
 import logging
