@@ -43,6 +43,25 @@ class FallbackAgent(Protocol):
         ...
 
 
+class AdminNotifier(Protocol):
+    """
+    Protocolo para notificación de errores al administrador.
+
+    Desacopla pipeline de la implementación Telegram-específica.
+    La implementación real vive en src/bot/notifications/admin_notifier.py
+    y se inyecta desde pipeline/factory.py.
+    """
+
+    async def __call__(
+        self,
+        bot: Any,
+        level: str = "ERROR",
+        error: Optional[BaseException] = None,
+        message: str = "",
+        user_info: str = "desconocido",
+    ) -> None: ...
+
+
 class MainHandler:
     """
     Handler principal que orquesta el flujo de conversación.
@@ -73,6 +92,7 @@ class MainHandler:
         use_fallback_on_error: bool = True,
         observability_repo: Optional[InteractionRepository] = None,
         cost_repository: Optional[CostRepository] = None,
+        admin_notifier: Optional[AdminNotifier] = None,
     ):
         """
         Inicializa el handler.
@@ -91,6 +111,7 @@ class MainHandler:
         self.use_fallback_on_error = use_fallback_on_error
         self.observability_repo = observability_repo
         self.cost_repo = cost_repository
+        self._admin_notifier = admin_notifier
         self.gateway = MessageGateway()
 
         logger.info(
@@ -154,24 +175,23 @@ class MainHandler:
                 exc_info=True,
             )
             # Notificar al admin — error crítico no controlado en el pipeline
-            try:
-                from src.domain.notifications.admin_notifier import notify_admin
-                user_info = (
-                    str(update.effective_user.id)
-                    if update and update.effective_user
-                    else "desconocido"
-                )
-                asyncio.create_task(
-                    notify_admin(
-                        bot=context.bot,
-                        db_manager=context.bot_data.get("db_manager"),
-                        level="CRITICAL",
-                        error=e,
-                        user_info=user_info,
+            if self._admin_notifier:
+                try:
+                    user_info = (
+                        str(update.effective_user.id)
+                        if update and update.effective_user
+                        else "desconocido"
                     )
-                )
-            except Exception:
-                pass
+                    asyncio.create_task(
+                        self._admin_notifier(
+                            bot=context.bot,
+                            level="CRITICAL",
+                            error=e,
+                            user_info=user_info,
+                        )
+                    )
+                except Exception:
+                    pass
             return self._get_error_message()
 
         finally:

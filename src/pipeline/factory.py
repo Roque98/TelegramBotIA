@@ -8,6 +8,7 @@ con todas las dependencias configuradas.
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -40,6 +41,7 @@ from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
 from src.domain.interaction.interaction_repository import InteractionRepository
 from src.infra.observability.logging_config import get_sql_handler
+from src.bot.notifications.admin_notifier import notify_admin
 
 from .handler import MainHandler
 
@@ -351,11 +353,15 @@ def create_main_handler(
         sql_handler.set_repository(obs_repo)
         logger.info("SqlLogHandler wired to InteractionRepository")
 
+    # AdminNotifier: partial con db_manager pre-llenado — handler.py solo ve el protocolo
+    admin_notify = functools.partial(notify_admin, db_manager=db)
+
     handler = MainHandler(
         react_agent=orchestrator,
         memory_service=memory_service,
         observability_repo=obs_repo,
         cost_repository=cost_repo,
+        admin_notifier=admin_notify,
     )
 
     logger.info("MainHandler created with AgentOrchestrator (ARQ-35 dynamic N-way)")
