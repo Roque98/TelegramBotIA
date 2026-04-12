@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Uso](README.md) › Guía del API REST
+
 # Guía del API REST
 
 El bot expone un endpoint REST que permite integrar Amber en aplicaciones web, portales

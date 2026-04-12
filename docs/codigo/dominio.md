@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Código](README.md) › Dominio
+
 # Dominio
 
 El dominio contiene la lógica de negocio y **toda la persistencia SQL**. Está organizado en 8 subdominios bajo `src/domain/`.

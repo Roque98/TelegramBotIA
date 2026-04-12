@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Código](README.md) › Pipeline y factory
+
 # Pipeline y factory
 
 El pipeline conecta los entrypoints (Telegram/API) con el agente LLM.

@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Código](README.md) › Base de datos
+
 # Base de datos
 
 La base de datos es `abcmasplus` en SQL Server. Las tablas del bot tienen prefijo `BotIAv2_`.

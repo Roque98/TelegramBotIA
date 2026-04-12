@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Uso](README.md) › Guía de administrador
+
 # Guía de administrador
 
 Esta guía cubre las tareas de administración del bot: gestión de usuarios, permisos,

@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Dev](README.md) › Setup local
+
 # Setup local
 
 ---

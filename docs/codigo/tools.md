@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Código](README.md) › Sistema de tools
+
 # Sistema de tools
 
 Las tools son las capacidades accionables del agente. Cada tool encapsula una operación

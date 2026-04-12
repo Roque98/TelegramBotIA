@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Código](README.md) › Cómo extender el sistema
+
 # Cómo extender el sistema
 
 Recetas concretas para los casos de extensión más comunes.

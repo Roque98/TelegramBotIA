@@ -1,3 +1,5 @@
+[Docs](../index.md) › [Uso](README.md) › Guía de usuario — Telegram
+
 # Guía de usuario — Telegram
 
 Esta guía explica cómo registrarse y usar el bot desde Telegram.
