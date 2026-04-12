@@ -1,6 +1,6 @@
 # Plan: ARQ-39 — Refactorización de la capa de infraestructura (SRP)
 
-> **Estado**: ⚪ No iniciado
+> **Estado**: 🟡 En progreso
 > **Última actualización**: 2026-04-11
 > **Rama Git**: develop
 
@@ -8,14 +8,14 @@
 
 | Fase | Progreso | Estado |
 |------|----------|--------|
-| Fase 1: Mover lógica de negocio fuera de observability | ░░░░░░░░░░ 0% | ⏳ Pendiente |
+| Fase 1: Mover todas las consultas a BD a domain | ██████████ 100% | ✅ Completada |
 | Fase 2: Integrar sql_validator en connection | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 3: Extraer SchemaIntrospector de connection | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 4: Deduplicar database_url en settings | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Dividir MetricsCollector en clases focalizadas | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 6: Eliminar código muerto (EventBus) | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/28 tareas)
+**Progreso Total**: █░░░░░░░░░ 17% (7/28 tareas)
 
 ---
 
@@ -39,54 +39,38 @@ vive en `infra/observability/` pero contiene lógica de persistencia de negocio
 
 ---
 
-## Fase 1: Mover lógica de negocio fuera de observability
+## Fase 1: Mover todas las consultas a BD a domain ✅
 
-**Objetivo**: `sql_repository.py` está en `infra/observability/` pero hace persistencia
-de negocio. Mover los 3 métodos de dominio a `src/domain/interaction/interaction_repository.py`
-y dejar solo `save_log_sync` en observability.
+**Objetivo**: Todas las consultas a BD deben vivir en domain, sin excepción.
+`sql_repository.py` completo (los 4 métodos) se mueve a `src/domain/interaction/`.
 **Dependencias**: Ninguna
+**Commit**: `e549192`
 
-### Problema actual
+### Decisión tomada
 
-`src/infra/observability/sql_repository.py` tiene 4 métodos:
-- `save_interaction()` — 93 líneas, 21 parámetros → pertenece a dominio
-- `save_agent_routing()` → pertenece a dominio
-- `save_steps()` → pertenece a dominio
-- `save_log_sync()` → único método de observabilidad real
+El plan original proponía dejar `save_log_sync` en observability. El criterio
+adoptado fue más amplio: **todas las consultas SQL deben estar en domain**,
+incluidos los logs. `infra/observability/` solo debe tener lógica de instrumentación
+(tracing, métricas, handlers de logging), no SQL directo.
 
 ### Tareas
 
-- [ ] **Leer `src/infra/observability/sql_repository.py`** para entender las firmas exactas
-  de `save_interaction`, `save_agent_routing`, `save_steps`
-
-- [ ] **Crear `src/domain/interaction/__init__.py`**
-  - Exportar: `InteractionRepository`
-
-- [ ] **Crear `src/domain/interaction/interaction_repository.py`**
-  - Mover los 3 métodos de negocio: `save_interaction`, `save_agent_routing`, `save_steps`
-  - Recibe `DatabaseManager` por inyección en constructor
-  - Mantener firmas idénticas para no romper callers
-
-- [ ] **Reducir `src/infra/observability/sql_repository.py`**
-  - Dejar solo `save_log_sync` (el único método de observabilidad real)
-  - Renombrar clase a `ObservabilityRepository` para claridad
-  - Actualizar `src/infra/observability/__init__.py` si es necesario
-
-- [ ] **Buscar todos los callers de los 3 métodos movidos**
-  - `grep -r "save_interaction\|save_agent_routing\|save_steps" src/ --include="*.py"`
-  - Actualizar imports: `from src.infra.observability.sql_repository import ...`
-    → `from src.domain.interaction.interaction_repository import ...`
-
-- [ ] **Buscar callers de `SqlInteractionRepository` (nombre de clase actual)**
-  - `grep -r "SqlInteractionRepository" src/ --include="*.py"`
-  - Actualizar a `InteractionRepository` (dominio) o `ObservabilityRepository` (infra)
-
-- [ ] **Verificar**: `python -m pytest tests/ -x -q`
+- [x] **Leer `src/infra/observability/sql_repository.py`** — 4 métodos identificados
+- [x] **Crear `src/domain/interaction/__init__.py`** — exporta `InteractionRepository`
+- [x] **Crear `src/domain/interaction/interaction_repository.py`**
+  - Los 4 métodos: `save_interaction`, `save_agent_routing`, `save_steps`, `save_log_sync`
+  - Clase `InteractionRepository` (nombre correcto para domain)
+- [x] **Convertir `src/infra/observability/sql_repository.py` en stub**
+  - 3 líneas: re-export `InteractionRepository as ObservabilityRepository` para compatibilidad
+- [x] **Actualizar `src/pipeline/handler.py`** — import y type annotation
+- [x] **Actualizar `src/pipeline/factory.py`** — import e instanciación
+- [x] **Actualizar `src/infra/observability/logging_config.py`** — referencia en docstring
+- [x] **Actualizar `src/infra/observability/__init__.py`** — eliminar re-export de sql_repository
 
 ### Entregables
-- [ ] `src/domain/interaction/interaction_repository.py` existe con 3 métodos
-- [ ] `src/infra/observability/sql_repository.py` tiene solo `save_log_sync`
-- [ ] `grep -r "observability.sql_repository" src/` → solo referencias a `save_log_sync`
+- [x] `src/domain/interaction/interaction_repository.py` existe con los 4 métodos
+- [x] `src/infra/observability/sql_repository.py` es solo un stub de 3 líneas
+- [x] `grep -r "ObservabilityRepository" src/` → solo el stub (no callers activos)
 
 ---
 
@@ -308,9 +292,9 @@ Antes de eliminar, confirmar que realmente no se usa:
 
 ## Criterios de Éxito
 
+- [x] `src/domain/interaction/interaction_repository.py` existe con los 4 métodos (incluido `save_log_sync`)
+- [x] `src/infra/observability/sql_repository.py` es stub — sin SQL directo
 - [ ] `python -m pytest tests/ -x -q` pasa tras cada fase
-- [ ] `src/infra/observability/sql_repository.py` contiene solo `save_log_sync`
-- [ ] `src/domain/interaction/interaction_repository.py` existe con los 3 métodos de negocio
 - [ ] `connection.py` usa `SqlValidator` en lugar de validación inline duplicada
 - [ ] `settings.py` tiene una sola implementación de `database_url`
 - [ ] `grep -r "EventBus" src/ tests/` → 0 resultados
@@ -337,3 +321,4 @@ Orden sugerido por impacto y riesgo:
 | Fecha | Cambio | Autor |
 |-------|--------|-------|
 | 2026-04-11 | Creación del plan | Angel David |
+| 2026-04-11 | Fase 1 completada — todos los métodos SQL movidos a domain (incluido save_log_sync) | Angel David |
