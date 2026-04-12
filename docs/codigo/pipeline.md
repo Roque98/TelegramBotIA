@@ -60,10 +60,11 @@ class MainHandler:
     async def health_check(self) -> dict
 ```
 
-`AdminNotifier` es un Protocol definido en `handler.py`. El pipeline no importa código Telegram
-directamente — `factory.py` inyecta `functools.partial(notify_admin, db_manager=db)` desde
-`src/bot/notifications/`. El handler lo invoca con `(bot, level, error, user_info)` sin saber
-la implementación concreta.
+`AdminNotifier` es un Protocol **sync** definido en `handler.py`. El pipeline no importa código
+Telegram directamente — `factory.py` construye un closure `admin_notify` que internamente llama
+a `fire_admin_notify` (encapsula `asyncio.create_task`). El handler lo invoca con
+`(bot, level=..., error=..., user_info=...)` sin saber la implementación concreta ni gestionar
+tareas async.
 
 `MainHandler` recibe el `AgentOrchestrator` como `react_agent`. Ambos exponen la misma interfaz `.execute(query, context, event_callback)`, por lo que el handler no necesita conocer cuántos agentes existen ni cuál fue seleccionado. El campo `response.routed_agent` refleja el nombre del agente que respondió efectivamente.
 
@@ -207,10 +208,11 @@ create_main_handler(db_manager)
 │
 ├── InteractionRepository(db_manager)          ← src/domain/interaction/
 ├── CostRepository(db_manager)
-├── functools.partial(notify_admin, db_manager=db)  ← src/infra/notifications/
+├── admin_notify (closure sync → fire_admin_notify)  ← src/infra/notifications/
+│     guardado también en bot_data["admin_notify"] para middleware y handlers
 │
 └── MainHandler(react_agent=orchestrator, memory_service, obs_repo, cost_repo,
-                admin_notifier=partial)
+                admin_notifier=admin_notify)
 ```
 
 ### HandlerManager (singleton)

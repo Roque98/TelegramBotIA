@@ -242,9 +242,11 @@ El pipeline (`MainHandler`) lo recibe como un **Protocol** inyectado desde `fact
 - Aplica **rate limiting**: máximo 1 notificación por tipo de error cada 5 minutos (clave `NIVEL:TipoExcepcion`) para evitar spam.
 - Si no hay admins con Telegram verificado, loggea un warning y retorna sin fallar.
 
+El módulo expone dos funciones públicas:
+
 ```python
 # src/infra/notifications/admin_notifier.py
-# Cero imports del proyecto — infraestructura pura (stdlib solamente)
+
 async def notify_admin(
     bot: Any,
     get_admin_ids: Callable[[], Awaitable[list[int]]],
@@ -252,8 +254,20 @@ async def notify_admin(
     error: Optional[BaseException] = None,
     message: str = "",
     user_info: str = "desconocido",
-) -> None
-# Envía el mensaje a todos los admins Telegram activos.
+) -> None:
+    """Lógica real: rate limit → resolución de IDs → envío a cada admin."""
+
+def fire_admin_notify(
+    bot: Any,
+    get_admin_ids: Optional[Callable[[], Awaitable[list[int]]]],
+    *,
+    level: str = "ERROR",
+    error: Optional[BaseException] = None,
+    user_info: str = "desconocido",
+    message: str = "",
+) -> None:
+    """Fire-and-forget sync: encapsula asyncio.create_task(notify_admin(...)).
+    Si get_admin_ids es None, no hace nada."""
 ```
 
 `get_admin_ids` es un callable inyectado — `admin_notifier.py` no conoce `UserQueryRepository`
@@ -262,46 +276,42 @@ ni ninguna otra clase del proyecto.
 **Patrón de inyección** (en `pipeline/factory.py`, Capa 2):
 
 ```python
-from src.infra.notifications.admin_notifier import notify_admin
+from src.infra.notifications.admin_notifier import fire_admin_notify
 from src.domain.auth.user_query_repository import UserQueryRepository
 
 _repo = UserQueryRepository(db_manager=db)
 async def _get_admin_ids() -> list[int]:
     return await _repo.get_admin_chat_ids()
 
-admin_notify = functools.partial(notify_admin, get_admin_ids=_get_admin_ids)
+def admin_notify(bot, *, level="ERROR", error=None, message="", user_info="desconocido"):
+    fire_admin_notify(bot, _get_admin_ids, level=level, error=error,
+                      user_info=user_info, message=message)
+
 handler = MainHandler(..., admin_notifier=admin_notify)
 ```
+
+`factory.py` devuelve `(MainHandler, admin_notify)`. `telegram_bot.py` guarda el callable
+en `bot_data["admin_notify"]` para que cualquier componente bot (middleware, handlers) pueda
+notificar sin reconstruir el closure ni importar infraestructura extra.
 
 El `AdminNotifier` Protocol en `pipeline/handler.py` define la firma que espera el handler:
 
 ```python
 class AdminNotifier(Protocol):
-    async def __call__(
-        self, bot, level="ERROR", error=None, message="", user_info="desconocido"
-    ) -> None: ...
+    def __call__(
+        self, bot, *, level="ERROR", error=None, message="", user_info="desconocido"
+    ) -> None: ...   # sync — fire_admin_notify ya gestiona el create_task internamente
 ```
 
-Uso directo desde `logging_middleware.py` (Capa 1 → Capa 5, dependencia válida):
+Uso desde cualquier caller (ejemplo: `logging_middleware.py`):
 
 ```python
-from src.infra.notifications.admin_notifier import notify_admin
-from src.domain.auth.user_query_repository import UserQueryRepository
-
-db_manager = context.bot_data.get("db_manager")
-async def _get_admin_ids():
-    if not db_manager:
-        return []
-    return await UserQueryRepository(db_manager).get_admin_chat_ids()
-
-await notify_admin(
-    bot=context.bot,
-    get_admin_ids=_get_admin_ids,
-    level="ERROR",
-    error=context.error,
-    user_info="12345 (@juan)",
-)
+admin_notify = context.bot_data.get("admin_notify")
+if admin_notify:
+    admin_notify(context.bot, level="ERROR", error=error, user_info=user_info)
 ```
+
+El caller no sabe nada de `get_admin_ids`, `asyncio` ni `UserQueryRepository`.
 
 El mensaje incluye nivel, timestamp, usuario afectado, tipo de excepción y el último frame del traceback. Usa Markdown de Telegram.
 

@@ -113,7 +113,6 @@ GPT5/
 │   │   ├── handlers/            ← Comandos y mensajes de Telegram
 │   │   ├── keyboards/           ← Teclados inline y de respuesta
 │   │   ├── middleware/          ← Auth, logging, token
-│   │   ├── notifications/       ← AdminNotifier
 │   │   └── telegram_bot.py      ← Arranque del bot
 │   ├── api/
 │   │   └── chat_endpoint.py     ← REST API Flask
@@ -132,6 +131,7 @@ GPT5/
 │   ├── infra/
 │   │   ├── database/            ← DatabaseManager, SQLValidator
 │   │   ├── observability/       ← Tracer, Metrics, SQLRepository
+│   │   ├── notifications/       ← notify_admin, fire_admin_notify (AdminNotifier)
 │   │   └── events/              ← EventBus
 │   ├── config/
 │   │   ├── settings.py          ← Pydantic Settings
