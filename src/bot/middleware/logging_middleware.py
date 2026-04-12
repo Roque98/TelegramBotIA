@@ -173,8 +173,3 @@ def setup_logging_middleware(application: Application) -> None:
 
     logger.info("Middleware de logging configurado exitosamente")
 
-
-# TODO: Implementar también:
-# - RateLimitMiddleware (limitar requests por usuario)
-# - AuthMiddleware (verificar permisos) - Requiere TODO #1
-# - MetricsMiddleware (recolectar métricas de uso)

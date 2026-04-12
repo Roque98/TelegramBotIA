@@ -1,8 +1,4 @@
-"""
-Constantes del módulo de autenticación.
-
-Reemplaza magic strings dispersos en middleware, handlers y servicios.
-"""
+"""Constantes del módulo de autenticación."""
 
 from enum import Enum
 

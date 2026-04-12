@@ -159,7 +159,6 @@ class CalculateTool(BaseTool):
     """
 
     def __init__(self):
-        """Inicializa el CalculateTool."""
         self.evaluator = SafeMathEvaluator()
         logger.info("CalculateTool inicializado")
 

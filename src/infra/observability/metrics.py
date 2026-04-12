@@ -93,10 +93,6 @@ class Counter:
         }
 
 
-# ---------------------------------------------------------------------------
-# Clases internas de métricas (responsabilidad única por dominio)
-# ---------------------------------------------------------------------------
-
 class _RequestMetrics:
     """Latencia, contadores de requests, pasos ReAct y errores."""
 
@@ -171,10 +167,6 @@ class _CacheMetrics:
         self.hits = Counter("cache_hits")
         self.misses = Counter("cache_misses")
 
-
-# ---------------------------------------------------------------------------
-# Facade público (API sin cambios para callers existentes)
-# ---------------------------------------------------------------------------
 
 class MetricsCollector:
     """

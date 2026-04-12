@@ -172,13 +172,6 @@ class MemoryService:
     async def get_minimal_context(self, user_id: str) -> UserContext:
         return await self.build_minimal_context(user_id)
 
-    # -------------------------------------------------------------------------
-    # Interactions & summaries
-    # -------------------------------------------------------------------------
-
-    # record_interaction eliminado — las interacciones las persiste
-    # InteractionRepository.save_interaction() directamente (OBS-31)
-
     async def update_summary(self, user_id: str, new_summary: str) -> bool:
         try:
             profile = await self.repository.get_profile(user_id)
@@ -204,7 +197,7 @@ class MemoryService:
     def _get_from_cache(self, key: str) -> Optional[UserContext]:
         entry = self._cache.get(key)
         if entry and not entry.is_expired():
-            self._cache.move_to_end(key)  # Marcar como recientemente usado (LRU)
+            self._cache.move_to_end(key)
             self._cache_hits += 1
             return entry.context
         elif entry:
@@ -216,7 +209,7 @@ class MemoryService:
         async with self._lock:
             self._evict_if_needed()
             self._cache[key] = CacheEntry(context=context, ttl_seconds=self.cache_ttl_seconds)
-            self._cache.move_to_end(key)  # Asegurar que la nueva entrada quede al final
+            self._cache.move_to_end(key)
 
     def _invalidate_user_cache(self, user_id: str) -> None:
         keys_to_delete = [k for k in self._cache if k.startswith(f"{user_id}:")]

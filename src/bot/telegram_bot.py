@@ -77,10 +77,6 @@ class TelegramBot:
         # Middleware de autenticación
         setup_auth_middleware(self.application, self.db_manager)
 
-        # TODO: Agregar más middleware cuando se implementen:
-        # - setup_rate_limiting_middleware()
-        # - setup_metrics_middleware()
-
         logger.info("Middleware configurado exitosamente")
 
     def _setup_handlers(self):
@@ -100,10 +96,6 @@ class TelegramBot:
 
         # Registrar query handlers (mensajes de texto sin comando)
         register_query_handlers(self.application, self.main_handler)
-
-        # TODO: Registrar handlers adicionales cuando se implementen:
-        # - register_admin_handlers() (requiere permisos específicos)
-        # - register_callback_handlers() (para inline keyboards)
 
         logger.info("Handlers registrados exitosamente")
 

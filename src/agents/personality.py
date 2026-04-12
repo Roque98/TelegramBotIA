@@ -11,20 +11,13 @@ from typing import List
 class BotPersonality:
     """Configuración de la personalidad del bot."""
 
-    # Información básica
     name: str
     role: str
     team: str
-
-    # Características de personalidad
     traits: List[str]
     tone: str
-
-    # System prompts
     base_prompt: str
     context_prompt: str
-
-    # Emojis característicos
     signature_emojis: List[str]
 
     def get_full_system_prompt(self) -> str:

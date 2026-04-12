@@ -42,10 +42,6 @@ class AlertRepository:
     def __init__(self, db_manager) -> None:
         self._db = db_manager
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Eventos activos
-    # ─────────────────────────────────────────────────────────────────────────
-
     async def get_active_events(
         self,
         ip: Optional[str] = None,
@@ -104,10 +100,6 @@ class AlertRepository:
         logger.debug(f"AlertRepository: {len(events)} eventos activos (origen={origen})")
         return events
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Tickets históricos
-    # ─────────────────────────────────────────────────────────────────────────
-
     async def get_historical_tickets(
         self, ip: str, sensor: str
     ) -> list[HistoricalTicket]:
@@ -129,10 +121,6 @@ class AlertRepository:
             except Exception as e:
                 logger.debug(f"AlertRepository: ticket inválido ignorado: {e}")
         return tickets
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Template
-    # ─────────────────────────────────────────────────────────────────────────
 
     async def get_template_id(
         self, ip: str, url: Optional[str] = None
@@ -215,10 +203,6 @@ class AlertRepository:
         levels.sort(key=lambda l: l.nivel)
         return levels
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Contactos
-    # ─────────────────────────────────────────────────────────────────────────
-
     async def get_contacto_gerencia(
         self, id_gerencia: int, usar_ekt: bool = False
     ) -> Optional[AreaContacto]:
@@ -243,10 +227,6 @@ class AlertRepository:
         except Exception as e:
             logger.warning(f"AlertRepository.get_contacto_gerencia({id_gerencia}): {e}")
             return None
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Helpers privados
-    # ─────────────────────────────────────────────────────────────────────────
 
     async def _run_sp_with_fallback(
         self,

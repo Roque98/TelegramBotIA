@@ -11,7 +11,6 @@ class TelegramUser:
     """Representa un usuario de Telegram registrado en el sistema."""
 
     def __init__(self, data: Dict[str, Any]):
-        # Datos del usuario (abcmasplus..Usuarios)
         self.id_usuario = data.get('idUsuario')
         self.nombre = data.get('Nombre')
         self.email = data.get('email')
@@ -21,7 +20,6 @@ class TelegramUser:
         self.puesto = data.get('puesto')
         self.empresa = data.get('Empresa')
 
-        # Datos de la cuenta de Telegram
         self.id_usuario_telegram = data.get('idUsuarioTelegram')
         self.telegram_chat_id = data.get('telegramChatId')
         self.telegram_username = data.get('telegramUsername')

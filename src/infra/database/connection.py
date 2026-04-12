@@ -66,13 +66,9 @@ class DatabaseManager:
         """
         Obtener una sesión de base de datos con context manager.
 
-        ✅ CORREGIDO: Ahora usa context manager para garantizar cierre de sesión.
-
         Uso:
             with db_manager.get_session() as session:
-                # Usar sesión
                 result = session.execute(query)
-            # Sesión cerrada automáticamente
 
         Yields:
             Session: Sesión de SQLAlchemy

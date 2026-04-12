@@ -167,7 +167,6 @@ class DatabaseTool(BaseTool):
             # Resolver el manager para este alias
             manager = self._resolve_manager(db_alias)
 
-            # 1. Generar SQL con gpt-5.4 (pasando el nombre de la BD)
             db_name = self._get_db_name(db_alias)
             sql = await self._generate_sql(description, db_name=db_name)
             if not sql:
@@ -175,7 +174,6 @@ class DatabaseTool(BaseTool):
 
             logger.info(f"SQL generado [{db_alias}]: {sql[:120]}...")
 
-            # 2. Validar seguridad
             is_safe, validation_error = self.sql_validator.validate(sql)
             if not is_safe:
                 logger.warning(f"SQL validation failed: {validation_error}")
@@ -184,7 +182,6 @@ class DatabaseTool(BaseTool):
                     metadata={"sql": sql[:200]},
                 )
 
-            # 3. Ejecutar contra el manager correcto
             results = await self._execute_query(sql, manager=manager)
 
             if isinstance(results, list) and len(results) > self.max_results:

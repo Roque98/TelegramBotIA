@@ -29,10 +29,6 @@ class UserService:
     def __init__(self, db_session: Session):
         self.repository = UserRepository(db_session)
 
-    # -------------------------------------------------------------------------
-    # Consultas de usuario (delegadas al repository)
-    # -------------------------------------------------------------------------
-
     def get_user_by_chat_id(self, chat_id: int) -> Optional[TelegramUser]:
         return self.repository.get_user_by_chat_id(chat_id)
 
@@ -65,10 +61,6 @@ class UserService:
 
     def get_registration_status(self, chat_id: int) -> Optional[Dict[str, Any]]:
         return self.repository.get_registration_status(chat_id)
-
-    # -------------------------------------------------------------------------
-    # Lógica de registro
-    # -------------------------------------------------------------------------
 
     def generate_verification_code(self) -> str:
         return ''.join(random.choices(string.digits, k=self.VERIFICATION_CODE_LENGTH))

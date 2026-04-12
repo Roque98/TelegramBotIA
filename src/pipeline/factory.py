@@ -354,7 +354,8 @@ def create_main_handler(
         sql_handler.set_repository(obs_repo)
         logger.info("SqlLogHandler wired to InteractionRepository")
 
-    # AdminNotifier: get_admin_ids resuelto aquí (Capa 2) — infra/notifications no toca domain
+    # AdminNotifier: get_admin_ids se resuelve en factory para que admin_notifier
+    # no dependa de domain — la función queda capturada por closure en el partial.
     _user_query_repo = UserQueryRepository(db_manager=db)
     async def _get_admin_ids() -> list[int]:
         return await _user_query_repo.get_admin_chat_ids()
