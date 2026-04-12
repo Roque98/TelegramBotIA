@@ -2,7 +2,7 @@
 
 # Dominio
 
-El dominio contiene la lógica de negocio y **toda la persistencia SQL**. Está organizado en 8 subdominios bajo `src/domain/`.
+El dominio contiene la lógica de negocio y **toda la persistencia SQL**. Está organizado en 7 subdominios bajo `src/domain/`.
 Cada subdominio sigue el patrón Repository + Service.
 
 ---
@@ -382,23 +382,6 @@ class InteractionRepository:
 `InteractionRepository` se instancia en `pipeline/factory.py` y se inyecta en
 `MainHandler` (para los tres primeros métodos) y en `SqlLogHandler`
 (para `save_log_sync`).
-
----
-
-## Notifications — `src/domain/notifications/`
-
-Envío de alertas al administrador vía Telegram.
-
-```python
-async def notify_admin(
-    bot, db_manager=None,
-    level="ERROR",
-    error=None,
-    message="",
-    user_info="desconocido",
-) -> None
-# Resuelve admins desde BD y envía mensaje con rate limiting (1 por tipo cada 5 min)
-```
 
 ---
 

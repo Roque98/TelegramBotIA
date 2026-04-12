@@ -48,16 +48,22 @@ Orquesta el flujo completo de procesamiento de una consulta.
 class MainHandler:
     def __init__(
         self,
-        react_agent: Any,  # AgentOrchestrator (o ReActAgent) — ambos exponen .execute()
+        react_agent: Any,               # AgentOrchestrator (o ReActAgent) — ambos exponen .execute()
         memory_service: MemoryService,
         observability_repo: InteractionRepository,  # src/domain/interaction/
         cost_repository: CostRepository,
+        admin_notifier: Optional[AdminNotifier] = None,  # Protocol — inyectado desde factory.py
     )
 
     async def handle_telegram(self, update: Update, context) -> str
     async def handle_api(self, user_id, text, session_id, metadata) -> AgentResponse
     async def health_check(self) -> dict
 ```
+
+`AdminNotifier` es un Protocol definido en `handler.py`. El pipeline no importa código Telegram
+directamente — `factory.py` inyecta `functools.partial(notify_admin, db_manager=db)` desde
+`src/bot/notifications/`. El handler lo invoca con `(bot, level, error, user_info)` sin saber
+la implementación concreta.
 
 `MainHandler` recibe el `AgentOrchestrator` como `react_agent`. Ambos exponen la misma interfaz `.execute(query, context, event_callback)`, por lo que el handler no necesita conocer cuántos agentes existen ni cuál fue seleccionado. El campo `response.routed_agent` refleja el nombre del agente que respondió efectivamente.
 
@@ -199,10 +205,12 @@ create_main_handler(db_manager)
 │   ├── IntentClassifier(nano_llm)
 │   └── AgentOrchestrator(service, builder, classifier)
 │
-├── ObservabilityRepository(db_manager)
+├── InteractionRepository(db_manager)          ← src/domain/interaction/
 ├── CostRepository(db_manager)
+├── functools.partial(notify_admin, db_manager=db)  ← src/bot/notifications/
 │
-└── MainHandler(react_agent=orchestrator, memory_service, obs_repo, cost_repo)
+└── MainHandler(react_agent=orchestrator, memory_service, obs_repo, cost_repo,
+                admin_notifier=partial)
 ```
 
 ### HandlerManager (singleton)

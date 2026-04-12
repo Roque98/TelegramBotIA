@@ -227,11 +227,13 @@ await status.show("Consultando la base de datos...")
 
 ---
 
-## AdminNotifier — `src/domain/notifications/admin_notifier.py`
+## AdminNotifier — `src/bot/notifications/admin_notifier.py`
 
 Envía notificaciones de errores críticos al administrador vía Telegram.
 
-**Propósito**: alertar en tiempo real cuando ocurren errores en el bot, sin depender de `admin_chat_ids` hardcodeados en settings.
+Vive en `src/bot/` porque usa `bot.send_message()` — es código Telegram-específico.
+El pipeline (`MainHandler`) lo recibe como un **Protocol** inyectado desde `factory.py`,
+por lo que `pipeline/handler.py` no importa nada de la capa `bot/`.
 
 **Cómo funciona**:
 
@@ -240,6 +242,7 @@ Envía notificaciones de errores críticos al administrador vía Telegram.
 - Si no hay admins con Telegram verificado, loggea un warning y retorna sin fallar.
 
 ```python
+# src/bot/notifications/admin_notifier.py
 async def notify_admin(
     bot: Any,
     db_manager: Any = None,
@@ -251,9 +254,31 @@ async def notify_admin(
 # Envía el mensaje a todos los admins Telegram activos.
 ```
 
-Ejemplo de uso (desde el middleware de logging):
+**Patrón de inyección** (en `pipeline/factory.py`):
 
 ```python
+from src.bot.notifications.admin_notifier import notify_admin
+import functools
+
+# db_manager pre-llenado — MainHandler solo ve la firma del Protocol
+admin_notify = functools.partial(notify_admin, db_manager=db)
+handler = MainHandler(..., admin_notifier=admin_notify)
+```
+
+El `AdminNotifier` Protocol en `pipeline/handler.py` define la firma que espera el handler:
+
+```python
+class AdminNotifier(Protocol):
+    async def __call__(
+        self, bot, level="ERROR", error=None, message="", user_info="desconocido"
+    ) -> None: ...
+```
+
+Uso directo desde `logging_middleware.py` (misma capa `bot/`):
+
+```python
+from src.bot.notifications.admin_notifier import notify_admin
+
 await notify_admin(
     bot=context.bot,
     db_manager=context.bot_data.get("db_manager"),

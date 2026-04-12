@@ -71,8 +71,7 @@ dependen de inferiores, nunca al revés).
 │  src/infra/database/           → DatabaseManager, SQLValidator, │
 │                                  DatabaseRegistry (multi-conn  │
 │                                  lazy por alias desde .env)    │
-│  src/infra/observability/      → Tracer, Metrics, SQLRepo       │
-│  src/infra/events/             → EventBus                      │
+│  src/infra/observability/      → Tracer, Metrics, SqlLogHandler │
 │  src/bot/notifications/        → AdminNotifier (notify_admin   │
 │                                  con rate-limiting, admins     │
 │                                  desde BD)                     │
@@ -233,7 +232,8 @@ pipeline/factory ──► agents/orchestrator/AgentOrchestrator
                  ──► domain/memory/memory_service
                  ──► domain/knowledge/knowledge_service
                  ──► domain/auth/permission_service
-                 ──► infra/observability/sql_repository
+                 ──► domain/interaction/interaction_repository
+                 ──► bot/notifications/admin_notifier (inyectado como Protocol)
 ```
 
 ---
