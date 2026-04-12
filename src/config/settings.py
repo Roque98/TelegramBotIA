@@ -111,38 +111,17 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """Construir URL de conexión a la base de datos."""
-        if self.db_type == "sqlite":
-            return f"sqlite:///{self.db_name}"
-        elif self.db_type == "postgresql":
-            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        elif self.db_type == "mysql":
-            return f"mysql+pymysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
-        elif self.db_type == "mssql" or self.db_type == "sqlserver":
-            # Para SQL Server usando pyodbc con ODBC Driver 17 for SQL Server
-            driver = "ODBC Driver 17 for SQL Server"
-
-            # Si se especifica una instancia nombrada (ej: SQLEXPRESS), usar odbc_connect
-            if self.db_instance:
-                # Construir connection string ODBC directa para instancia nombrada
-                odbc_str = (
-                    f"DRIVER={{{driver}}};"
-                    f"SERVER={self.db_host}\\{self.db_instance};"
-                    f"DATABASE={self.db_name};"
-                    f"UID={self.db_user};"
-                    f"PWD={self.db_password};"
-                    f"Connection Timeout=15;"
-                )
-                # Usar odbc_connect permite pasar la connection string completa
-                return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc_str)}"
-            else:
-                # Para conexión por puerto TCP/IP (sin instancia nombrada)
-                user = quote_plus(self.db_user)
-                password = quote_plus(self.db_password)
-                driver_encoded = "ODBC+Driver+17+for+SQL+Server"
-                return f"mssql+pyodbc://{user}:{password}@{self.db_host}:{self.db_port}/{self.db_name}?driver={driver_encoded}"
-        else:
-            raise ValueError(f"Tipo de base de datos no soportado: {self.db_type}")
+        """Construir URL de conexión a la base de datos principal (delega a DbConnectionConfig)."""
+        return DbConnectionConfig(
+            alias="core",
+            host=self.db_host,
+            port=self.db_port,
+            instance=self.db_instance,
+            name=self.db_name,
+            user=self.db_user,
+            password=self.db_password,
+            db_type=self.db_type,
+        ).database_url
 
 
     def get_db_connections(self) -> dict[str, DbConnectionConfig]:

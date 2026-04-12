@@ -93,17 +93,95 @@ class Counter:
         }
 
 
+# ---------------------------------------------------------------------------
+# Clases internas de métricas (responsabilidad única por dominio)
+# ---------------------------------------------------------------------------
+
+class _RequestMetrics:
+    """Latencia, contadores de requests, pasos ReAct y errores."""
+
+    def __init__(self) -> None:
+        self.latency: dict[str, LatencyStats] = defaultdict(LatencyStats)
+        self.steps_distribution: dict[int, int] = defaultdict(int)
+        self.total = Counter("requests_total")
+        self.success = Counter("requests_success")
+        self.error = Counter("requests_error")
+        self.fallbacks = Counter("fallbacks_used")
+        self.errors_by_type: dict[str, int] = defaultdict(int)
+
+    def record(
+        self,
+        channel: str,
+        duration_ms: float,
+        steps: int,
+        success: bool,
+        used_fallback: bool = False,
+        error_type: Optional[str] = None,
+    ) -> None:
+        self.latency[channel].record(duration_ms)
+        self.latency["_total"].record(duration_ms)
+        self.steps_distribution[steps] += 1
+        self.total.inc()
+        if success:
+            self.success.inc()
+        else:
+            self.error.inc()
+        if used_fallback:
+            self.fallbacks.inc()
+        if error_type:
+            self.errors_by_type[error_type] += 1
+
+    def reset(self) -> None:
+        self.latency.clear()
+        self.steps_distribution.clear()
+        self.total = Counter("requests_total")
+        self.success = Counter("requests_success")
+        self.error = Counter("requests_error")
+        self.fallbacks = Counter("fallbacks_used")
+        self.errors_by_type.clear()
+
+
+class _ToolMetrics:
+    """Uso de tools por nombre."""
+
+    def __init__(self) -> None:
+        self.usage: dict[str, int] = defaultdict(int)
+
+    def record(self, tool_name: str) -> None:
+        self.usage[tool_name] += 1
+
+    def reset(self) -> None:
+        self.usage.clear()
+
+
+class _CacheMetrics:
+    """Hits y misses de caché."""
+
+    def __init__(self) -> None:
+        self.hits = Counter("cache_hits")
+        self.misses = Counter("cache_misses")
+
+    def hit(self) -> None:
+        self.hits.inc()
+
+    def miss(self) -> None:
+        self.misses.inc()
+
+    def reset(self) -> None:
+        self.hits = Counter("cache_hits")
+        self.misses = Counter("cache_misses")
+
+
+# ---------------------------------------------------------------------------
+# Facade público (API sin cambios para callers existentes)
+# ---------------------------------------------------------------------------
+
 class MetricsCollector:
     """
     Colector de métricas para el sistema ReAct.
 
-    Recolecta:
-    - Latencia de requests por canal
-    - Steps tomados por request
-    - Errores por tipo
-    - Uso de tools
-    - Cache hits/misses
-    - Fallbacks utilizados
+    Facade que compone _RequestMetrics, _ToolMetrics y _CacheMetrics.
+    La API pública es idéntica a la versión anterior.
 
     Example:
         ```python
@@ -125,30 +203,9 @@ class MetricsCollector:
     def __init__(self):
         """Inicializa el colector de métricas."""
         self._lock = threading.Lock()
-
-        # Latencia por canal
-        self._latency: dict[str, LatencyStats] = defaultdict(LatencyStats)
-
-        # Steps por request
-        self._steps_distribution: dict[int, int] = defaultdict(int)
-
-        # Contadores
-        self._requests_total = Counter("requests_total")
-        self._requests_success = Counter("requests_success")
-        self._requests_error = Counter("requests_error")
-        self._fallbacks_used = Counter("fallbacks_used")
-
-        # Errores por tipo
-        self._errors_by_type: dict[str, int] = defaultdict(int)
-
-        # Tools usage
-        self._tools_usage: dict[str, int] = defaultdict(int)
-
-        # Cache stats
-        self._cache_hits = Counter("cache_hits")
-        self._cache_misses = Counter("cache_misses")
-
-        # Timestamp de inicio
+        self._requests = _RequestMetrics()
+        self._tools = _ToolMetrics()
+        self._cache = _CacheMetrics()
         self._start_time = datetime.now(UTC)
 
         logger.info("MetricsCollector initialized")
@@ -174,25 +231,7 @@ class MetricsCollector:
             error_type: Tipo de error si hubo
         """
         with self._lock:
-            # Latencia
-            self._latency[channel].record(duration_ms)
-            self._latency["_total"].record(duration_ms)
-
-            # Steps
-            self._steps_distribution[steps] += 1
-
-            # Contadores
-            self._requests_total.inc()
-            if success:
-                self._requests_success.inc()
-            else:
-                self._requests_error.inc()
-
-            if used_fallback:
-                self._fallbacks_used.inc()
-
-            if error_type:
-                self._errors_by_type[error_type] += 1
+            self._requests.record(channel, duration_ms, steps, success, used_fallback, error_type)
 
         logger.debug(
             f"Request recorded: channel={channel}, duration={duration_ms:.0f}ms, "
@@ -207,17 +246,17 @@ class MetricsCollector:
             tool_name: Nombre del tool
         """
         with self._lock:
-            self._tools_usage[tool_name] += 1
+            self._tools.record(tool_name)
 
     def record_cache_hit(self) -> None:
         """Registra un cache hit."""
         with self._lock:
-            self._cache_hits.inc()
+            self._cache.hit()
 
     def record_cache_miss(self) -> None:
         """Registra un cache miss."""
         with self._lock:
-            self._cache_misses.inc()
+            self._cache.miss()
 
     def get_stats(self) -> dict[str, Any]:
         """
@@ -229,22 +268,19 @@ class MetricsCollector:
         with self._lock:
             uptime = (datetime.now(UTC) - self._start_time).total_seconds()
 
-            # Calcular promedio de steps
-            total_requests = sum(self._steps_distribution.values())
-            total_steps = sum(k * v for k, v in self._steps_distribution.items())
+            total_requests = sum(self._requests.steps_distribution.values())
+            total_steps = sum(k * v for k, v in self._requests.steps_distribution.items())
             avg_steps = total_steps / total_requests if total_requests > 0 else 0
 
-            # Calcular tasa de éxito
             success_rate = (
-                self._requests_success.value / self._requests_total.value * 100
-                if self._requests_total.value > 0
+                self._requests.success.value / self._requests.total.value * 100
+                if self._requests.total.value > 0
                 else 0
             )
 
-            # Calcular cache hit rate
-            cache_total = self._cache_hits.value + self._cache_misses.value
+            cache_total = self._cache.hits.value + self._cache.misses.value
             cache_hit_rate = (
-                self._cache_hits.value / cache_total * 100
+                self._cache.hits.value / cache_total * 100
                 if cache_total > 0
                 else 0
             )
@@ -252,25 +288,25 @@ class MetricsCollector:
             return {
                 "uptime_seconds": round(uptime, 0),
                 "requests": {
-                    "total": self._requests_total.value,
-                    "success": self._requests_success.value,
-                    "error": self._requests_error.value,
+                    "total": self._requests.total.value,
+                    "success": self._requests.success.value,
+                    "error": self._requests.error.value,
                     "success_rate_percent": round(success_rate, 2),
-                    "fallbacks_used": self._fallbacks_used.value,
+                    "fallbacks_used": self._requests.fallbacks.value,
                 },
                 "latency": {
                     channel: stats.to_dict()
-                    for channel, stats in self._latency.items()
+                    for channel, stats in self._requests.latency.items()
                 },
                 "steps": {
-                    "distribution": dict(self._steps_distribution),
+                    "distribution": dict(self._requests.steps_distribution),
                     "average": round(avg_steps, 2),
                 },
-                "errors_by_type": dict(self._errors_by_type),
-                "tools_usage": dict(self._tools_usage),
+                "errors_by_type": dict(self._requests.errors_by_type),
+                "tools_usage": dict(self._tools.usage),
                 "cache": {
-                    "hits": self._cache_hits.value,
-                    "misses": self._cache_misses.value,
+                    "hits": self._cache.hits.value,
+                    "misses": self._cache.misses.value,
                     "hit_rate_percent": round(cache_hit_rate, 2),
                 },
             }
@@ -306,16 +342,9 @@ class MetricsCollector:
     def reset(self) -> None:
         """Resetea todas las métricas."""
         with self._lock:
-            self._latency.clear()
-            self._steps_distribution.clear()
-            self._requests_total = Counter("requests_total")
-            self._requests_success = Counter("requests_success")
-            self._requests_error = Counter("requests_error")
-            self._fallbacks_used = Counter("fallbacks_used")
-            self._errors_by_type.clear()
-            self._tools_usage.clear()
-            self._cache_hits = Counter("cache_hits")
-            self._cache_misses = Counter("cache_misses")
+            self._requests.reset()
+            self._tools.reset()
+            self._cache.reset()
             self._start_time = datetime.now(UTC)
 
         logger.info("Metrics reset")
@@ -373,7 +402,6 @@ class MetricsMiddleware:
                 raise
             finally:
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                # Intentar extraer channel de kwargs
                 channel = kwargs.get("channel", "unknown")
                 steps = kwargs.get("steps", 1)
 

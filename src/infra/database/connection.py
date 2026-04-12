@@ -5,7 +5,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, List, Dict, Any, Generator, Optional
 from contextlib import contextmanager
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, TimeoutError as SQLTimeoutError
@@ -91,61 +91,14 @@ class DatabaseManager:
         finally:
             session.close()  # Siempre cerrar sesión
 
-    @db_retry(
-        max_attempts=settings.retry_db_max_attempts,
-        min_wait=settings.retry_db_min_wait,
-        max_wait=settings.retry_db_max_wait,
-    )
     def get_schema(self) -> str:
         """
-        Obtener el esquema de la base de datos en formato texto.
+        Retorna el esquema de la base de datos en formato texto.
 
-        ✅ CORREGIDO: Manejo específico de excepciones.
-
-        Returns:
-            Descripción del esquema de la base de datos
-
-        Raises:
-            ConnectionError: Si hay error de conexión a BD
-            TimeoutError: Si la operación tarda demasiado
-            SQLAlchemyError: Si hay error de BD
+        Delega a SchemaIntrospector (SRP: introspección es responsabilidad separada).
         """
-        try:
-            inspector = inspect(self.engine)
-            schema_description = []
-
-            for table_name in inspector.get_table_names():
-                schema_description.append(f"\nTabla: {table_name}")
-                columns = inspector.get_columns(table_name)
-
-                for column in columns:
-                    col_type = str(column['type'])
-                    nullable = "NULL" if column['nullable'] else "NOT NULL"
-                    schema_description.append(
-                        f"  - {column['name']}: {col_type} {nullable}"
-                    )
-
-            return "\n".join(schema_description)
-
-        except OperationalError as e:
-            # Error de conexión a BD
-            logger.error(f"Error de conexión al obtener esquema: {e}")
-            raise ConnectionError(f"No se pudo conectar a la base de datos: {e}") from e
-
-        except SQLTimeoutError as e:
-            # Timeout
-            logger.error(f"Timeout al obtener esquema: {e}")
-            raise TimeoutError(f"La base de datos no respondió a tiempo: {e}") from e
-
-        except SQLAlchemyError as e:
-            # Otros errores de SQLAlchemy
-            logger.error(f"Error de SQLAlchemy obteniendo esquema: {e}")
-            raise
-
-        except Exception as e:
-            # Solo para errores verdaderamente inesperados
-            logger.error(f"Error inesperado obteniendo esquema: {e}", exc_info=True)
-            raise
+        from src.infra.database.schema_introspector import SchemaIntrospector
+        return SchemaIntrospector(self.engine).get_schema()
 
     @db_retry(
         max_attempts=settings.retry_db_max_attempts,
