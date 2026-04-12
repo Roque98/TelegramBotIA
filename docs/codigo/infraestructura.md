@@ -227,13 +227,14 @@ await status.show("Consultando la base de datos...")
 
 ---
 
-## AdminNotifier — `src/bot/notifications/admin_notifier.py`
+## AdminNotifier — `src/infra/notifications/admin_notifier.py`
 
 Envía notificaciones de errores críticos al administrador vía Telegram.
 
-Vive en `src/bot/` porque usa `bot.send_message()` — es código Telegram-específico.
-El pipeline (`MainHandler`) lo recibe como un **Protocol** inyectado desde `factory.py`,
-por lo que `pipeline/handler.py` no importa nada de la capa `bot/`.
+Vive en `src/infra/` porque es infraestructura de notificación (Capa 5).
+Recibe `bot: Any` como parámetro — no importa nada de `telegram` directamente,
+por lo que no pertenece a `src/bot/` (Capa 1).
+El pipeline (`MainHandler`) lo recibe como un **Protocol** inyectado desde `factory.py`.
 
 **Cómo funciona**:
 
@@ -242,7 +243,7 @@ por lo que `pipeline/handler.py` no importa nada de la capa `bot/`.
 - Si no hay admins con Telegram verificado, loggea un warning y retorna sin fallar.
 
 ```python
-# src/bot/notifications/admin_notifier.py
+# src/infra/notifications/admin_notifier.py
 async def notify_admin(
     bot: Any,
     db_manager: Any = None,
@@ -274,7 +275,7 @@ class AdminNotifier(Protocol):
     ) -> None: ...
 ```
 
-Uso directo desde `logging_middleware.py` (misma capa `bot/`):
+Uso directo desde `logging_middleware.py` (Capa 1 → Capa 5, dependencia válida):
 
 ```python
 from src.bot.notifications.admin_notifier import notify_admin

@@ -6,6 +6,9 @@ verificados y activos), sin depender de admin_chat_ids hardcodeados en settings.
 
 Rate limiting: máximo 1 notificación por tipo de error cada 5 minutos para evitar spam.
 
+Ubicación: src/infra/notifications/ (Capa 5 — infraestructura de notificación).
+Recibe `bot` como parámetro Any — no importa telegram directamente.
+
 Uso típico (desde log_error en logging_middleware):
     await notify_admin(
         bot=context.bot,

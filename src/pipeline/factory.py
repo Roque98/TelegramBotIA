@@ -41,7 +41,7 @@ from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
 from src.domain.interaction.interaction_repository import InteractionRepository
 from src.infra.observability.logging_config import get_sql_handler
-from src.bot.notifications.admin_notifier import notify_admin
+from src.infra.notifications.admin_notifier import notify_admin
 
 from .handler import MainHandler
 

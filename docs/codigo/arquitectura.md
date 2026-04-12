@@ -72,7 +72,7 @@ dependen de inferiores, nunca al revés).
 │                                  DatabaseRegistry (multi-conn  │
 │                                  lazy por alias desde .env)    │
 │  src/infra/observability/      → Tracer, Metrics, SqlLogHandler │
-│  src/bot/notifications/        → AdminNotifier (notify_admin   │
+│  src/infra/notifications/      → AdminNotifier (notify_admin   │
 │                                  con rate-limiting, admins     │
 │                                  desde BD)                     │
 │  src/config/                   → Settings (Pydantic), logging  │
@@ -233,7 +233,7 @@ pipeline/factory ──► agents/orchestrator/AgentOrchestrator
                  ──► domain/knowledge/knowledge_service
                  ──► domain/auth/permission_service
                  ──► domain/interaction/interaction_repository
-                 ──► bot/notifications/admin_notifier (inyectado como Protocol)
+                 ──► infra/notifications/admin_notifier (inyectado como Protocol)
 ```
 
 ---

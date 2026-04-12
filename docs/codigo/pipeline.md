@@ -207,7 +207,7 @@ create_main_handler(db_manager)
 │
 ├── InteractionRepository(db_manager)          ← src/domain/interaction/
 ├── CostRepository(db_manager)
-├── functools.partial(notify_admin, db_manager=db)  ← src/bot/notifications/
+├── functools.partial(notify_admin, db_manager=db)  ← src/infra/notifications/
 │
 └── MainHandler(react_agent=orchestrator, memory_service, obs_repo, cost_repo,
                 admin_notifier=partial)

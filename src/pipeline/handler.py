@@ -48,7 +48,7 @@ class AdminNotifier(Protocol):
     Protocolo para notificación de errores al administrador.
 
     Desacopla pipeline de la implementación Telegram-específica.
-    La implementación real vive en src/bot/notifications/admin_notifier.py
+    La implementación real vive en src/infra/notifications/admin_notifier.py
     y se inyecta desde pipeline/factory.py.
     """
 
