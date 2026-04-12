@@ -8,6 +8,7 @@ inyectado al crear el notifier — ver factory.py.
 Rate limiting: máximo 1 notificación por tipo de error cada 5 minutos para evitar spam.
 """
 
+import asyncio
 import logging
 import time
 import traceback
@@ -103,6 +104,34 @@ def _build_message(
             lines.append(f"*Traceback:*\n```\n{last_frame}\n```")
 
     return "\n".join(lines)
+
+
+def fire_admin_notify(
+    bot: Any,
+    get_admin_ids: Optional[Callable[[], Awaitable[list[int]]]],
+    *,
+    level: str = "ERROR",
+    error: Optional[BaseException] = None,
+    user_info: str = "desconocido",
+    message: str = "",
+) -> None:
+    """Fire-and-forget: programa notify_admin como tarea async sin bloquear.
+
+    Si get_admin_ids es None, no hace nada. Debe llamarse desde un contexto
+    donde haya un event loop activo (dentro de un handler async de Telegram).
+    """
+    if not get_admin_ids:
+        return
+    asyncio.create_task(
+        notify_admin(
+            bot=bot,
+            get_admin_ids=get_admin_ids,
+            level=level,
+            error=error,
+            user_info=user_info,
+            message=message,
+        )
+    )
 
 
 def reset_rate_cache() -> None:
