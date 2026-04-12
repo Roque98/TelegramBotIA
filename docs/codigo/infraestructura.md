@@ -244,9 +244,10 @@ El pipeline (`MainHandler`) lo recibe como un **Protocol** inyectado desde `fact
 
 ```python
 # src/infra/notifications/admin_notifier.py
+# Cero imports del proyecto — infraestructura pura (stdlib solamente)
 async def notify_admin(
     bot: Any,
-    db_manager: Any = None,
+    get_admin_ids: Callable[[], Awaitable[list[int]]],
     level: str = "ERROR",           # "ERROR", "CRITICAL", "WARNING"
     error: Optional[BaseException] = None,
     message: str = "",
@@ -255,14 +256,20 @@ async def notify_admin(
 # Envía el mensaje a todos los admins Telegram activos.
 ```
 
-**Patrón de inyección** (en `pipeline/factory.py`):
+`get_admin_ids` es un callable inyectado — `admin_notifier.py` no conoce `UserQueryRepository`
+ni ninguna otra clase del proyecto.
+
+**Patrón de inyección** (en `pipeline/factory.py`, Capa 2):
 
 ```python
-from src.bot.notifications.admin_notifier import notify_admin
-import functools
+from src.infra.notifications.admin_notifier import notify_admin
+from src.domain.auth.user_query_repository import UserQueryRepository
 
-# db_manager pre-llenado — MainHandler solo ve la firma del Protocol
-admin_notify = functools.partial(notify_admin, db_manager=db)
+_repo = UserQueryRepository(db_manager=db)
+async def _get_admin_ids() -> list[int]:
+    return await _repo.get_admin_chat_ids()
+
+admin_notify = functools.partial(notify_admin, get_admin_ids=_get_admin_ids)
 handler = MainHandler(..., admin_notifier=admin_notify)
 ```
 
@@ -278,11 +285,18 @@ class AdminNotifier(Protocol):
 Uso directo desde `logging_middleware.py` (Capa 1 → Capa 5, dependencia válida):
 
 ```python
-from src.bot.notifications.admin_notifier import notify_admin
+from src.infra.notifications.admin_notifier import notify_admin
+from src.domain.auth.user_query_repository import UserQueryRepository
+
+db_manager = context.bot_data.get("db_manager")
+async def _get_admin_ids():
+    if not db_manager:
+        return []
+    return await UserQueryRepository(db_manager).get_admin_chat_ids()
 
 await notify_admin(
     bot=context.bot,
-    db_manager=context.bot_data.get("db_manager"),
+    get_admin_ids=_get_admin_ids,
     level="ERROR",
     error=context.error,
     user_info="12345 (@juan)",
