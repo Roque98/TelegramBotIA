@@ -42,6 +42,7 @@ from src.domain.memory.memory_repository import MemoryRepository
 from src.domain.interaction.interaction_repository import InteractionRepository
 from src.infra.observability.logging_config import get_sql_handler
 from src.infra.notifications.admin_notifier import notify_admin
+from src.domain.auth.user_query_repository import UserQueryRepository
 
 from .handler import MainHandler
 
@@ -353,8 +354,12 @@ def create_main_handler(
         sql_handler.set_repository(obs_repo)
         logger.info("SqlLogHandler wired to InteractionRepository")
 
-    # AdminNotifier: partial con db_manager pre-llenado — handler.py solo ve el protocolo
-    admin_notify = functools.partial(notify_admin, db_manager=db)
+    # AdminNotifier: get_admin_ids resuelto aquí (Capa 2) — infra/notifications no toca domain
+    _user_query_repo = UserQueryRepository(db_manager=db)
+    async def _get_admin_ids() -> list[int]:
+        return await _user_query_repo.get_admin_chat_ids()
+
+    admin_notify = functools.partial(notify_admin, get_admin_ids=_get_admin_ids)
 
     handler = MainHandler(
         react_agent=orchestrator,
