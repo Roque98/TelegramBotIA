@@ -80,10 +80,9 @@ class AgentOrchestrator:
             AgentResponse del agente seleccionado, con routed_agent indicando
             el nombre del agente que respondió.
         """
-        t0 = time.perf_counter()
-        t0_dt = datetime.datetime.utcnow()
-
         # 1. Cargar agentes activos desde cache/BD
+        t_config = time.perf_counter()
+        t_config_dt = datetime.datetime.utcnow()
         try:
             definitions = self.agent_config_service.get_active_agents()
         except AgentConfigException as e:
@@ -92,8 +91,11 @@ class AgentOrchestrator:
                 agent_name="orchestrator",
                 error="Servicio temporalmente no disponible. Por favor reintentá más tarde.",
             )
+        config_ms = int((time.perf_counter() - t_config) * 1000)
 
         # 2. Clasificar intent con tracker propio para capturar tokens y costo
+        t0 = time.perf_counter()
+        t0_dt = datetime.datetime.utcnow()
         classify_tracker = CostTracker()
         _classify_token = set_current_tracker(classify_tracker)
         try:
@@ -125,7 +127,10 @@ class AgentOrchestrator:
         )
 
         # 4. Construir / recuperar del cache la instancia del agente
+        t_build = time.perf_counter()
+        t_build_dt = datetime.datetime.utcnow()
         agent = self.agent_builder.build(definition)
+        build_ms = int((time.perf_counter() - t_build) * 1000)
 
         # 5. Ejecutar el agente seleccionado
         response = await agent.execute(
@@ -141,10 +146,20 @@ class AgentOrchestrator:
         response.agent_confidence = classify_result.confidence
         response.used_fallback = used_fallback or classify_result.used_fallback
 
-        # 7. Inyectar step del clasificador en step_traces e incorporar su costo al total
+        # 7. Inyectar steps de infraestructura en step_traces y renumerar
         if response.data is not None:
+            config_step = {
+                "tipo": "config_load",
+                "nombre": "AgentConfigService",
+                "entrada": None,
+                "salida": f"{len(definitions)} agentes activos",
+                "tokensIn": None,
+                "tokensOut": None,
+                "costoUSD": None,
+                "duracionMs": config_ms,
+                "fechaInicio": t_config_dt,
+            }
             classifier_step = {
-                "stepNum": 0,
                 "tipo": "llm_call",
                 "nombre": getattr(self.intent_classifier.llm, "model", "classifier"),
                 "entrada": query[:4000],
@@ -155,8 +170,22 @@ class AgentOrchestrator:
                 "duracionMs": classify_ms,
                 "fechaInicio": t0_dt,
             }
+            build_step = {
+                "tipo": "agent_build",
+                "nombre": definition.nombre,
+                "entrada": None,
+                "salida": f"v{definition.version} cache={'hit' if build_ms < 5 else 'miss'}",
+                "tokensIn": None,
+                "tokensOut": None,
+                "costoUSD": None,
+                "duracionMs": build_ms,
+                "fechaInicio": t_build_dt,
+            }
             existing = response.data.get("step_traces") or []
-            response.data["step_traces"] = [classifier_step] + existing
+            all_steps = [config_step, classifier_step, build_step] + existing
+            for i, step in enumerate(all_steps):
+                step["stepNum"] = i
+            response.data["step_traces"] = all_steps
 
             # Sumar costo del clasificador al resumen de costo del agente
             cost_summary = response.data.get("cost")

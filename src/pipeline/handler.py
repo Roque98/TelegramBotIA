@@ -8,6 +8,7 @@ Coordina:
 """
 
 import asyncio
+import datetime
 import logging
 import time
 from typing import Any, Awaitable, Callable, Optional, Protocol
@@ -269,6 +270,7 @@ class MainHandler:
             AgentResponse con el resultado
         """
         t_start = time.perf_counter()
+        t_start_dt = datetime.datetime.utcnow()
 
         # 1. Obtener contexto del usuario
         user_context = await self.memory.get_context(event.user_id)
@@ -296,6 +298,25 @@ class MainHandler:
                     execution_time_ms=0,
                 )
         react_ms = int((time.perf_counter() - t_react) * 1000)
+
+        # Inyectar memory_load como primer step y renumerar
+        if response.data is not None:
+            memory_step = {
+                "tipo": "memory_load",
+                "nombre": "MemoryService",
+                "entrada": event.user_id,
+                "salida": None,
+                "tokensIn": None,
+                "tokensOut": None,
+                "costoUSD": None,
+                "duracionMs": memory_ms,
+                "fechaInicio": t_start_dt,
+            }
+            existing = response.data.get("step_traces") or []
+            all_steps = [memory_step] + existing
+            for i, step in enumerate(all_steps):
+                step["stepNum"] = i
+            response.data["step_traces"] = all_steps
 
         total_ms = int((time.perf_counter() - t_start) * 1000)
         save_ms = 0  # save ocurre en background, no bloquea el pipeline
