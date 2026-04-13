@@ -80,6 +80,13 @@ class GetHistoricalTicketsTool(BaseTool):
             )
 
         try:
+            # Si no viene sensor, resolverlo desde la alerta activa
+            if not sensor:
+                events = await self._repo.get_active_events(ip=ip)
+                if events:
+                    sensor = events[0].sensor or ""
+                    logger.debug(f"GetHistoricalTicketsTool: sensor resuelto desde alerta activa → '{sensor}'")
+
             tickets = await self._repo.get_historical_tickets(ip=ip, sensor=sensor)
             elapsed = (time.perf_counter() - t0) * 1000
 
