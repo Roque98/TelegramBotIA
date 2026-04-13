@@ -71,7 +71,8 @@ dependen de inferiores, nunca al revés).
 │  src/infra/database/           → DatabaseManager, SQLValidator, │
 │                                  DatabaseRegistry (multi-conn  │
 │                                  lazy por alias desde .env)    │
-│  src/infra/observability/      → Tracer, Metrics, SqlLogHandler │
+│  src/infra/observability/      → Tracer, MetricsCollector,      │
+│                                  SqlLogHandler                  │
 │  src/infra/notifications/      → AdminNotifier (notify_admin   │
 │                                  con rate-limiting, admins     │
 │                                  desde BD)                     │
