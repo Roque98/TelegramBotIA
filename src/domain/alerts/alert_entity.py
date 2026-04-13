@@ -10,9 +10,9 @@ Jerarquía:
   AlertContext      — Agregado completo de un evento enriquecido (se pasa al PromptBuilder)
 """
 
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AlertEvent(BaseModel):
@@ -37,6 +37,24 @@ class AlertEvent(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        """Coerciona NULLs de BD a defaults — evita descartar filas con campos opcionales nulos."""
+        if not isinstance(data, dict):
+            return data
+        _str_fields = {
+            "Equipo", "IP", "Sensor", "Status", "Mensaje",
+            "AreaAtendedora", "ResponsableAtendedor",
+            "AreaAdministradora", "ResponsableAdministrador", "_origen",
+        }
+        for field in _str_fields:
+            if data.get(field) is None:
+                data[field] = ""
+        if data.get("Prioridad") is None:
+            data["Prioridad"] = 0
+        return data
+
     @property
     def es_ekt(self) -> bool:
         return self.origen == "EKT"
@@ -56,6 +74,17 @@ class HistoricalTicket(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        """Convierte NULL de BD a string vacío para evitar ValidationError en campos str."""
+        if not isinstance(data, dict):
+            return data
+        for field in ("alerta", "detalle", "accionCorrectiva"):
+            if data.get(field) is None:
+                data[field] = ""
+        return data
+
     @property
     def accion_formateada(self) -> str:
         """Reemplaza el marcador [Salto] de la BD por saltos de línea reales."""
@@ -70,7 +99,35 @@ class Template(BaseModel):
     gerencia_desarrollo: str = Field(alias="GerenciaDesarrollo", default="")
     instancia: str = Field(default="")  # "BAZ", "COMERCIO" o vacío
 
+    # Campos adicionales de Template_GetById
+    atendedor_id_gerencia: Optional[int] = Field(alias="Atendedor_idGerencia", default=None)
+    gerencia_atendedora: str = Field(alias="GerenciaAtendedora", default="")
+    id_gerencia_desarrollo: Optional[int] = Field(alias="idGerenciaDesarrollo", default=None)
+    ambiente: str = Field(alias="ambiente", default="")
+    negocio: str = Field(alias="Negocio", default="")
+    tipo_template: str = Field(alias="TipoTemplate", default="")
+    es_aws: bool = Field(alias="esAws", default=False)
+    es_vertical: bool = Field(alias="esVertical", default=False)
+
     model_config = {"populate_by_name": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_types(cls, data: Any) -> Any:
+        """Coerciona valores de BD: None → default, int → str para campos str."""
+        if not isinstance(data, dict):
+            return data
+        for field in ("Aplicacion", "GerenciaDesarrollo", "GerenciaAtendedora",
+                      "ambiente", "Negocio", "TipoTemplate"):
+            v = data.get(field)
+            if v is None:
+                data[field] = ""
+            elif not isinstance(v, str):
+                data[field] = str(v)
+        for field in ("esAws", "esVertical", "ArquitecturaPersonalizada"):
+            if data.get(field) is None:
+                data[field] = False
+        return data
 
     @property
     def etiqueta(self) -> str:
@@ -97,6 +154,21 @@ class EscalationLevel(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_types(cls, data: Any) -> Any:
+        """Coerciona tipos de BD: TiempoEscalacion llega como int, campos str pueden ser None."""
+        if not isinstance(data, dict):
+            return data
+        # TiempoEscalacion viene como int desde la BD
+        if "TiempoEscalacion" in data and not isinstance(data["TiempoEscalacion"], str):
+            data["TiempoEscalacion"] = str(data["TiempoEscalacion"]) if data["TiempoEscalacion"] is not None else ""
+        # Campos str que pueden venir como None
+        for field in ("Nombre", "puesto", "Extension", "celular", "correo"):
+            if data.get(field) is None:
+                data[field] = ""
+        return data
+
 
 class AreaContacto(BaseModel):
     """Datos de contacto de una gerencia."""
@@ -104,8 +176,66 @@ class AreaContacto(BaseModel):
     gerencia: str = Field(alias="Gerencia", default="")
     correos: str = Field(alias="direccion_correo", default="")
     extensiones: str = Field(alias="extensiones", default="")
+    responsable: str = Field(alias="RESPONSABLE", default="")
 
     model_config = {"populate_by_name": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for field in ("Gerencia", "direccion_correo", "extensiones", "RESPONSABLE"):
+            if data.get(field) is None:
+                data[field] = ""
+        return data
+
+
+class InventoryItem(BaseModel):
+    """
+    Equipo del inventario obtenido por IP.
+
+    Unifica EquiposFisicos y MaquinasVirtuales en un modelo común.
+    El campo 'fuente' indica la tabla de origen: 'Fisico' | 'Virtual'.
+    """
+
+    ip: str = Field(alias="ip", default="")
+    hostname: str = Field(alias="hostname", default="")
+    id_area_atendedora: Optional[int] = Field(alias="id_area_atendedora", default=None)
+    id_area_administradora: Optional[int] = Field(alias="id_area_administradora", default=None)
+    area_atendedora: str = Field(alias="area_atendedora", default="")
+    area_administradora: str = Field(alias="area_administradora", default="")
+    fuente: str = Field(alias="fuente", default="")           # "Fisico" | "Virtual"
+    tipo_equipo: str = Field(alias="tipo_equipo", default="") # solo EquiposFisicos
+    version_os: str = Field(alias="version_os", default="")
+    status: str = Field(alias="status", default="")
+    capa: str = Field(alias="capa", default="")
+    ambiente: str = Field(alias="ambiente", default="")
+    impacto: str = Field(alias="impacto", default="")
+    urgencia: str = Field(alias="urgencia", default="")
+    prioridad: str = Field(alias="prioridad", default="")
+    negocio: str = Field(alias="negocio", default="")         # solo EquiposFisicos
+    grupo_correo: str = Field(alias="grupo_correo", default="")  # solo EquiposFisicos
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for field in (
+            "ip", "hostname", "area_atendedora", "area_administradora",
+            "fuente", "tipo_equipo", "version_os", "status",
+            "capa", "ambiente", "impacto", "urgencia", "prioridad",
+            "negocio", "grupo_correo",
+        ):
+            v = data.get(field)
+            if v is None:
+                data[field] = ""
+            elif not isinstance(v, str):
+                data[field] = str(v)
+        return data
 
 
 class AlertContext(BaseModel):

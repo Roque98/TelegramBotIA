@@ -65,7 +65,7 @@ async def notify_admin(
     sent = 0
     for chat_id in chat_ids:
         try:
-            await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode="MarkdownV2")
             sent += 1
         except Exception as e:
             logger.error(f"AdminNotifier: error enviando a chat_id={chat_id}: {e}")
@@ -80,28 +80,32 @@ def _build_message(
     message: str,
     user_info: str,
 ) -> str:
-    """Construye el texto del mensaje de notificación."""
+    """Construye el texto del mensaje de notificación en formato MarkdownV2."""
     emoji = {"CRITICAL": "🚨", "ERROR": "❌", "WARNING": "⚠️"}.get(level, "⚠️")
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     lines = [
-        f"{emoji} *\\[{level}\\] Iris Bot*",
-        f"_{timestamp}_",
-        f"*Usuario:* `{user_info}`",
+        f"{emoji} *\\[{_esc(level)}\\] Iris Bot*",
+        f"_{_esc(timestamp)}_",
+        f"*Usuario:* `{_esc(user_info)}`",
     ]
 
     if message:
-        lines.append(f"*Detalle:* {message}")
+        lines.append(f"*Detalle:* {_esc(message)}")
 
     if error:
         error_type = type(error).__name__
         error_msg = str(error)[:200]
-        lines.append(f"*Error:* `{error_type}: {error_msg}`")
+        # Dentro de `inline code` solo se escapan ` y \
+        safe_error = f"{error_type}: {error_msg}".replace('\\', '\\\\').replace('`', '\\`')
+        lines.append(f"*Error:* `{safe_error}`")
 
         tb_lines = traceback.format_tb(error.__traceback__)
         if tb_lines:
-            last_frame = tb_lines[-1].strip().replace("`", "'")[:300]
-            lines.append(f"*Traceback:*\n```\n{last_frame}\n```")
+            # Solo la última línea del traceback; dentro de ``` solo se escapan ` y \
+            last_frame = tb_lines[-1].strip()[:300]
+            safe_frame = last_frame.replace('\\', '\\\\').replace('`', '\\`')
+            lines.append(f"*Traceback:*\n```\n{safe_frame}\n```")
 
     return "\n".join(lines)
 

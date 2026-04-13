@@ -21,6 +21,110 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+import re as _re
+
+# Caracteres especiales de MarkdownV2 que deben escaparse en texto plano
+_MDV2_ESCAPE_RE = _re.compile(r'([_\*\[\]\(\)~`>#+\-=|{}.!])')
+
+# Tokenizador: detecta regiones con formato para no escaparlas como texto plano
+_MARKDOWN_TOKEN_RE = _re.compile(
+    r'(```(?:[a-zA-Z0-9]*)\n?[\s\S]*?```'  # bloque de código: ```lang\ncode```
+    r'|`[^`\n]+`'                            # código inline: `code`
+    r'|\*\*[^*\n]+\*\*'                      # **negrita** (Markdown estándar)
+    r'|\*[^*\n]+\*'                          # *negrita* (Telegram legacy)
+    r'|_[^_\n]+_)',                           # _cursiva_
+    _re.DOTALL
+)
+
+
+def _escape_plain(text: str) -> str:
+    """Escapa caracteres especiales en texto plano para MarkdownV2."""
+    return _MDV2_ESCAPE_RE.sub(r'\\\1', text)
+
+
+def _escape_code_content(text: str) -> str:
+    """Dentro de bloques de código solo se escapan backslash y backtick."""
+    return text.replace('\\', '\\\\').replace('`', '\\`')
+
+
+def _to_markdownv2(text: str) -> str:
+    """
+    Convierte texto Markdown generado por el LLM a formato MarkdownV2 de Telegram.
+
+    El LLM genera: *negrita*, _cursiva_, `código`, ```lang\\nbloque```
+    MarkdownV2 usa los mismos marcadores pero requiere que los caracteres
+    especiales estén escapados en el texto plano (puntos, guiones, paréntesis, etc.).
+    """
+    parts = _MARKDOWN_TOKEN_RE.split(text)
+    result = []
+
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            # Texto plano: escapar todos los caracteres especiales de MarkdownV2
+            result.append(_escape_plain(part))
+        else:
+            # Región con formato: convertir al equivalente MarkdownV2
+            if part.startswith('```'):
+                inner = part[3:-3]
+                nl = inner.find('\n')
+                if nl != -1:
+                    lang = inner[:nl].strip()
+                    code = inner[nl + 1:]
+                else:
+                    lang = ''
+                    code = inner
+                escaped_code = _escape_code_content(code)
+                if lang:
+                    result.append(f'```{lang}\n{escaped_code}```')
+                else:
+                    result.append(f'```\n{escaped_code}```')
+            elif part.startswith('`'):
+                result.append(f'`{_escape_code_content(part[1:-1])}`')
+            elif part.startswith('**'):
+                # **bold** → *bold* (MarkdownV2 usa * simple para negrita)
+                result.append(f'*{_escape_plain(part[2:-2])}*')
+            elif part.startswith('*'):
+                result.append(f'*{_escape_plain(part[1:-1])}*')
+            elif part.startswith('_'):
+                result.append(f'_{_escape_plain(part[1:-1])}_')
+            else:
+                result.append(_escape_plain(part))
+
+    return ''.join(result)
+
+
+def _split_message(text: str, max_length: int = 4000) -> list[str]:
+    """
+    Divide texto en chunks de hasta max_length caracteres respetando párrafos.
+
+    Intenta cortar en párrafos (doble salto de línea), luego en líneas simples,
+    y como último recurso hace un corte duro.
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+
+    while len(remaining) > max_length:
+        # Buscar el último párrafo que quepa
+        cut = remaining.rfind('\n\n', 0, max_length)
+        if cut == -1:
+            # No hay doble salto: buscar salto de línea simple
+            cut = remaining.rfind('\n', 0, max_length)
+        if cut == -1:
+            # No hay salto de línea: corte duro
+            cut = max_length
+
+        chunks.append(remaining[:cut].strip())
+        remaining = remaining[cut:].strip()
+
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
+
+
 class StatusMessage:
     """
     Gestor de mensajes de estado progresivo.
@@ -204,9 +308,9 @@ class StatusMessage:
             return
         try:
             await self.update.message.reply_text(
-                "⏳ _Sigo trabajando, esto está tomando más de lo esperado..._\n"
-                "_Un momento más, por favor._",
-                parse_mode="Markdown",
+                "⏳ _Sigo trabajando, esto está tomando más de lo esperado\.\.\._\n"
+                "_Un momento más, por favor\._",
+                parse_mode="MarkdownV2",
             )
             logger.debug(f"Background warning enviado después de {self.background_threshold:.0f}s")
         except Exception as e:
@@ -279,27 +383,41 @@ class StatusMessage:
 
         # Agregar duración si es solicitado y la operación tomó tiempo significativo
         if self.show_elapsed_time and total_duration >= 1.0:
-            footer = f"\n\n_⏱️ {total_duration:.1f}s_"
+            elapsed_str = _escape_plain(f"{total_duration:.1f}s")
+            footer = f"\n\n_⏱️ {elapsed_str}_"
         else:
             footer = ""
+
+        # Disclaimer solo cuando la respuesta contiene bloques de código (sugerencias técnicas)
+        if "```" in final_text:
+            disclaimer = (
+                "\n\n⚠️ _Las sugerencias anteriores son orientativas\\. "
+                "La decisión de ejecutar cualquier acción es responsabilidad exclusiva del operador\\. "
+                "Valide siempre el impacto antes de actuar\\._"
+            )
+            footer = footer + disclaimer
 
         # Editar mensaje con respuesta final
         try:
             # Telegram tiene límite de 4096 caracteres
             MAX_LENGTH = 4000
-            full_message = final_text + footer
+            safe_text = _to_markdownv2(final_text)
+            full_message = safe_text + footer
 
             if len(full_message) > MAX_LENGTH:
-                # Si es muy largo, enviar mensaje nuevo y eliminar el de estado
+                # Si es muy largo, dividir en chunks y enviar como mensajes nuevos
+                chunks = _split_message(safe_text, MAX_LENGTH)
                 try:
-                    await self.update.message.reply_text(
-                        final_text,
-                        parse_mode='Markdown'
-                    )
+                    for chunk in chunks:
+                        await self.update.message.reply_text(
+                            chunk,
+                            parse_mode='MarkdownV2'
+                        )
                 except TelegramError as parse_error:
                     if "can't parse entities" in str(parse_error).lower():
-                        # Reintento sin Markdown
-                        await self.update.message.reply_text(final_text)
+                        # Reintento sin formato
+                        for chunk in _split_message(final_text, MAX_LENGTH):
+                            await self.update.message.reply_text(chunk)
                     else:
                         raise
                 await self._delete_status_message()
@@ -307,31 +425,31 @@ class StatusMessage:
                 # Editar mensaje existente con la respuesta final
                 await self._status_message.edit_text(
                     full_message,
-                    parse_mode='Markdown'
+                    parse_mode='MarkdownV2'
                 )
 
             logger.debug(f"Operación completada en {total_duration:.2f}s")
         except TelegramError as e:
-            # Si falla el parseo de Markdown, intentar sin parse_mode
+            # Si falla el parseo de MarkdownV2, enviar sin formato como fallback
             if "can't parse entities" in str(e).lower():
-                logger.debug(f"Error parseando Markdown, reintentando sin formato: {e}")
+                logger.warning(f"MarkdownV2 inválido tras conversión, enviando sin formato: {e}")
                 try:
-                    # Intentar editar sin Markdown
-                    await self._status_message.edit_text(final_text + footer)
-                    logger.debug(f"Mensaje enviado sin Markdown en {total_duration:.2f}s")
-                except TelegramError as e2:
-                    logger.error(f"Error al editar sin Markdown: {e2}")
-                    # Último intento: enviar mensaje nuevo sin Markdown
-                    try:
-                        await self.update.message.reply_text(final_text)
+                    plain_chunks = _split_message(final_text, MAX_LENGTH)
+                    if len(plain_chunks) == 1:
+                        await self._status_message.edit_text(plain_chunks[0])
+                    else:
+                        for chunk in plain_chunks:
+                            await self.update.message.reply_text(chunk)
                         await self._delete_status_message()
-                    except TelegramError as e3:
-                        logger.error(f"Error al enviar mensaje final sin Markdown: {e3}")
+                    logger.debug(f"Mensaje enviado sin formato en {total_duration:.2f}s")
+                except TelegramError as e2:
+                    logger.error(f"Error al enviar sin formato: {e2}")
             else:
-                # Otro tipo de error, intentar enviar como mensaje nuevo
+                # Otro tipo de error, intentar enviar como mensajes nuevos (con split)
                 logger.error(f"Error al completar mensaje de estado: {e}")
                 try:
-                    await self.update.message.reply_text(final_text)
+                    for chunk in _split_message(final_text, MAX_LENGTH):
+                        await self.update.message.reply_text(chunk)
                     await self._delete_status_message()
                 except TelegramError as e2:
                     logger.error(f"Error al enviar mensaje final alternativo: {e2}")
@@ -362,15 +480,15 @@ class StatusMessage:
         total_duration = time.time() - self._start_time
 
         formatted_error = (
-            f"❌ **Error**\n\n"
-            f"{error_message}\n\n"
+            f"❌ *Error*\n\n"
+            f"{_escape_plain(error_message)}\n\n"
             f"_Intenta de nuevo o usa /help si necesitas ayuda_ ✨"
         )
 
         try:
             await self._status_message.edit_text(
                 formatted_error,
-                parse_mode='Markdown'
+                parse_mode='MarkdownV2'
             )
             logger.debug(f"Mensaje marcado como error después de {total_duration:.2f}s")
         except TelegramError as e:

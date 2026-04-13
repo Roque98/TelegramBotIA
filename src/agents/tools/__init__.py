@@ -37,7 +37,13 @@ __all__ = [
     "CalculateTool",
     "DateTimeTool",
     "ReadAttachmentTool",
-    "AlertAnalysisTool",
+    "GetActiveAlertsTool",
+    "GetHistoricalTicketsTool",
+    "GetEscalationMatrixTool",
+    "GetAlertDetailTool",
+    "GetTemplateByIdTool",
+    "GetContactoGerenciaTool",
+    "GetInventoryByIpTool",
 ]
 
 
@@ -58,7 +64,25 @@ def __getattr__(name: str):
     if name == "ReadAttachmentTool":
         from .read_attachment_tool import ReadAttachmentTool
         return ReadAttachmentTool
-    if name == "AlertAnalysisTool":
-        from .alert_analysis_tool import AlertAnalysisTool
-        return AlertAnalysisTool
+    if name == "GetActiveAlertsTool":
+        from .get_active_alerts_tool import GetActiveAlertsTool
+        return GetActiveAlertsTool
+    if name == "GetHistoricalTicketsTool":
+        from .get_historical_tickets_tool import GetHistoricalTicketsTool
+        return GetHistoricalTicketsTool
+    if name == "GetEscalationMatrixTool":
+        from .get_escalation_matrix_tool import GetEscalationMatrixTool
+        return GetEscalationMatrixTool
+    if name == "GetAlertDetailTool":
+        from .get_alert_detail_tool import GetAlertDetailTool
+        return GetAlertDetailTool
+    if name == "GetTemplateByIdTool":
+        from .get_template_by_id_tool import GetTemplateByIdTool
+        return GetTemplateByIdTool
+    if name == "GetContactoGerenciaTool":
+        from .get_contacto_gerencia_tool import GetContactoGerenciaTool
+        return GetContactoGerenciaTool
+    if name == "GetInventoryByIpTool":
+        from .get_inventory_by_ip_tool import GetInventoryByIpTool
+        return GetInventoryByIpTool
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

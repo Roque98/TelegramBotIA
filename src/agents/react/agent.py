@@ -182,9 +182,12 @@ class ReActAgent(BaseAgent):
                 user_context=context, tool_scope=self.tool_scope
             )
             if self.system_prompt_override:
-                system_prompt = self.system_prompt_override.format(
-                    tools_description=tools_description,
-                    usage_hints=usage_hints,
+                # Usar replace() en lugar de .format() para evitar KeyError cuando
+                # el systemPrompt contiene JSON con llaves literales (ej. {"thought": ...})
+                system_prompt = (
+                    self.system_prompt_override
+                    .replace("{tools_description}", tools_description)
+                    .replace("{usage_hints}", usage_hints)
                 )
             else:
                 system_prompt = build_system_prompt(
@@ -242,11 +245,12 @@ class ReActAgent(BaseAgent):
                         if tracer:
                             if _trace_owner: tracer.end_trace()
 
-                    # La respuesta puede venir en final_answer o en action_input["answer"]
-                    # según el formato del system prompt de cada agente
+                    # La respuesta puede venir en final_answer, action_input["answer"]
+                    # o action_input["message"] (cuando ask_user se redirige a finish).
                     answer = (
                         react_response.final_answer
                         or react_response.action_input.get("answer")
+                        or react_response.action_input.get("message")
                         or ""
                     )
                     # Fallback: si finish llega vacío (system prompt sin definición de
@@ -552,21 +556,23 @@ class ReActAgent(BaseAgent):
     def _build_react_response(self, data: dict, valid_tools: Optional[set[str]] = None) -> ReActResponse:
         """Construye ReActResponse desde un dict ya parseado."""
         try:
-            action = ActionType.from_string(data.get("action", "finish"), valid_tools=valid_tools)
+            action = ActionType.from_string(data.get("action") or "finish", valid_tools=valid_tools)
         except ValueError as e:
             # El LLM inventó una acción desconocida. Redirigir a finish usando
             # la mejor respuesta disponible en el payload para no perder contexto.
             logger.warning(f"LLM returned unknown action, redirecting to finish: {e}")
+            action_input = data.get("action_input") or {}
             answer = (
                 data.get("final_answer")
-                or (data.get("action_input") or {}).get("answer")
-                or data.get("thought", "")
+                or action_input.get("answer")
+                or action_input.get("message")
+                or None  # Preferir None para que el loop use el fallback de scratchpad
             )
             return ReActResponse(
                 thought=data.get("thought", ""),
                 action=ActionType(ActionType.FINISH),
                 action_input={},
-                final_answer=answer or None,
+                final_answer=answer,
             )
 
         # El LLM usó call_tool/tool_call — intenta rescatar el tool real

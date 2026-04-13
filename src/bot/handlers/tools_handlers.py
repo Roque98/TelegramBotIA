@@ -28,11 +28,11 @@ async def handle_ia_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not query_text:
         await update.message.reply_text(
             "❓ Por favor, proporciona una consulta después de /ia\n\n"
-            "**Ejemplos:**\n"
+            "*Ejemplos:*\n"
             "• `/ia ¿Cuántos usuarios hay registrados?`\n"
             "• `/ia ¿Qué es Python?`\n"
             "• `/ia Dame un resumen del sistema`",
-            parse_mode='Markdown'
+            parse_mode='MarkdownV2'
         )
         return
 

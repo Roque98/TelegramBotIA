@@ -12,6 +12,7 @@ puede consultarlo desde el portal de consola de monitoreo.
 
 import logging
 from telegram import Update
+from telegram.helpers import escape_markdown as _esc_md
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -61,10 +62,10 @@ class RegistrationHandlers:
                 if is_verified:
                     nombre = telegram_user.nombre_completo if telegram_user else "usuario"
                     await update.message.reply_text(
-                        f"✅ Hola {nombre},\n\n"
-                        f"Ya estás registrado y verificado en el sistema.\n\n"
-                        f"Puedes usar /help para ver los comandos disponibles.",
-                        parse_mode='Markdown'
+                        f"✅ Hola {_esc_md(nombre, version=2)},\n\n"
+                        f"Ya estás registrado y verificado en el sistema\\.\n\n"
+                        f"Puedes usar /help para ver los comandos disponibles\\.",
+                        parse_mode='MarkdownV2'
                     )
                 else:
                     await update.message.reply_text(
@@ -78,9 +79,9 @@ class RegistrationHandlers:
         await update.message.reply_text(
             "👋 *Bienvenido al proceso de registro*\n\n"
             "Para registrarte, necesito que me proporciones tu *número de empleado* "
-            "registrado en el sistema.\n\n"
+            "registrado en el sistema\\.\n\n"
             "📝 Por favor, envía tu número de empleado:",
-            parse_mode='Markdown'
+            parse_mode='MarkdownV2'
         )
 
         return WAITING_FOR_EMPLOYEE_ID
@@ -114,10 +115,10 @@ class RegistrationHandlers:
                 if not user_data:
                     await update.message.reply_text(
                         f"❌ No encontré ningún usuario con el número de empleado *{employee_id}* "
-                        f"en el sistema.\n\n"
-                        f"Por favor, verifica tu número de empleado o contacta al administrador.\n\n"
-                        f"Usa /cancel para cancelar el registro.",
-                        parse_mode='Markdown'
+                        f"en el sistema\\.\n\n"
+                        f"Por favor, verifica tu número de empleado o contacta al administrador\\.\n\n"
+                        f"Usa /cancel para cancelar el registro\\.",
+                        parse_mode='MarkdownV2'
                     )
                     return WAITING_FOR_EMPLOYEE_ID
 
@@ -144,17 +145,17 @@ class RegistrationHandlers:
                 # Informar al usuario que debe consultar el portal
                 await update.message.reply_text(
                     f"✅ *Registro iniciado exitosamente*\n\n"
-                    f"Hola *{user_data['Nombre']}*,\n\n"
-                    f"📋 Tu cuenta de Telegram ha sido registrada en el sistema.\n\n"
+                    f"Hola *{_esc_md(user_data['Nombre'], version=2)}*,\n\n"
+                    f"📋 Tu cuenta de Telegram ha sido registrada en el sistema\\.\n\n"
                     f"🔐 *Para completar el registro:*\n"
                     f"1️⃣ Ingresa al *Portal de Consola de Monitoreo*\n"
                     f"2️⃣ Ve a la sección de *Administración de Cuentas Telegram*\n"
                     f"3️⃣ Consulta tu *código de verificación*\n"
                     f"4️⃣ Regresa a Telegram y usa: `/verify <codigo>`\n\n"
-                    f"⏰ El código es válido por 24 horas.\n\n"
+                    f"⏰ El código es válido por 24 horas\\.\n\n"
                     f"_ID Usuario: {employee_id}_\n"
-                    f"_Email: {user_data['email']}_",
-                    parse_mode='Markdown'
+                    f"_Email: {_esc_md(user_data['email'], version=2)}_",
+                    parse_mode='MarkdownV2'
                 )
 
                 logger.info(
@@ -184,11 +185,11 @@ class RegistrationHandlers:
         # Verificar que se proporcionó un código
         if not context.args or len(context.args) == 0:
             await update.message.reply_text(
-                "⚠️ Por favor, proporciona el código de verificación.\n\n"
+                "⚠️ Por favor, proporciona el código de verificación\\.\n\n"
                 "*Uso:* `/verify <codigo>`\n"
                 "*Ejemplo:* `/verify 123456`\n\n"
-                "🔑 Consulta tu código en el Portal de Consola de Monitoreo.",
-                parse_mode='Markdown'
+                "🔑 Consulta tu código en el Portal de Consola de Monitoreo\\.",
+                parse_mode='MarkdownV2'
             )
             return
 
@@ -209,13 +210,13 @@ class RegistrationHandlers:
                     telegram_user = user_service.get_user_by_chat_id(user.id)
 
                     await update.message.reply_text(
-                        f"🎉 *¡Verificación exitosa!*\n\n"
-                        f"Bienvenido, *{telegram_user.nombre_completo}*\n\n"
-                        f"👤 *Rol:* {telegram_user.rol_nombre}\n"
-                        f"📧 *Email:* {telegram_user.email}\n\n"
-                        f"✅ Tu cuenta está activa.\n"
-                        f"Usa /help para ver los comandos disponibles.",
-                        parse_mode='Markdown'
+                        f"🎉 *¡Verificación exitosa\\!*\n\n"
+                        f"Bienvenido, *{_esc_md(telegram_user.nombre_completo, version=2)}*\n\n"
+                        f"👤 *Rol:* {_esc_md(telegram_user.rol_nombre, version=2)}\n"
+                        f"📧 *Email:* {_esc_md(telegram_user.email, version=2)}\n\n"
+                        f"✅ Tu cuenta está activa\\.\n"
+                        f"Usa /help para ver los comandos disponibles\\.",
+                        parse_mode='MarkdownV2'
                     )
 
                     logger.info(f"Cuenta verificada exitosamente: chat_id={user.id}")
@@ -248,13 +249,13 @@ class RegistrationHandlers:
 
                 if success:
                     await update.message.reply_text(
-                        f"✅ {message}\n\n"
+                        f"✅ {_esc_md(message, version=2)}\n\n"
                         f"🔑 *Nuevo código generado*\n\n"
                         f"Por favor:\n"
                         f"1️⃣ Ingresa al *Portal de Consola de Monitoreo*\n"
                         f"2️⃣ Consulta tu nuevo código de verificación\n"
                         f"3️⃣ Usa: `/verify <codigo>`",
-                        parse_mode='Markdown'
+                        parse_mode='MarkdownV2'
                     )
 
                     logger.info(f"Nuevo código generado para chat_id={user.id}")
