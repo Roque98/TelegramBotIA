@@ -10,7 +10,6 @@ from .metrics import (
     Counter,
     LatencyStats,
     MetricsCollector,
-    MetricsMiddleware,
     get_metrics,
     reset_metrics,
 )
@@ -37,7 +36,6 @@ __all__ = [
     "MetricsCollector",
     "LatencyStats",
     "Counter",
-    "MetricsMiddleware",
     "get_metrics",
     "reset_metrics",
 ]

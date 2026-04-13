@@ -11,7 +11,6 @@ Proporciona métricas para:
 
 import logging
 import threading
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -360,49 +359,3 @@ def reset_metrics() -> None:
     _metrics = MetricsCollector()
 
 
-class MetricsMiddleware:
-    """
-    Middleware para registrar métricas automáticamente.
-
-    Example:
-        ```python
-        @metrics_middleware
-        async def handle_request(request):
-            return await process(request)
-        ```
-    """
-
-    def __init__(self, metrics: Optional[MetricsCollector] = None):
-        self.metrics = metrics or get_metrics()
-
-    def __call__(self, func):
-        """Decorador para funciones async."""
-        import functools
-
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            start_time = time.perf_counter()
-            success = True
-            error_type = None
-
-            try:
-                result = await func(*args, **kwargs)
-                return result
-            except Exception as e:
-                success = False
-                error_type = type(e).__name__
-                raise
-            finally:
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                channel = kwargs.get("channel", "unknown")
-                steps = kwargs.get("steps", 1)
-
-                self.metrics.record_request(
-                    channel=channel,
-                    duration_ms=duration_ms,
-                    steps=steps,
-                    success=success,
-                    error_type=error_type,
-                )
-
-        return wrapper
