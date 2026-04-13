@@ -147,9 +147,6 @@ class MemoryRepository:
             logger.error(f"Error getting messages for {user_id}: {e}")
             return []
 
-    # save_interaction eliminado — las interacciones ahora las persiste
-    # InteractionRepository.save_interaction() en BotIAv2_InteractionLogs (OBS-31)
-
     async def get_user_stats(self, user_id: str) -> dict:
         """Retorna estadísticas de uso del usuario desde InteractionLogs."""
         if not self.db_manager:

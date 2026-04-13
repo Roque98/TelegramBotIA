@@ -1,4 +1,4 @@
-"""Re-export desde src.infra.observability.logging_config — movido en ARQ-38."""
+"""Re-export de compatibilidad hacia src.infra.observability.logging_config."""
 from src.infra.observability.logging_config import (
     SqlLogHandler,
     configure_logging,

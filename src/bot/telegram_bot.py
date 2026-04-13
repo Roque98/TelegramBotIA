@@ -42,7 +42,7 @@ class TelegramBot:
 
         # Inicializar MainHandler (ReActAgent + MemoryService)
         logger.info("Inicializando MainHandler (ReAct)...")
-        self.main_handler = create_main_handler(self.db_manager)
+        self.main_handler, self._admin_notify = create_main_handler(self.db_manager)
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
@@ -55,6 +55,7 @@ class TelegramBot:
         # Inyectar dependencias en bot_data para acceso global
         self.application.bot_data['db_manager'] = self.db_manager
         self.application.bot_data['main_handler'] = self.main_handler
+        self.application.bot_data['admin_notify'] = self._admin_notify
 
         # Configurar middleware
         self._setup_middleware()
@@ -77,10 +78,6 @@ class TelegramBot:
         # Middleware de autenticación
         setup_auth_middleware(self.application, self.db_manager)
 
-        # TODO: Agregar más middleware cuando se implementen:
-        # - setup_rate_limiting_middleware()
-        # - setup_metrics_middleware()
-
         logger.info("Middleware configurado exitosamente")
 
     def _setup_handlers(self):
@@ -100,10 +97,6 @@ class TelegramBot:
 
         # Registrar query handlers (mensajes de texto sin comando)
         register_query_handlers(self.application, self.main_handler)
-
-        # TODO: Registrar handlers adicionales cuando se implementen:
-        # - register_admin_handlers() (requiere permisos específicos)
-        # - register_callback_handlers() (para inline keyboards)
 
         logger.info("Handlers registrados exitosamente")
 

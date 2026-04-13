@@ -8,7 +8,6 @@ con todas las dependencias configuradas.
 from __future__ import annotations
 
 import asyncio
-import functools
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -41,7 +40,8 @@ from src.domain.memory.memory_service import MemoryService
 from src.domain.memory.memory_repository import MemoryRepository
 from src.domain.interaction.interaction_repository import InteractionRepository
 from src.infra.observability.logging_config import get_sql_handler
-from src.bot.notifications.admin_notifier import notify_admin
+from src.infra.notifications.admin_notifier import fire_admin_notify
+from src.domain.auth.user_query_repository import UserQueryRepository
 
 from .handler import MainHandler
 
@@ -283,7 +283,7 @@ def create_agent_orchestrator(
 
 def create_main_handler(
     db_manager: Optional[Any] = None,
-) -> MainHandler:
+) -> tuple[MainHandler, Any]:
     """Crea el handler principal con todas sus dependencias."""
     from src.infra.database.connection import DatabaseManager
     db = db_manager or DatabaseManager()
@@ -353,8 +353,14 @@ def create_main_handler(
         sql_handler.set_repository(obs_repo)
         logger.info("SqlLogHandler wired to InteractionRepository")
 
-    # AdminNotifier: partial con db_manager pre-llenado — handler.py solo ve el protocolo
-    admin_notify = functools.partial(notify_admin, db_manager=db)
+    # AdminNotifier: get_admin_ids se resuelve en factory para que fire_admin_notify
+    # no dependa de domain — la función queda capturada por closure.
+    _user_query_repo = UserQueryRepository(db_manager=db)
+    async def _get_admin_ids() -> list[int]:
+        return await _user_query_repo.get_admin_chat_ids()
+
+    def admin_notify(bot: Any, *, level: str = "ERROR", error: Optional[BaseException] = None, message: str = "", user_info: str = "desconocido") -> None:
+        fire_admin_notify(bot, _get_admin_ids, level=level, error=error, user_info=user_info, message=message)
 
     handler = MainHandler(
         react_agent=orchestrator,
@@ -365,7 +371,7 @@ def create_main_handler(
     )
 
     logger.info("MainHandler created with AgentOrchestrator (ARQ-35 dynamic N-way)")
-    return handler
+    return handler, admin_notify
 
 
 class HandlerManager:

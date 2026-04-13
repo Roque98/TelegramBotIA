@@ -175,7 +175,6 @@ class ReActAgent(BaseAgent):
         try:
             await emit(session_started_event(session_id, context.user_id, len(self.tools)))
 
-            # Construir prompts base
             tools_description = self.tools.get_tools_prompt(
                 user_context=context, tool_scope=self.tool_scope
             )
@@ -195,7 +194,6 @@ class ReActAgent(BaseAgent):
             messages = [{"role": "system", "content": system_prompt}]
 
             while not scratchpad.is_full():
-                # 1. Generar siguiente paso (LLM call)
                 t_llm_start = datetime.datetime.utcnow()
                 t_llm = time.perf_counter()
                 react_response = await self._generate_step(
@@ -224,7 +222,6 @@ class ReActAgent(BaseAgent):
 
                 await emit(thought_generated_event(session_id, react_response.thought))
 
-                # 2. Si es FINISH, retornar respuesta final
                 if react_response.is_final():
                     await emit(final_answer_event(session_id, len(scratchpad) + 1))
                     elapsed_ms = (time.perf_counter() - start_time) * 1000
@@ -274,7 +271,6 @@ class ReActAgent(BaseAgent):
                         },
                     )
 
-                # 3. Ejecutar tool
                 await emit(tool_called_event(session_id, react_response.action.value, len(scratchpad) + 1))
                 t_tool_start = datetime.datetime.utcnow()
                 t_tool = time.perf_counter()
@@ -310,7 +306,6 @@ class ReActAgent(BaseAgent):
                 if _OBSERVABILITY_AVAILABLE:
                     get_metrics().record_tool_usage(react_response.action.value)
 
-                # 4. Agregar al scratchpad
                 scratchpad.add_step(
                     thought=react_response.thought,
                     action=react_response.action,
@@ -472,7 +467,6 @@ class ReActAgent(BaseAgent):
             last_obs = scratchpad.get_last_observation() or "No observation"
             user_prompt = build_continue_prompt(observation=last_obs, add_nudge=len(scratchpad) >= 3)
 
-        # Agregar al historial
         messages.append({"role": "user", "content": user_prompt})
 
         try:

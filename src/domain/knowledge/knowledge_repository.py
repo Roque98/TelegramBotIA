@@ -90,7 +90,6 @@ class KnowledgeRepository:
         Returns:
             Lista de entradas de la categoría
         """
-        # ✅ SEGURO: Usar parámetro SQL en lugar de string interpolation
         query = """
         SELECT
             e.id,
@@ -319,8 +318,7 @@ class KnowledgeRepository:
                 logger.error(f"Error al obtener info de categorías: {e}")
                 raise
 
-        # Con rol: usar JOIN con tabla de permisos (sin concatenación SQL)
-        # ✅ SEGURO: No hay concatenación de strings, solo parámetro
+        # Con rol: filtrar por categorías permitidas usando JOIN (no concatenación de strings)
         query = """
         SELECT
             c.id,
@@ -460,7 +458,6 @@ class KnowledgeRepository:
         if id_rol is None:
             return self.get_all_entries()
 
-        # ✅ SEGURO: Usar JOIN con tabla de permisos en lugar de concatenación
         query = """
         SELECT
             e.id,

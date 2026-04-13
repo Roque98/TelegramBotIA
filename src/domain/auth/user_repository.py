@@ -22,10 +22,6 @@ class UserRepository:
     def __init__(self, db_session: Session):
         self.session = db_session
 
-    # -------------------------------------------------------------------------
-    # Consultas de usuario
-    # -------------------------------------------------------------------------
-
     def get_user_by_chat_id(self, chat_id: int) -> Optional[TelegramUser]:
         try:
             query = text("EXEC abcmasplus..BotIAv2_sp_GetUsuarioByChatId @telegramChatId = :chat_id")
@@ -111,10 +107,6 @@ class UserRepository:
         except Exception as e:
             logger.error(f"Error obteniendo cuentas de Telegram del usuario {user_id}: {e}")
             raise
-
-    # -------------------------------------------------------------------------
-    # Consultas de registro
-    # -------------------------------------------------------------------------
 
     def find_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         try:

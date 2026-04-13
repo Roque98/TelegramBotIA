@@ -3,7 +3,6 @@ Middleware de logging para el bot.
 
 Intercepta y loggea todas las actualizaciones del bot para tracking y debugging.
 """
-import asyncio
 import logging
 import time
 from telegram import Update
@@ -99,17 +98,9 @@ class LoggingMiddleware:
 
         # Notificar al admin via Telegram (fire-and-forget, no bloquea el error handler)
         try:
-            from src.bot.notifications.admin_notifier import notify_admin
-            db_manager = context.bot_data.get("db_manager") if context.bot_data else None
-            asyncio.create_task(
-                notify_admin(
-                    bot=context.bot,
-                    db_manager=db_manager,
-                    level="ERROR",
-                    error=error,
-                    user_info=user_info,
-                )
-            )
+            admin_notify = context.bot_data.get("admin_notify") if context.bot_data else None
+            if admin_notify:
+                admin_notify(context.bot, level="ERROR", error=error, user_info=user_info)
         except Exception as notify_err:
             logger.debug(f"AdminNotifier no disponible: {notify_err}")
 
@@ -168,8 +159,3 @@ def setup_logging_middleware(application: Application) -> None:
 
     logger.info("Middleware de logging configurado exitosamente")
 
-
-# TODO: Implementar también:
-# - RateLimitMiddleware (limitar requests por usuario)
-# - AuthMiddleware (verificar permisos) - Requiere TODO #1
-# - MetricsMiddleware (recolectar métricas de uso)

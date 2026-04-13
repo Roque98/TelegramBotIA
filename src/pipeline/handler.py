@@ -48,13 +48,14 @@ class AdminNotifier(Protocol):
     Protocolo para notificación de errores al administrador.
 
     Desacopla pipeline de la implementación Telegram-específica.
-    La implementación real vive en src/bot/notifications/admin_notifier.py
+    La implementación real vive en src/infra/notifications/admin_notifier.py
     y se inyecta desde pipeline/factory.py.
     """
 
-    async def __call__(
+    def __call__(
         self,
         bot: Any,
+        *,
         level: str = "ERROR",
         error: Optional[BaseException] = None,
         message: str = "",
@@ -182,13 +183,11 @@ class MainHandler:
                         if update and update.effective_user
                         else "desconocido"
                     )
-                    asyncio.create_task(
-                        self._admin_notifier(
-                            bot=context.bot,
-                            level="CRITICAL",
-                            error=e,
-                            user_info=user_info,
-                        )
+                    self._admin_notifier(
+                        context.bot,
+                        level="CRITICAL",
+                        error=e,
+                        user_info=user_info,
                     )
                 except Exception:
                     pass

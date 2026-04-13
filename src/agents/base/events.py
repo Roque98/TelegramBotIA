@@ -1,9 +1,8 @@
 """
-Events - Modelos de eventos y contexto.
+Events - Modelos de eventos y contexto de conversación.
 
-Este módulo define:
-- ConversationEvent: Evento normalizado de entrada (Telegram, API, etc.)
-- UserContext: Contexto del usuario para el agente
+Importar:
+    from src.agents.base.events import ConversationEvent, UserContext
 """
 
 from datetime import UTC, datetime
@@ -129,7 +128,6 @@ class UserContext(BaseModel):
     current_date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     # Notas temporales del agente durante el run actual (se borran al terminar)
     session_notes: list[str] = Field(default_factory=list)
-    # Contexto organizacional (SEC-01)
     db_user_id: Optional[int] = None          # idUsuario de la tabla Usuarios
     role_id: Optional[int] = None             # idRol del usuario
     gerencia_ids: list[int] = Field(default_factory=list)

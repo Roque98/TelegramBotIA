@@ -1,26 +1,19 @@
 """
 AdminNotifier — Notificaciones de errores críticos al administrador via Telegram.
 
-Resuelve los destinatarios dinámicamente desde la BD (usuarios con rol Administrador
-verificados y activos), sin depender de admin_chat_ids hardcodeados en settings.
+Envía mensajes a todos los admins con Telegram verificado y activo.
+Los destinatarios se resuelven dinámicamente via el callable `get_admin_ids`
+inyectado al crear el notifier — ver factory.py.
 
 Rate limiting: máximo 1 notificación por tipo de error cada 5 minutos para evitar spam.
-
-Uso típico (desde log_error en logging_middleware):
-    await notify_admin(
-        bot=context.bot,
-        db_manager=context.bot_data.get("db_manager"),
-        level="ERROR",
-        error=context.error,
-        user_info="12345 (@juan)",
-    )
 """
 
+import asyncio
 import logging
 import time
 import traceback
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +24,7 @@ _RATE_LIMIT_SECONDS = 300  # 5 minutos
 
 async def notify_admin(
     bot: Any,
-    db_manager: Any = None,
+    get_admin_ids: Callable[[], Awaitable[list[int]]],
     level: str = "ERROR",
     error: Optional[BaseException] = None,
     message: str = "",
@@ -40,18 +33,14 @@ async def notify_admin(
     """
     Envía una notificación de error al admin via Telegram.
 
-    Obtiene los chat IDs de admins desde la BD. Si no hay admins con Telegram
-    verificado, loggea un warning y retorna sin fallar.
-
     Args:
         bot: Objeto Bot de python-telegram-bot
-        db_manager: Gestor de BD para consultar los admins
+        get_admin_ids: Callable async sin argumentos que retorna lista de chat IDs
         level: Nivel de severidad ("ERROR", "CRITICAL", "WARNING")
         error: Excepción capturada (opcional)
         message: Mensaje descriptivo adicional
         user_info: Info del usuario afectado para el mensaje
     """
-    # Construir clave para rate limiting
     error_type = type(error).__name__ if error else "generic"
     rate_key = f"{level}:{error_type}"
     now = time.time()
@@ -61,8 +50,12 @@ async def notify_admin(
         return
     _rate_cache[rate_key] = now
 
-    # Obtener chat IDs de admins desde BD
-    chat_ids = await _get_admin_chat_ids(db_manager)
+    try:
+        chat_ids = await get_admin_ids()
+    except Exception as e:
+        logger.error(f"AdminNotifier: error obteniendo admin chat IDs: {e}")
+        return
+
     if not chat_ids:
         logger.warning("AdminNotifier: no hay admins con Telegram verificado, notificación omitida")
         return
@@ -79,23 +72,6 @@ async def notify_admin(
 
     if sent:
         logger.info(f"AdminNotifier: notificación [{level}] enviada a {sent} admin(s)")
-
-
-# ---------------------------------------------------------------------------
-# Helpers internos
-# ---------------------------------------------------------------------------
-
-async def _get_admin_chat_ids(db_manager: Any) -> list[int]:
-    """Consulta los chat IDs de admins desde BD."""
-    if not db_manager:
-        return []
-    try:
-        from src.domain.auth.user_query_repository import UserQueryRepository
-        repo = UserQueryRepository(db_manager)
-        return await repo.get_admin_chat_ids()
-    except Exception as e:
-        logger.error(f"AdminNotifier: error consultando admin chat IDs: {e}")
-        return []
 
 
 def _build_message(
@@ -124,11 +100,38 @@ def _build_message(
 
         tb_lines = traceback.format_tb(error.__traceback__)
         if tb_lines:
-            # Solo la última línea del traceback (la más relevante)
             last_frame = tb_lines[-1].strip().replace("`", "'")[:300]
             lines.append(f"*Traceback:*\n```\n{last_frame}\n```")
 
     return "\n".join(lines)
+
+
+def fire_admin_notify(
+    bot: Any,
+    get_admin_ids: Optional[Callable[[], Awaitable[list[int]]]],
+    *,
+    level: str = "ERROR",
+    error: Optional[BaseException] = None,
+    user_info: str = "desconocido",
+    message: str = "",
+) -> None:
+    """Fire-and-forget: programa notify_admin como tarea async sin bloquear.
+
+    Si get_admin_ids es None, no hace nada. Debe llamarse desde un contexto
+    donde haya un event loop activo (dentro de un handler async de Telegram).
+    """
+    if not get_admin_ids:
+        return
+    asyncio.create_task(
+        notify_admin(
+            bot=bot,
+            get_admin_ids=get_admin_ids,
+            level=level,
+            error=error,
+            user_info=user_info,
+            message=message,
+        )
+    )
 
 
 def reset_rate_cache() -> None:

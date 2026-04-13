@@ -30,7 +30,6 @@ class UserProfile:
     interaction_count: int = 0
     last_updated: Optional[datetime] = None
     preferences: dict[str, Any] = field(default_factory=dict)
-    # Contexto organizacional (SEC-01)
     db_user_id: Optional[int] = None
     role_id: Optional[int] = None
     role_name: Optional[str] = None
