@@ -62,8 +62,8 @@ class GetHistoricalTicketsTool(BaseTool):
                 {"ip": "10.53.34.130"},
             ],
             returns=(
-                "Dict con 'ip', 'sensor', 'total_tickets' y 'tickets' (list). "
-                "Cada ticket tiene: ticket (ID), alerta, detalle, accion_correctiva."
+                "Texto formateado con cada ticket en líneas separadas. "
+                "Cada ticket incluye: ID, alerta, detalle y acción correctiva."
             ),
         )
 
@@ -83,25 +83,30 @@ class GetHistoricalTicketsTool(BaseTool):
             tickets = await self._repo.get_historical_tickets(ip=ip, sensor=sensor)
             elapsed = (time.perf_counter() - t0) * 1000
 
-            tickets_data = [
-                {
-                    "ticket": t.ticket,
-                    "alerta": t.alerta,
-                    "detalle": t.detalle,
-                    "accion_correctiva": t.accion_formateada,
-                }
-                for t in tickets
-            ]
+            logger.info(f"GetHistoricalTicketsTool: {len(tickets)} tickets para {ip} en {elapsed:.0f}ms")
 
-            logger.info(f"GetHistoricalTicketsTool: {len(tickets_data)} tickets para {ip} en {elapsed:.0f}ms")
+            if not tickets:
+                sensor_info = f" (sensor: {sensor})" if sensor else ""
+                return ToolResult.success_result(
+                    data=f"Sin tickets históricos para {ip}{sensor_info}.",
+                    execution_time_ms=elapsed,
+                    metadata={"total_tickets": 0},
+                )
+
+            sensor_info = f" (sensor: {sensor})" if sensor else ""
+            lines = [f"{len(tickets)} ticket(s) histórico(s) para {ip}{sensor_info}:\n"]
+            for t in tickets:
+                lines.append(f"#{t.ticket} — {t.alerta}")
+                if t.detalle:
+                    lines.append(f"  Detalle: {t.detalle}")
+                if t.accion_formateada:
+                    lines.append(f"  Acción correctiva: {t.accion_formateada}")
+                lines.append("")
+
             return ToolResult.success_result(
-                data={
-                    "ip": ip,
-                    "sensor": sensor or None,
-                    "total_tickets": len(tickets_data),
-                    "tickets": tickets_data,
-                },
+                data="\n".join(lines),
                 execution_time_ms=elapsed,
+                metadata={"total_tickets": len(tickets)},
             )
 
         except Exception as e:

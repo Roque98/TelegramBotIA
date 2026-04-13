@@ -71,9 +71,9 @@ class GetActiveAlertsTool(BaseTool):
                 {"ip": "10.1.2.3"},
             ],
             returns=(
-                "Dict con 'total' (int) y 'alertas' (list). Cada alerta tiene: "
-                "equipo, ip, sensor, status, prioridad, mensaje, area_atendedora, "
-                "responsable_atendedor, area_administradora, responsable_administrador."
+                "Texto formateado con cada alerta en líneas separadas. "
+                "Cada alerta incluye: equipo, ip, sensor, status, prioridad, mensaje, "
+                "área atendedora, responsable atendedor, área administradora, responsable administrador."
             ),
         )
 
@@ -105,33 +105,32 @@ class GetActiveAlertsTool(BaseTool):
 
             if not events:
                 return ToolResult.success_result(
-                    data={"total": 0, "alertas": []},
+                    data="Sin alertas activas para los filtros indicados.",
                     execution_time_ms=elapsed,
-                    metadata={"filtros": {"ip": ip, "equipo": equipo, "solo_down": solo_down}},
+                    metadata={"total": 0},
                 )
 
-            alertas = [
-                {
-                    "equipo": e.equipo,
-                    "ip": e.ip,
-                    "sensor": e.sensor,
-                    "status": e.status,
-                    "prioridad": e.prioridad,
-                    "mensaje": e.mensaje,
-                    "area_atendedora": e.area_atendedora,
-                    "responsable_atendedor": e.responsable_atendedor,
-                    "area_administradora": e.area_administradora,
-                    "responsable_administrador": e.responsable_administrador,
-                    "origen": e.origen,
-                }
-                for e in events
-            ]
+            lines = [f"{len(events)} alerta(s) activa(s):\n"]
+            for i, e in enumerate(events, 1):
+                lines.append(f"[{i}] equipo: {e.equipo} | ip: {e.ip} | sensor: {e.sensor}")
+                lines.append(f"    status: {e.status} | prioridad: {e.prioridad}")
+                if e.mensaje:
+                    lines.append(f"    mensaje: {e.mensaje}")
+                if e.area_atendedora:
+                    lines.append(f"    área atendedora: {e.area_atendedora}")
+                if e.responsable_atendedor:
+                    lines.append(f"    responsable atendedor: {e.responsable_atendedor}")
+                if e.area_administradora:
+                    lines.append(f"    área administradora: {e.area_administradora}")
+                if e.responsable_administrador:
+                    lines.append(f"    responsable administrador: {e.responsable_administrador}")
+                lines.append("")
 
-            logger.info(f"GetActiveAlertsTool: {len(alertas)} alertas encontradas en {elapsed:.0f}ms")
+            logger.info(f"GetActiveAlertsTool: {len(events)} alertas encontradas en {elapsed:.0f}ms")
             return ToolResult.success_result(
-                data={"total": len(alertas), "alertas": alertas},
+                data="\n".join(lines),
                 execution_time_ms=elapsed,
-                metadata={"origen": events[0].origen if events else None},
+                metadata={"total": len(events), "origen": events[0].origen if events else None},
             )
 
         except Exception as e:
