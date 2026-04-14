@@ -107,24 +107,44 @@ class AlertRepository:
         """
         Obtiene los TOP 15 tickets históricos más recientes para el IP/sensor dado.
 
-        Estrategia de búsqueda:
-        1. Intenta con el sensor exacto (o vacío si no se conoce)
-        2. Si retorna vacío, reintenta con sensor=None (sin filtro, para SPs que aceptan NULL)
+        Estrategia de búsqueda (en orden):
+        1. Sensor exacto recibido
+        2. Sensores reales de EventosPRTG_Historico (el nombre en la tabla de eventos
+           históricos coincide con el que el SP usa para filtrar tickets)
         Fallback automático a versión EKT si BAZ no retorna resultados.
         """
         sp_baz = "EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta @ip = :ip, @sensor = :sensor"
         sp_ekt = "EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta_EKT @ip = :ip, @sensor = :sensor"
 
+        # Intento 1: sensor exacto
         rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, {"ip": ip, "sensor": sensor})
+        if rows:
+            logger.debug(f"AlertRepository: {len(rows)} tickets para {ip} con sensor='{sensor}'")
+            return self._parse_tickets(rows)
 
-        # Si no hay resultados, reintentar con sensor=NULL.
-        # Cubre el caso donde el evento ya no está activo (sensor desconocido = "")
-        # y el SP requiere un valor no vacío para filtrar.
-        if not rows:
-            rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, {"ip": ip, "sensor": None})
+        # Intento 2: sensores reales desde EventosPRTG_Historico
+        # El sensor del evento activo puede no coincidir exactamente con el almacenado en tickets.
+        sensores_historicos = await self.get_recent_sensors_by_ip(ip=ip, limit=5)
+        for entry in sensores_historicos:
+            s = entry.get("sensor", "")
+            if not s or s == sensor:
+                continue
+            rows, _ = await self._run_sp_with_fallback(sp_baz, sp_ekt, {"ip": ip, "sensor": s})
             if rows:
-                logger.debug(f"AlertRepository: tickets para {ip} encontrados con sensor=NULL (sensor original: '{sensor}')")
+                logger.info(
+                    f"AlertRepository: {len(rows)} tickets para {ip} con sensor histórico "
+                    f"'{s}' (sensor original: '{sensor}')"
+                )
+                return self._parse_tickets(rows)
 
+        logger.debug(
+            f"AlertRepository: sin tickets para {ip} "
+            f"(sensor='{sensor}', sensores históricos probados: {len(sensores_historicos)})"
+        )
+        return []
+
+    def _parse_tickets(self, rows: list[dict]) -> list[HistoricalTicket]:
+        """Convierte filas de BD a lista de HistoricalTicket ignorando filas inválidas."""
         tickets = []
         for row in rows:
             try:
@@ -174,54 +194,6 @@ class AlertRepository:
             })
 
         logger.debug(f"AlertRepository.get_recent_sensors_by_ip({ip}): {len(result)} sensores (origen={origen})")
-        return result
-
-    async def get_prtg_history_by_ip(self, ip: str, limit: int = 15) -> list[dict]:
-        """
-        Obtiene los eventos históricos de PRTG para un equipo/IP.
-
-        Fallback cuando el SP de tickets de mesa de ayuda no retorna resultados.
-        Retorna los eventos resueltos más recientes desde EventosPRTG_Historico.
-
-        Args:
-            ip: IP del equipo
-            limit: Máximo de eventos a retornar (default 15)
-
-        Returns:
-            Lista de dicts con sensor, status, mensaje, fechaInsercion, fechaResolucion, downTime.
-        """
-        query_baz = (
-            f"SELECT TOP {limit} [Equipo], [Sensor], [Status], [Mensaje], "
-            f"[fechaInsercion], [fechaResolucion], [downTime] "
-            f"FROM [Monitoreos].[dbo].[EventosPRTG_Historico] "
-            f"WHERE [IP] = :ip "
-            f"ORDER BY [fechaInsercion] DESC"
-        )
-        query_ekt = (
-            f"SELECT TOP {limit} [Equipo], [Sensor], [Status], [Mensaje], "
-            f"[fechaInsercion], [fechaResolucion], [downTime] "
-            f"FROM OPENDATASOURCE('SQLNCLI', 'Data Source=10.81.48.139,1533;"
-            f"User ID=usrmon;Password=MonAplic01@;').[Monitoreos].[dbo].[EventosPRTG_Historico] "
-            f"WHERE [IP] = :ip "
-            f"ORDER BY [fechaInsercion] DESC"
-        )
-        params = {"ip": ip}
-
-        rows, origen = await self._run_sp_with_fallback(query_baz, query_ekt, params)
-
-        result = []
-        for row in rows:
-            result.append({
-                "equipo":          row.get("Equipo", ""),
-                "sensor":          row.get("Sensor", ""),
-                "status":          row.get("Status", ""),
-                "mensaje":         row.get("Mensaje", ""),
-                "fecha_insercion": str(row.get("fechaInsercion", ""))[:19],
-                "fecha_resolucion": str(row.get("fechaResolucion", ""))[:19],
-                "down_time":       row.get("downTime", ""),
-            })
-
-        logger.debug(f"AlertRepository.get_prtg_history_by_ip({ip}): {len(result)} eventos (origen={origen})")
         return result
 
     async def get_template_id(
