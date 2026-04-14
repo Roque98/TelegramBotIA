@@ -204,6 +204,7 @@ class StatusMessage:
         self._message_index: int = 0
         self._auto_update_task: Optional[asyncio.Task] = None
         self._used_messages: set = set()
+        self._finalized: bool = False  # True cuando complete() o error() ya fue llamado
 
     async def __aenter__(self):
         """Iniciar context manager."""
@@ -212,8 +213,8 @@ class StatusMessage:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Salir del context manager."""
-        # Si hubo una excepción, marcar como error
-        if exc_type is not None:
+        # Solo mostrar error genérico si hubo excepción y nadie llamó error()/complete() antes
+        if exc_type is not None and not self._finalized:
             await self.error("Ocurrió un error al procesar tu solicitud")
         return False  # No suprimir la excepción
 
@@ -389,6 +390,7 @@ class StatusMessage:
             footer = ""
 
         # Editar mensaje con respuesta final
+        self._finalized = True  # marcar antes del await para evitar doble llamado en __aexit__
         try:
             # Telegram tiene límite de 4096 caracteres
             MAX_LENGTH = 4000
@@ -476,6 +478,7 @@ class StatusMessage:
             f"_Intenta de nuevo o usa /help si necesitas ayuda_ ✨"
         )
 
+        self._finalized = True  # marcar antes del await para evitar doble llamado en __aexit__
         try:
             await self._status_message.edit_text(
                 formatted_error,
