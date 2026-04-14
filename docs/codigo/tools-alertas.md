@@ -619,6 +619,250 @@ Valide siempre el impacto antes de actuar.
 
 ---
 
+## Queries y Stored Procedures por tool
+
+Referencia completa de cada consulta SQL/SP que se ejecuta, su base de datos
+de destino y los parámetros que recibe.
+
+> **Convención de instancias**
+> - `BAZ_CDMX` → alias `monitoreo` en `DB_CONNECTIONS`, servidor BAZ
+> - `EKT` → mismo alias pero los SPs `_EKT` acceden a `10.81.48.139,1533` vía `OPENDATASOURCE` internamente
+> - `ABCMASplus` → base de datos de gestión (templates, escalamiento, inventario)
+
+---
+
+### `get_active_alerts` / `alert_analysis` / `get_alert_detail`
+
+Todas obtienen los eventos activos con el mismo par de SPs.
+
+**SP principal (BAZ_CDMX):**
+```sql
+EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidos
+EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidosPerformance
+```
+Ambos se ejecutan y sus resultados se combinan. Si el total es vacío, se usa el fallback.
+
+**SP fallback (EKT):**
+```sql
+EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidos_EKT
+EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidosPerformance_EKT
+```
+
+**Filtros aplicados en Python** (post-query, no en el SP):
+```python
+# ip exacta
+events = [e for e in events if e.ip == ip]
+
+# nombre parcial, case-insensitive
+events = [e for e in events if equipo.lower() in e.equipo.lower()]
+
+# solo equipos down
+events = [e for e in events if e.status.lower() == "down"]
+```
+
+**Deduplicación** (en Python, por clave `(IP, Sensor)`):
+```python
+seen = set()
+for row in rows:
+    key = (row.get("IP", ""), row.get("Sensor", ""))
+    if key in seen:
+        continue
+    seen.add(key)
+```
+
+**Ordenamiento:** por `Prioridad DESC`.
+
+---
+
+### `get_historical_tickets`
+
+**SP principal (BAZ_CDMX):**
+```sql
+EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta
+    @ip     = :ip,
+    @sensor = :sensor
+```
+
+**SP fallback (EKT):**
+```sql
+EXEC Monitoreos.dbo.IABOT_ObtenerTicketsByAlerta_EKT
+    @ip     = :ip,
+    @sensor = :sensor
+```
+
+**Cuando el sensor no produce resultados** — se obtienen los sensores históricos:
+```sql
+-- Hasta 5 sensores distintos del equipo, más recientes primero
+SELECT TOP 5
+    [Sensor],
+    MAX([fechaResolucion]) AS ultima_fecha
+FROM [Monitoreos].[dbo].[EventosPRTG_Historico]
+WHERE [IP] = :ip
+  AND [Sensor] IS NOT NULL
+  AND [Sensor] != ''
+GROUP BY [Sensor]
+ORDER BY ultima_fecha DESC
+```
+*(Versión EKT usa `OPENDATASOURCE('SQLNCLI', 'Data Source=10.81.48.139,1533;...')` en el FROM)*
+
+Se prueba cada sensor distinto hasta obtener tickets.
+
+---
+
+### `get_alert_detail` — evento histórico (cuando no hay alerta activa)
+
+```sql
+SELECT TOP 1
+    [Equipo], [IP], [Sensor], [Status], [Mensaje],
+    [fechaInsercion], [fechaResolucion]
+FROM [Monitoreos].[dbo].[EventosPRTG_Historico]
+WHERE [IP] = :ip
+ORDER BY [fechaResolucion] DESC, [fechaInsercion] DESC
+```
+
+*(Versión EKT usa `OPENDATASOURCE(...)` en el FROM)*
+
+---
+
+### Resolución de template — usado por `get_escalation_matrix`, `alert_analysis`, `get_alert_detail`
+
+**Por IP:**
+```sql
+EXEC ABCMASplus.dbo.IDTemplateByIp
+    @ip = :ip
+```
+Retorna: `idTemplate`, `instancia` (`"BAZ"` | `"COMERCIO"` | vacío).
+
+**Por URL** (cuando el sensor es una URL — `es_url_sensor = True`):
+```sql
+EXEC ABCMASplus.dbo.IDTemplateByUrl
+    @url = :url
+```
+
+> **Nota:** La columna `instancia` puede venir sin nombre en algunos SPs.
+> El repositorio la normaliza buscando claves vacías o `None` en el dict.
+
+---
+
+### `get_template_by_id` — usado por todas las tools que necesitan la ficha del template
+
+**SP principal (BAZ):**
+```sql
+EXEC ABCMASplus.dbo.Template_GetById
+    @id = :id
+```
+
+**SP fallback (EKT):**
+```sql
+EXEC ABCMASplus.dbo.Template_GetById_EKT
+    @id = :id
+```
+
+Si `usar_ekt=True` (instancia COMERCIO), el orden se invierte: EKT primero, BAZ como fallback.
+
+---
+
+### `get_escalation_matrix` — usado por `get_escalation_matrix`, `alert_analysis`, `get_alert_detail`
+
+**SP principal (BAZ):**
+```sql
+EXEC ABCMASplus.dbo.ObtenerMatriz
+    @idTemplate = :idTemplate
+```
+
+**SP fallback (EKT):**
+```sql
+EXEC ABCMASplus.dbo.ObtenerMatriz_EKT
+    @idTemplate = :idTemplate
+```
+
+Resultados ordenados por `nivel ASC` en Python.
+
+---
+
+### `get_contacto_gerencia` — usado por `get_escalation_matrix`, `alert_analysis`, `get_alert_detail`
+
+**SP BAZ:**
+```sql
+EXEC ABCMASplus.dbo.Contacto_GetByIdGerencia
+    @idGerencia = :idGerencia
+```
+
+**SP EKT:**
+```sql
+EXEC ABCMASplus.dbo.Contacto_GetByIdGerencia_EKT
+    @idGerencia = :idGerencia
+```
+
+No usa fallback automático — se llama directamente con la variante que corresponda
+según `usar_ekt` (derivado del campo `instancia` del template o del `origen` del evento).
+
+---
+
+### `get_inventory_by_ip` — usado por `get_escalation_matrix` e `get_inventory_by_ip`
+
+Se ejecutan en orden hasta obtener resultado:
+
+```sql
+-- 1. Físicos BAZ
+EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp
+    @ip = :ip
+
+-- 2. Virtuales BAZ
+EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp
+    @ip = :ip
+
+-- 3. Físicos EKT
+EXEC ABCMASplus.dbo.EquiposFisicos_GetByIp_Ekt
+    @ip = :ip
+
+-- 4. Virtuales EKT
+EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIp_Ekt
+    @ip = :ip
+```
+
+**Normalización de columnas por fuente:**
+
+| Campo normalizado | EquiposFisicos | MaquinasVirtuales |
+|---|---|---|
+| `ip` | `ip` | `IPMaquinaVirtual` |
+| `hostname` | `hostname` | `Hostname` |
+| `id_area_atendedora` | `idAreaAtendedora` | `IdAreaAtiende` |
+| `id_area_administradora` | `idAreaAdministradora` | `IdAreaAdmin` |
+| `area_atendedora` | `AreaAtendedora` | `AreaAtiende` |
+| `area_administradora` | `AreaAdministradora` | `AreaAdmin` |
+| `tipo_equipo` | `TipoEquipoFisico` | *(vacío)* |
+| `negocio` | `Negocio` | *(vacío)* |
+| `grupo_correo` | `GrupoDeCorreo` | *(vacío)* |
+
+---
+
+### Resumen consolidado de SPs
+
+| SP | Base de datos | Parámetros | Usado por |
+|---|---|---|---|
+| `PrtgObtenerEventosEnriquecidos` | `Monitoreos` | — | todas las tools de alertas |
+| `PrtgObtenerEventosEnriquecidosPerformance` | `Monitoreos` | — | todas las tools de alertas |
+| `PrtgObtenerEventosEnriquecidos_EKT` | `Monitoreos` | — | fallback EKT |
+| `PrtgObtenerEventosEnriquecidosPerformance_EKT` | `Monitoreos` | — | fallback EKT |
+| `IABOT_ObtenerTicketsByAlerta` | `Monitoreos` | `@ip`, `@sensor` | `get_historical_tickets`, `alert_analysis`, `get_alert_detail` |
+| `IABOT_ObtenerTicketsByAlerta_EKT` | `Monitoreos` | `@ip`, `@sensor` | fallback EKT |
+| `IDTemplateByIp` | `ABCMASplus` | `@ip` | `get_escalation_matrix`, `alert_analysis`, `get_alert_detail` |
+| `IDTemplateByUrl` | `ABCMASplus` | `@url` | `alert_analysis` (si sensor es URL) |
+| `Template_GetById` | `ABCMASplus` | `@id` | `get_template_by_id`, `get_escalation_matrix`, `alert_analysis`, `get_alert_detail` |
+| `Template_GetById_EKT` | `ABCMASplus` | `@id` | fallback / instancia COMERCIO |
+| `ObtenerMatriz` | `ABCMASplus` | `@idTemplate` | `get_escalation_matrix`, `alert_analysis`, `get_alert_detail` |
+| `ObtenerMatriz_EKT` | `ABCMASplus` | `@idTemplate` | fallback / instancia COMERCIO |
+| `Contacto_GetByIdGerencia` | `ABCMASplus` | `@idGerencia` | `get_contacto_gerencia`, `get_escalation_matrix`, `alert_analysis`, `get_alert_detail` |
+| `Contacto_GetByIdGerencia_EKT` | `ABCMASplus` | `@idGerencia` | instancia COMERCIO |
+| `EquiposFisicos_GetByIp` | `ABCMASplus` | `@ip` | `get_inventory_by_ip`, `get_escalation_matrix` |
+| `MaquinasVirtuales_GetByIp` | `ABCMASplus` | `@ip` | `get_inventory_by_ip`, `get_escalation_matrix` |
+| `EquiposFisicos_GetByIp_Ekt` | `ABCMASplus` | `@ip` | fallback EKT |
+| `MaquinasVirtuales_GetByIp_Ekt` | `ABCMASplus` | `@ip` | fallback EKT |
+| `EventosPRTG_Historico` *(SELECT)* | `Monitoreos` | `@ip` | `get_alert_detail` (sin alerta activa), resolución de sensor |
+
+---
+
 ## Configuración requerida
 
 Las tools de alertas requieren la conexión `monitoreo` en `DB_CONNECTIONS`.
