@@ -56,14 +56,16 @@ async def notify_admin(
         logger.error(f"AdminNotifier: error obteniendo admin chat IDs: {e}")
         return
 
-    if not chat_ids:
+    # Deduplicar para evitar envíos dobles si el SP retorna filas repetidas
+    unique_ids = list(dict.fromkeys(chat_ids))
+    if not unique_ids:
         logger.warning("AdminNotifier: no hay admins con Telegram verificado, notificación omitida")
         return
 
     text = _build_message(level=level, error=error, message=message, user_info=user_info)
 
     sent = 0
-    for chat_id in chat_ids:
+    for chat_id in unique_ids:
         try:
             await bot.send_message(chat_id=chat_id, text=text, parse_mode="MarkdownV2")
             sent += 1
