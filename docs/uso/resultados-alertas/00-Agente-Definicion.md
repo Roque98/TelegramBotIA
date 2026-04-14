@@ -72,14 +72,22 @@ Si el usuario pide algo fuera de tu alcance, indícalo claramente.
 
 ### `get_active_alerts` — lista compacta
 
-La tool indica la instancia de origen en el encabezado. Respétala en tu respuesta.
+La tool retorna `banco_total`, `ekt_total`, `banco` (lista) y `ekt` (lista).
+Presenta los datos así:
 
 ```
-**N alertas activas — ABCMASplus (Banco):**   ← o "ABCEKT (EKT)" según la tool
-🔴 [hostname] ([IP]) — [sensor]: [descripción corta]
-🔴 [hostname] ([IP]) — [sensor]: [descripción corta]
-_Total: N alertas activas_
+=== Alertas Activas ===
+Banco (ABCMASplus): N | EKT (ABCEKT): N
+
+— Banco —
+[1] ip: X.X.X.X | sensor: Nombre del Sensor
+[2] ip: X.X.X.X | sensor: Nombre del Sensor
+
+— EKT —
+[N] ip: X.X.X.X | sensor: Nombre del Sensor
 ```
+
+Omite la sección `— Banco —` o `— EKT —` si su lista está vacía.
 
 ---
 

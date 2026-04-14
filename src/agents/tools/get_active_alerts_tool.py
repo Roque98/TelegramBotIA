@@ -71,9 +71,8 @@ class GetActiveAlertsTool(BaseTool):
                 {"ip": "10.1.2.3"},
             ],
             returns=(
-                "Texto formateado con cada alerta en líneas separadas. "
-                "Cada alerta incluye: equipo, ip, sensor, status, prioridad, mensaje, "
-                "área atendedora, responsable atendedor, área administradora, responsable administrador."
+                "Dict con banco_total, ekt_total, banco (lista de {ip, sensor}) "
+                "y ekt (lista de {ip, sensor})."
             ),
         )
 
@@ -87,7 +86,7 @@ class GetActiveAlertsTool(BaseTool):
 
         try:
             try:
-                events = await self._repo.get_active_events(
+                eventos_banco, eventos_ekt = await self._repo.get_active_events_all(
                     ip=ip, equipo=equipo, solo_down=solo_down
                 )
             except ConnectionError as conn_err:
@@ -102,36 +101,25 @@ class GetActiveAlertsTool(BaseTool):
                 )
 
             elapsed = (time.perf_counter() - t0) * 1000
+            total = len(eventos_banco) + len(eventos_ekt)
 
-            if not events:
+            if total == 0:
                 return ToolResult.success_result(
                     data="Sin alertas activas para los filtros indicados.",
                     execution_time_ms=elapsed,
                     metadata={"total": 0},
                 )
 
-            instancia = "ABCMASplus (Banco)" if events[0].origen == "BAZ_CDMX" else "ABCEKT (EKT)"
-            lines = [f"{len(events)} alerta(s) activa(s) — {instancia}:\n"]
-            for i, e in enumerate(events, 1):
-                lines.append(f"[{i}] equipo: {e.equipo} | ip: {e.ip} | sensor: {e.sensor}")
-                lines.append(f"    status: {e.status} | prioridad: {e.prioridad}")
-                if e.mensaje:
-                    lines.append(f"    mensaje: {e.mensaje}")
-                if e.area_atendedora:
-                    lines.append(f"    área atendedora: {e.area_atendedora}")
-                if e.responsable_atendedor:
-                    lines.append(f"    responsable atendedor: {e.responsable_atendedor}")
-                if e.area_administradora:
-                    lines.append(f"    área administradora: {e.area_administradora}")
-                if e.responsable_administrador:
-                    lines.append(f"    responsable administrador: {e.responsable_administrador}")
-                lines.append("")
-
-            logger.info(f"GetActiveAlertsTool: {len(events)} alertas encontradas en {elapsed:.0f}ms")
+            logger.info(f"GetActiveAlertsTool: {total} alertas (Banco={len(eventos_banco)}, EKT={len(eventos_ekt)}) en {elapsed:.0f}ms")
             return ToolResult.success_result(
-                data="\n".join(lines),
+                data={
+                    "banco_total": len(eventos_banco),
+                    "ekt_total": len(eventos_ekt),
+                    "banco": [{"ip": e.ip, "sensor": e.sensor} for e in eventos_banco],
+                    "ekt": [{"ip": e.ip, "sensor": e.sensor} for e in eventos_ekt],
+                },
                 execution_time_ms=elapsed,
-                metadata={"total": len(events), "origen": events[0].origen if events else None},
+                metadata={"total": total},
             )
 
         except Exception as e:
