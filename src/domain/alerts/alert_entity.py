@@ -78,9 +78,12 @@ class HistoricalTicket(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _coerce_nulls(cls, data: Any) -> Any:
-        """Convierte NULL de BD a string vacío para evitar ValidationError en campos str."""
+        """Convierte NULL de BD a string vacío y int a str para evitar ValidationError."""
         if not isinstance(data, dict):
             return data
+        # Ticket llega como int desde la BD — convertir a str
+        if data.get("Ticket") is not None and not isinstance(data["Ticket"], str):
+            data["Ticket"] = str(data["Ticket"])
         for field in ("alerta", "detalle", "accionCorrectiva"):
             if data.get(field) is None:
                 data[field] = ""
