@@ -74,6 +74,16 @@ async def notify_admin(
         logger.info(f"AdminNotifier: notificación [{level}] enviada a {sent} admin(s)")
 
 
+_MARKDOWNV2_SPECIAL = r"\_*[]()~`>#+-=|{}.!"
+
+
+def _esc(text: str) -> str:
+    """Escapa caracteres especiales de MarkdownV2."""
+    for ch in _MARKDOWNV2_SPECIAL:
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
+
 def _build_message(
     level: str,
     error: Optional[BaseException],
