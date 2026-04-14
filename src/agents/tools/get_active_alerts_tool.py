@@ -110,7 +110,8 @@ class GetActiveAlertsTool(BaseTool):
                     metadata={"total": 0},
                 )
 
-            lines = [f"{len(events)} alerta(s) activa(s):\n"]
+            instancia = "ABCMASplus (Banco)" if events[0].origen == "BAZ_CDMX" else "ABCEKT (EKT)"
+            lines = [f"{len(events)} alerta(s) activa(s) — {instancia}:\n"]
             for i, e in enumerate(events, 1):
                 lines.append(f"[{i}] equipo: {e.equipo} | ip: {e.ip} | sensor: {e.sensor}")
                 lines.append(f"    status: {e.status} | prioridad: {e.prioridad}")

@@ -232,7 +232,8 @@ class AlertAnalysisTool(BaseTool):
             analysis_text = str(llm_response)
 
             # ── 6. Retornar análisis ───────────────────────────────────────
-            final_text = analysis_text
+            instancia = "ABCMASplus (Banco)" if evento.origen == "BAZ_CDMX" else "ABCEKT (EKT)"
+            final_text = f"**Instancia:** {instancia}\n\n{analysis_text}"
 
             elapsed = (time.perf_counter() - t0) * 1000
             logger.info(
