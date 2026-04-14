@@ -89,9 +89,20 @@ class GetAlertDetailTool(BaseTool):
             # ── 1. Obtener evento activo para la IP ────────────────────────
             events = await self._repo.get_active_events(ip=ip)
             evento = events[0] if events else None
+            evento_historico = None
+
+            # Si no hay alerta activa, buscar la última en el historial
+            if not evento:
+                evento_historico = await self._repo.get_last_historical_event(ip=ip)
+                if not evento_historico:
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    return ToolResult.success_result(
+                        data=f"No se encontró alerta activa ni historial para la IP {ip}.",
+                        execution_time_ms=elapsed,
+                    )
 
             # ── 2. Enriquecimiento en paralelo ─────────────────────────────
-            sensor_key = sensor or (evento.sensor if evento else "")
+            sensor_key = sensor or (evento.sensor if evento else evento_historico.sensor)
 
             tickets_task = asyncio.create_task(
                 self._repo.get_historical_tickets(ip=ip, sensor=sensor_key)
@@ -141,6 +152,7 @@ class GetAlertDetailTool(BaseTool):
             # ── 3. Serializar a dict ───────────────────────────────────────
             data = {
                 "ip": ip,
+                "alerta_activa": evento is not None,
                 "evento": {
                     "equipo": evento.equipo,
                     "ip": evento.ip,
@@ -152,7 +164,14 @@ class GetAlertDetailTool(BaseTool):
                     "responsable_atendedor": evento.responsable_atendedor,
                     "area_administradora": evento.area_administradora,
                     "responsable_administrador": evento.responsable_administrador,
-                } if evento else None,
+                } if evento else {
+                    "equipo": evento_historico.equipo,
+                    "ip": evento_historico.ip,
+                    "sensor": evento_historico.sensor,
+                    "status": f"Resuelto (última vez: {evento_historico.fecha_resolucion_str})",
+                    "mensaje": evento_historico.mensaje,
+                    "nota": "No hay alerta activa. Datos de la última alerta registrada en historial.",
+                },
                 "tickets": [
                     {
                         "ticket": t.ticket,

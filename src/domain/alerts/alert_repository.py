@@ -20,6 +20,7 @@ from src.domain.alerts.alert_entity import (
     AlertEvent,
     AreaContacto,
     EscalationLevel,
+    HistoricalAlertEvent,
     HistoricalTicket,
     InventoryItem,
     Template,
@@ -152,6 +153,46 @@ class AlertRepository:
             except Exception as e:
                 logger.debug(f"AlertRepository: ticket inválido ignorado: {e}")
         return tickets
+
+    async def get_last_historical_event(self, ip: str) -> Optional[HistoricalAlertEvent]:
+        """
+        Retorna el evento más reciente de EventosPRTG_Historico para la IP dada.
+
+        Útil cuando no hay alerta activa y se necesita contexto de la última
+        vez que el equipo generó una alerta (sensor, mensaje, fecha de resolución).
+        """
+        query_baz = (
+            "SELECT TOP 1 [Equipo], [IP], [Sensor], [Status], [Mensaje], "
+            "[fechaInsercion], [fechaResolucion] "
+            "FROM [Monitoreos].[dbo].[EventosPRTG_Historico] "
+            "WHERE [IP] = :ip "
+            "ORDER BY [fechaResolucion] DESC, [fechaInsercion] DESC"
+        )
+        query_ekt = (
+            "SELECT TOP 1 [Equipo], [IP], [Sensor], [Status], [Mensaje], "
+            "[fechaInsercion], [fechaResolucion] "
+            "FROM OPENDATASOURCE('SQLNCLI', 'Data Source=10.81.48.139,1533;"
+            "User ID=usrmon;Password=MonAplic01@;').[Monitoreos].[dbo].[EventosPRTG_Historico] "
+            "WHERE [IP] = :ip "
+            "ORDER BY [fechaResolucion] DESC, [fechaInsercion] DESC"
+        )
+        params = {"ip": ip}
+
+        rows, origen = await self._run_sp_with_fallback(query_baz, query_ekt, params)
+        if not rows:
+            logger.debug(f"AlertRepository.get_last_historical_event({ip}): sin historial")
+            return None
+
+        try:
+            event = HistoricalAlertEvent.model_validate(rows[0])
+            logger.debug(
+                f"AlertRepository.get_last_historical_event({ip}): "
+                f"sensor='{event.sensor}' resuelta={event.fecha_resolucion_str} (origen={origen})"
+            )
+            return event
+        except Exception as e:
+            logger.warning(f"AlertRepository.get_last_historical_event({ip}): {e}")
+            return None
 
     async def get_recent_sensors_by_ip(self, ip: str, limit: int = 10) -> list[dict]:
         """

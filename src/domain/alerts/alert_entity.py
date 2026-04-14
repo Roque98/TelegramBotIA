@@ -10,6 +10,7 @@ Jerarquía:
   AlertContext      — Agregado completo de un evento enriquecido (se pasa al PromptBuilder)
 """
 
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -236,6 +237,38 @@ class InventoryItem(BaseModel):
             elif not isinstance(v, str):
                 data[field] = str(v)
         return data
+
+
+class HistoricalAlertEvent(BaseModel):
+    """Evento resuelto de monitoreo PRTG desde EventosPRTG_Historico."""
+
+    equipo: str = Field(alias="Equipo", default="")
+    ip: str = Field(alias="IP", default="")
+    sensor: str = Field(alias="Sensor", default="")
+    status: str = Field(alias="Status", default="")
+    mensaje: str = Field(alias="Mensaje", default="")
+    fecha_insercion: Optional[datetime] = Field(alias="fechaInsercion", default=None)
+    fecha_resolucion: Optional[datetime] = Field(alias="fechaResolucion", default=None)
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_nulls(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        for field in ("Equipo", "IP", "Sensor", "Status", "Mensaje"):
+            if data.get(field) is None:
+                data[field] = ""
+        return data
+
+    @property
+    def fecha_resolucion_str(self) -> str:
+        if self.fecha_resolucion:
+            return self.fecha_resolucion.strftime("%Y-%m-%d %H:%M")
+        if self.fecha_insercion:
+            return self.fecha_insercion.strftime("%Y-%m-%d %H:%M")
+        return "fecha desconocida"
 
 
 class AlertContext(BaseModel):
