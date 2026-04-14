@@ -176,6 +176,54 @@ class AlertRepository:
         logger.debug(f"AlertRepository.get_recent_sensors_by_ip({ip}): {len(result)} sensores (origen={origen})")
         return result
 
+    async def get_prtg_history_by_ip(self, ip: str, limit: int = 15) -> list[dict]:
+        """
+        Obtiene los eventos históricos de PRTG para un equipo/IP.
+
+        Fallback cuando el SP de tickets de mesa de ayuda no retorna resultados.
+        Retorna los eventos resueltos más recientes desde EventosPRTG_Historico.
+
+        Args:
+            ip: IP del equipo
+            limit: Máximo de eventos a retornar (default 15)
+
+        Returns:
+            Lista de dicts con sensor, status, mensaje, fechaInsercion, fechaResolucion, downTime.
+        """
+        query_baz = (
+            f"SELECT TOP {limit} [Equipo], [Sensor], [Status], [Mensaje], "
+            f"[fechaInsercion], [fechaResolucion], [downTime] "
+            f"FROM [Monitoreos].[dbo].[EventosPRTG_Historico] "
+            f"WHERE [IP] = :ip "
+            f"ORDER BY [fechaInsercion] DESC"
+        )
+        query_ekt = (
+            f"SELECT TOP {limit} [Equipo], [Sensor], [Status], [Mensaje], "
+            f"[fechaInsercion], [fechaResolucion], [downTime] "
+            f"FROM OPENDATASOURCE('SQLNCLI', 'Data Source=10.81.48.139,1533;"
+            f"User ID=usrmon;Password=MonAplic01@;').[Monitoreos].[dbo].[EventosPRTG_Historico] "
+            f"WHERE [IP] = :ip "
+            f"ORDER BY [fechaInsercion] DESC"
+        )
+        params = {"ip": ip}
+
+        rows, origen = await self._run_sp_with_fallback(query_baz, query_ekt, params)
+
+        result = []
+        for row in rows:
+            result.append({
+                "equipo":          row.get("Equipo", ""),
+                "sensor":          row.get("Sensor", ""),
+                "status":          row.get("Status", ""),
+                "mensaje":         row.get("Mensaje", ""),
+                "fecha_insercion": str(row.get("fechaInsercion", ""))[:19],
+                "fecha_resolucion": str(row.get("fechaResolucion", ""))[:19],
+                "down_time":       row.get("downTime", ""),
+            })
+
+        logger.debug(f"AlertRepository.get_prtg_history_by_ip({ip}): {len(result)} eventos (origen={origen})")
+        return result
+
     async def get_template_id(
         self, ip: str, url: Optional[str] = None
     ) -> Optional[dict]:

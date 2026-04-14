@@ -118,11 +118,36 @@ class GetHistoricalTicketsTool(BaseTool):
             logger.info(f"GetHistoricalTicketsTool: {len(tickets)} tickets para {ip} (sensor='{sensor}') en {elapsed:.0f}ms")
 
             if not tickets:
-                sensor_info = f" (sensor: {sensor})" if sensor else ""
+                # Fallback: si no hay tickets de mesa de ayuda, mostrar historial PRTG
+                prtg_events = await self._repo.get_prtg_history_by_ip(ip=ip)
+                elapsed = (time.perf_counter() - t0) * 1000
+
+                if not prtg_events:
+                    sensor_info = f" (sensor: {sensor})" if sensor else ""
+                    return ToolResult.success_result(
+                        data=f"Sin historial de incidentes para {ip}{sensor_info}.",
+                        execution_time_ms=elapsed,
+                        metadata={"total_tickets": 0, "total_prtg_events": 0},
+                    )
+
+                equipo = prtg_events[0].get("equipo", ip)
+                lines = [f"Sin tickets de mesa de ayuda para {ip}. Historial PRTG de {equipo}:\n"]
+                for ev in prtg_events:
+                    fecha = ev["fecha_insercion"][:10] if ev["fecha_insercion"] else "?"
+                    sensor_ev = ev["sensor"] or "?"
+                    status_ev = ev["status"] or "?"
+                    downtime = f" | Duración: {ev['down_time']}" if ev["down_time"] else ""
+                    mensaje = ev["mensaje"][:80] + "..." if len(ev.get("mensaje", "")) > 80 else ev.get("mensaje", "")
+                    lines.append(f"- {fecha} | {sensor_ev} | {status_ev}{downtime}")
+                    if mensaje:
+                        lines.append(f"  {mensaje}")
+
+                lines.append(f"\n_Total: {len(prtg_events)} eventos PRTG_")
+
                 return ToolResult.success_result(
-                    data=f"Sin tickets históricos para {ip}{sensor_info}.",
+                    data="\n".join(lines),
                     execution_time_ms=elapsed,
-                    metadata={"total_tickets": 0},
+                    metadata={"total_tickets": 0, "total_prtg_events": len(prtg_events)},
                 )
 
             sensor_info = f" (sensor: {sensor})" if sensor else ""
