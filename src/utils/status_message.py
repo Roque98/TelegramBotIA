@@ -388,15 +388,6 @@ class StatusMessage:
         else:
             footer = ""
 
-        # Disclaimer solo cuando la respuesta contiene bloques de código (sugerencias técnicas)
-        if "```" in final_text:
-            disclaimer = (
-                "\n\n⚠️ _Las sugerencias anteriores son orientativas\\. "
-                "La decisión de ejecutar cualquier acción es responsabilidad exclusiva del operador\\. "
-                "Valide siempre el impacto antes de actuar\\._"
-            )
-            footer = footer + disclaimer
-
         # Editar mensaje con respuesta final
         try:
             # Telegram tiene límite de 4096 caracteres

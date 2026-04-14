@@ -20,7 +20,7 @@ from typing import Any, Optional
 from src.agents.tools.base import BaseTool, ToolCategory, ToolDefinition, ToolParameter, ToolResult
 from src.domain.alerts.alert_entity import AlertContext
 from src.domain.alerts.alert_repository import AlertRepository
-from src.domain.alerts.alert_prompt_builder import AlertPromptBuilder, DISCLAIMER
+from src.domain.alerts.alert_prompt_builder import AlertPromptBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -231,8 +231,8 @@ class AlertAnalysisTool(BaseTool):
 
             analysis_text = str(llm_response)
 
-            # ── 6. Agregar disclaimer y retornar ───────────────────────────
-            final_text = analysis_text + DISCLAIMER
+            # ── 6. Retornar análisis ───────────────────────────────────────
+            final_text = analysis_text
 
             elapsed = (time.perf_counter() - t0) * 1000
             logger.info(
