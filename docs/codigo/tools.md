@@ -11,18 +11,27 @@ específica y expone una interfaz uniforme para que el `ToolRegistry` las gestio
 
 ```
 src/agents/tools/
-├── base.py                     ← BaseTool, ToolDefinition, ToolResult, ToolCategory
-├── registry.py                 ← ToolRegistry (singleton, thread-safe)
-├── database_tool.py            ← DatabaseTool (database_query)
-├── knowledge_tool.py           ← KnowledgeTool (knowledge_search)
-├── calculate_tool.py           ← CalculateTool (calculate)
-├── datetime_tool.py            ← DateTimeTool (datetime)
-├── preference_tool.py          ← SavePreferenceTool (save_preference)
-├── save_memory_tool.py         ← SaveMemoryTool (save_memory)
-├── reload_permissions_tool.py  ← ReloadPermissionsTool (reload_permissions)
-├── read_attachment_tool.py     ← ReadAttachmentTool (read_attachment)
-├── alert_analysis_tool.py      ← AlertAnalysisTool (alert_analysis)
-└── reload_agent_config_tool.py ← ReloadAgentConfigTool (reload_agent_config)
+├── base.py                          ← BaseTool, ToolDefinition, ToolResult, ToolCategory
+├── registry.py                      ← ToolRegistry (singleton, thread-safe)
+├── database_tool.py                 ← DatabaseTool (database_query)
+├── knowledge_tool.py                ← KnowledgeTool (knowledge_search)
+├── calculate_tool.py                ← CalculateTool (calculate)
+├── datetime_tool.py                 ← DateTimeTool (datetime)
+├── preference_tool.py               ← SavePreferenceTool (save_preference)
+├── save_memory_tool.py              ← SaveMemoryTool (save_memory)
+├── reload_permissions_tool.py       ← ReloadPermissionsTool (reload_permissions)
+├── read_attachment_tool.py          ← ReadAttachmentTool (read_attachment)
+├── reload_agent_config_tool.py      ← ReloadAgentConfigTool (reload_agent_config)
+│
+│   — Tools de alertas PRTG (requieren conexión "monitoreo") —
+├── alert_analysis_tool.py           ← AlertAnalysisTool (alert_analysis) — con LLM
+├── get_active_alerts_tool.py        ← GetActiveAlertsTool (get_active_alerts)
+├── get_alert_detail_tool.py         ← GetAlertDetailTool (get_alert_detail)
+├── get_historical_tickets_tool.py   ← GetHistoricalTicketsTool (get_historical_tickets)
+├── get_escalation_matrix_tool.py    ← GetEscalationMatrixTool (get_escalation_matrix)
+├── get_inventory_by_ip_tool.py      ← GetInventoryByIpTool (get_inventory_by_ip)
+├── get_template_by_id_tool.py       ← GetTemplateByIdTool (get_template_by_id)
+└── get_contacto_gerencia_tool.py    ← GetContactoGerenciaTool (get_contacto_gerencia)
 ```
 
 ---
@@ -83,7 +92,14 @@ class ToolCategory(str, Enum):
 
 ---
 
-## Las 10 tools
+## Las 17 tools
+
+Las 8 tools del grupo de alertas PRTG tienen documentación detallada en
+[tools-alertas.md](tools-alertas.md): entidades, repository, flujos internos y prompts.
+
+---
+
+## Tools generales (11)
 
 ### 1. database_query
 
@@ -217,36 +233,13 @@ Descarga el archivo vía Bot API y retorna su contenido como texto.
 
 ### 9. alert_analysis
 
-**Clase**: `AlertAnalysisTool` | **Archivo**: `alert_analysis_tool.py` | **Categoría**: `MONITORING`
+Ver documentación completa en [tools-alertas.md → alert_analysis](tools-alertas.md#2-alert_analysis).
 
-Analiza alertas activas de monitoreo PRTG. Consulta eventos activos, tickets históricos,
-template de escalamiento y contactos de área para generar un diagnóstico estructurado
-con acciones recomendadas. Usa un LLM secundario (`data_llm`) para construir el análisis.
+Resumen: analiza alertas PRTG activas con LLM interno (`data_llm`). Enriquece el
+evento más crítico con tickets históricos, template y escalamiento, construye el
+prompt con `AlertPromptBuilder` y retorna un diagnóstico Markdown.
 
-Requiere que la conexión `monitoreo` esté configurada en `DB_CONNECTIONS`.
-
-| Parámetro | Tipo | Requerido | Descripción |
-|-----------|------|-----------|-------------|
-| `query` | string | Sí | Consulta del operador sobre las alertas |
-| `ip` | string | No | Filtrar por IP exacta del equipo |
-| `equipo` | string | No | Filtrar por nombre parcial del equipo |
-| `solo_down` | boolean | No | Si `true`, solo incluye equipos con status `down` (default `false`) |
-
-**Flujo interno**:
-1. `AlertRepository.get_active_events()` — obtiene eventos activos con fallback BAZ_CDMX → EKT
-2. Selecciona el evento más crítico (posición 0 de la lista)
-3. En paralelo: tickets históricos + template ID
-4. Si hay template: carga `template_info` y `escalation_matrix` en paralelo
-5. Carga contactos de gerencia (área atendedora y administradora)
-6. `AlertPromptBuilder.build(context)` — construye system prompt + user prompt enriquecido
-7. Llama al `data_llm` con los mensajes construidos
-8. Retorna análisis Markdown con `DISCLAIMER` adjunto
-
-**Retorna**: Análisis estructurado en Markdown con equipo afectado, área responsable,
-matriz de escalamiento, acciones recomendadas y posible causa raíz.
-
-**Cuándo usarla**: Cuando el usuario pregunta por alertas activas, equipos caídos
-o problemas de red/infraestructura en PRTG.
+Requiere conexión `monitoreo` configurada en `DB_CONNECTIONS`.
 
 ---
 
@@ -302,7 +295,7 @@ ToolRegistry.reset()
 ```
 
 Las tools se registran en `pipeline/factory.py → create_tool_registry()`.
-Las 10 tools disponibles cubren las categorías: `database`, `knowledge`, `calculation`,
+Las 17 tools disponibles cubren las categorías: `database`, `knowledge`, `calculation`,
 `datetime`, `utility` y `monitoring`.
 
 ---
@@ -348,6 +341,26 @@ registry.register(MiTool())
 
 Y agregar el recurso en la BD para que el sistema de permisos la controle
 (ver [guia-administrador.md](../uso/guia-administrador.md) — sección Permisos).
+
+---
+
+---
+
+## Tools de alertas PRTG (6 adicionales)
+
+Las siguientes 6 tools comparten la misma infraestructura (`AlertRepository`,
+entidades Pydantic, fallback BAZ→EKT). Su documentación detallada está en
+**[tools-alertas.md](tools-alertas.md)**.
+
+| Tool | Clase | Descripción breve |
+|---|---|---|
+| `get_active_alerts` | `GetActiveAlertsTool` | Lista alertas activas con filtros opcionales |
+| `get_alert_detail` | `GetAlertDetailTool` | Contexto completo de un equipo por IP (multi-query paralela) |
+| `get_historical_tickets` | `GetHistoricalTicketsTool` | Tickets históricos con resolución automática de sensor |
+| `get_escalation_matrix` | `GetEscalationMatrixTool` | Escalamiento + contactos de área (inventario como fuente de verdad) |
+| `get_inventory_by_ip` | `GetInventoryByIpTool` | Ficha del equipo: área, OS, ambiente, impacto, urgencia |
+| `get_template_by_id` | `GetTemplateByIdTool` | Ficha de aplicación por ID de template |
+| `get_contacto_gerencia` | `GetContactoGerenciaTool` | Correo y extensiones de una gerencia por ID |
 
 ---
 
