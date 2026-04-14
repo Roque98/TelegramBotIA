@@ -102,6 +102,75 @@ class AlertRepository:
         logger.debug(f"AlertRepository: {len(events)} eventos activos (origen={origen})")
         return events
 
+    async def get_active_events_all(
+        self,
+        ip: Optional[str] = None,
+        equipo: Optional[str] = None,
+        solo_down: bool = False,
+    ) -> tuple[list[AlertEvent], list[AlertEvent]]:
+        """
+        Obtiene eventos activos de AMBAS instancias (BAZ_CDMX y EKT) en paralelo.
+
+        A diferencia de get_active_events (que usa fallback), este método
+        consulta ambas instancias siempre para poder mostrar totales por división.
+
+        Returns:
+            (eventos_banco, eventos_ekt) — cada lista ordenada por prioridad desc
+        """
+        import asyncio
+
+        sps_baz = [
+            "EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidos",
+            "EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidosPerformance",
+        ]
+        sps_ekt = [
+            "EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidos_EKT",
+            "EXEC Monitoreos.dbo.PrtgObtenerEventosEnriquecidosPerformance_EKT",
+        ]
+
+        async def _query_instance(sps: list[str], origen: str) -> list[AlertEvent]:
+            rows: list[dict] = []
+            for sp in sps:
+                try:
+                    result = await self._db.execute_query_async(sp, None)
+                    rows.extend(result or [])
+                except Exception as e:
+                    logger.warning(f"AlertRepository.get_active_events_all SP '{sp}': {e}")
+
+            events: list[AlertEvent] = []
+            seen: set = set()
+            for row in rows:
+                key = (row.get("IP", ""), row.get("Sensor", ""))
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    row["_origen"] = origen
+                    events.append(AlertEvent.model_validate(row))
+                except Exception as e:
+                    logger.debug(f"AlertRepository: fila inválida ignorada: {e}")
+
+            if ip:
+                events = [e for e in events if e.ip == ip]
+            if equipo:
+                equipo_lower = equipo.lower()
+                events = [e for e in events if equipo_lower in e.equipo.lower()]
+            if solo_down:
+                events = [e for e in events if e.status.lower() == "down"]
+
+            events.sort(key=lambda e: e.prioridad, reverse=True)
+            return events
+
+        eventos_banco, eventos_ekt = await asyncio.gather(
+            _query_instance(sps_baz, "BAZ_CDMX"),
+            _query_instance(sps_ekt, "EKT"),
+        )
+        logger.debug(
+            f"AlertRepository.get_active_events_all: "
+            f"Banco={len(eventos_banco)}, EKT={len(eventos_ekt)}"
+        )
+        return eventos_banco, eventos_ekt
+
     async def get_historical_tickets(
         self, ip: str, sensor: str
     ) -> list[HistoricalTicket]:
