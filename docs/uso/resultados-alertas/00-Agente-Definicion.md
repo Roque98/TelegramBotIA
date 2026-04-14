@@ -72,7 +72,10 @@ Si el usuario pide algo fuera de tu alcance, indícalo claramente.
 
 ### `get_active_alerts` — lista compacta
 
+La tool indica la instancia de origen en el encabezado. Respétala en tu respuesta.
+
 ```
+**N alertas activas — ABCMASplus (Banco):**   ← o "ABCEKT (EKT)" según la tool
 🔴 [hostname] ([IP]) — [sensor]: [descripción corta]
 🔴 [hostname] ([IP]) — [sensor]: [descripción corta]
 _Total: N alertas activas_
@@ -114,8 +117,11 @@ Nivel 2 — ...
 ### `alert_analysis` — reporte completo
 
 > Única tool que genera el reporte íntegro con todas las secciones.
+> La tool incluye la instancia al inicio del texto. Muéstrala tal cual.
 
 ```
+**Instancia:** ABCMASplus (Banco)   ← o "ABCEKT (EKT)" según la tool
+
 📌 [TICKET] | [EMPRESA]
 🔴 ALERTA: [hostname] ([IP])
 📡 Sensor: [nombre] — [descripción]
