@@ -80,17 +80,42 @@ class GetHistoricalTicketsTool(BaseTool):
             )
 
         try:
-            # Si no viene sensor, resolverlo desde la alerta activa
+            # Si no viene sensor, intentar resolverlo
             if not sensor:
+                # 1. Buscar en alertas activas
                 events = await self._repo.get_active_events(ip=ip)
                 if events:
                     sensor = events[0].sensor or ""
                     logger.debug(f"GetHistoricalTicketsTool: sensor resuelto desde alerta activa → '{sensor}'")
 
+                # 2. Sin alerta activa: buscar sensores recientes en el historial PRTG
+                if not sensor:
+                    sensores_recientes = await self._repo.get_recent_sensors_by_ip(ip=ip)
+                    if len(sensores_recientes) == 1:
+                        # Solo un sensor → usarlo automáticamente
+                        sensor = sensores_recientes[0]["sensor"]
+                        logger.debug(f"GetHistoricalTicketsTool: sensor único en historial → '{sensor}'")
+                    elif len(sensores_recientes) > 1:
+                        # Varios sensores → preguntar al usuario
+                        elapsed = (time.perf_counter() - t0) * 1000
+                        lista = "\n".join(
+                            f"- {s['sensor']} (última vez: {s['ultima_fecha'][:10]})"
+                            for s in sensores_recientes
+                        )
+                        return ToolResult.success_result(
+                            data=(
+                                f"El equipo {ip} no tiene alerta activa, pero tiene varios sensores "
+                                f"en el historial. ¿Sobre cuál querés buscar el historial de tickets?\n\n"
+                                f"{lista}"
+                            ),
+                            execution_time_ms=elapsed,
+                            metadata={"total_tickets": 0, "sensores_disponibles": [s["sensor"] for s in sensores_recientes]},
+                        )
+
             tickets = await self._repo.get_historical_tickets(ip=ip, sensor=sensor)
             elapsed = (time.perf_counter() - t0) * 1000
 
-            logger.info(f"GetHistoricalTicketsTool: {len(tickets)} tickets para {ip} en {elapsed:.0f}ms")
+            logger.info(f"GetHistoricalTicketsTool: {len(tickets)} tickets para {ip} (sensor='{sensor}') en {elapsed:.0f}ms")
 
             if not tickets:
                 sensor_info = f" (sensor: {sensor})" if sensor else ""

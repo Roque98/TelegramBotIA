@@ -133,6 +133,49 @@ class AlertRepository:
                 logger.debug(f"AlertRepository: ticket inválido ignorado: {e}")
         return tickets
 
+    async def get_recent_sensors_by_ip(self, ip: str, limit: int = 10) -> list[dict]:
+        """
+        Obtiene los sensores más recientes de un equipo desde el historial PRTG.
+
+        Útil cuando no hay alerta activa y se necesita saber qué sensores
+        ha tenido el equipo para buscar su historial de tickets.
+
+        Args:
+            ip: IP del equipo
+            limit: Máximo de sensores distintos a retornar (default 10)
+
+        Returns:
+            Lista de dicts con 'sensor' y 'ultima_fecha', ordenados por más reciente.
+        """
+        query_baz = (
+            f"SELECT TOP {limit} [Sensor], MAX([fechaResolucion]) AS ultima_fecha "
+            f"FROM [Monitoreos].[dbo].[EventosPRTG_Historico] "
+            f"WHERE [IP] = :ip AND [Sensor] IS NOT NULL AND [Sensor] != '' "
+            f"GROUP BY [Sensor] "
+            f"ORDER BY ultima_fecha DESC"
+        )
+        query_ekt = (
+            f"SELECT TOP {limit} [Sensor], MAX([fechaResolucion]) AS ultima_fecha "
+            f"FROM OPENDATASOURCE('SQLNCLI', 'Data Source=10.81.48.139,1533;"
+            f"User ID=usrmon;Password=MonAplic01@;').[Monitoreos].[dbo].[EventosPRTG_Historico] "
+            f"WHERE [IP] = :ip AND [Sensor] IS NOT NULL AND [Sensor] != '' "
+            f"GROUP BY [Sensor] "
+            f"ORDER BY ultima_fecha DESC"
+        )
+        params = {"ip": ip}
+
+        rows, origen = await self._run_sp_with_fallback(query_baz, query_ekt, params)
+
+        result = []
+        for row in rows:
+            result.append({
+                "sensor": row.get("Sensor", ""),
+                "ultima_fecha": str(row.get("ultima_fecha", "")),
+            })
+
+        logger.debug(f"AlertRepository.get_recent_sensors_by_ip({ip}): {len(result)} sensores (origen={origen})")
+        return result
+
     async def get_template_id(
         self, ip: str, url: Optional[str] = None
     ) -> Optional[dict]:
