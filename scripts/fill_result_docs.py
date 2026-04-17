@@ -28,6 +28,10 @@ import sys
 from datetime import date
 from pathlib import Path
 
+# Forzar UTF-8 en stdout para que los emojis de las respuestas no rompan el print
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 # Agregar raíz del proyecto al path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -122,7 +126,9 @@ def apply_response(content: str, match: re.Match, response: str) -> str:
 
 async def query_bot(user_id: str, question: str) -> str:
     """Envía `question` al pipeline del bot y retorna la respuesta."""
-    handler = get_handler_manager().handler
+    # create_main_handler retorna (MainHandler, admin_notify) — extraemos solo el handler
+    raw = get_handler_manager().handler
+    handler = raw[0] if isinstance(raw, tuple) else raw
     agent_response = await handler.handle_api(
         user_id=user_id,
         text=question,
@@ -176,7 +182,7 @@ async def process_file(
         print(f"    [{filled + 1}/{len(matches)}] '{short}'")
 
         if dry_run:
-            print("      → [DRY RUN] se enviaría la pregunta al bot")
+            print("      -> [DRY RUN] se enviaria la pregunta al bot")
             filled += 1
             continue
 
@@ -184,14 +190,14 @@ async def process_file(
         content = apply_response(content, match, response)
         filled += 1
         preview = response[:80].replace("\n", " ")
-        print(f"      → OK ({len(response)} chars): {preview}…" if len(response) > 80 else f"      → OK: {response[:80]}")
+        print(f"      -> OK ({len(response)} chars): {preview}..." if len(response) > 80 else f"      -> OK: {response[:80]}")
 
         # Re-escanear el contenido actualizado para que los match offsets sean válidos
         # (lo hacemos al revés, así no necesitamos re-escanear)
 
     if filled > 0 and not dry_run:
         doc_file.write_text(content, encoding="utf-8")
-        print(f"    Guardado ✓")
+        print(f"    Guardado OK")
 
     return filled
 
