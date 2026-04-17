@@ -6,7 +6,8 @@ Toda la lógica de handlers está delegada a módulos especializados.
 """
 import logging
 from telegram import Update
-from telegram.ext import Application
+from telegram.error import NetworkError as TelegramNetworkError
+from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
 from src.infra.database.registry import DatabaseRegistry
@@ -63,6 +64,9 @@ class TelegramBot:
         # Configurar handlers
         self._setup_handlers()
 
+        # Registrar error handler de red
+        self._setup_error_handler()
+
         logger.info(
             f"TelegramBot inicializado exitosamente con "
             f"modelo: {settings.openai_loop_model}"
@@ -79,6 +83,18 @@ class TelegramBot:
         setup_auth_middleware(self.application, self.db_manager)
 
         logger.info("Middleware configurado exitosamente")
+
+    def _setup_error_handler(self):
+        """Registrar handler de errores para degradar NetworkErrors transitorios."""
+
+        async def _handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+            if isinstance(context.error, TelegramNetworkError):
+                logger.warning("NetworkError transitorio (polling): %s", context.error)
+                return
+            logger.error("Error no controlado en el bot", exc_info=context.error)
+
+        self.application.add_error_handler(_handle_error)
+        logger.info("Error handler registrado")
 
     def _setup_handlers(self):
         """Configurar handlers de la aplicación."""

@@ -23,6 +23,21 @@ from typing import Optional
 from src.infra.observability.tracing import TracingFilter
 
 
+class TelegramNetworkFilter(logging.Filter):
+    """
+    Filtra NetworkErrors transitorios de Telegram del SqlLogHandler.
+
+    Estos errores son ruido operativo: el bot se recupera automáticamente
+    y no deben persistirse en ApplicationLogs.
+    """
+
+    _PATTERNS = ("httpx.ReadError", "httpx.ConnectError", "NetworkError", "Conflict")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(p in msg for p in self._PATTERNS)
+
+
 class SqlLogHandler(logging.Handler):
     """
     Handler de logging que persiste registros WARNING/ERROR en ApplicationLogs.
@@ -115,6 +130,7 @@ def configure_logging(log_level: str = "INFO") -> SqlLogHandler:
     _sql_handler = SqlLogHandler()
     _sql_handler.setFormatter(logging.Formatter("%(message)s"))
     _sql_handler.addFilter(tracing_filter)
+    _sql_handler.addFilter(TelegramNetworkFilter())
 
     # Configurar logger raíz
     root = logging.getLogger()

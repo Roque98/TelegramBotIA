@@ -24,7 +24,7 @@ plan/
 
 | Metrica | Valor |
 |---------|-------|
-| Planes completados | 18 |
+| Planes completados | 19 |
 | Planes activos | 6 |
 | Ideas documentadas | 10 |
 
@@ -52,6 +52,7 @@ plan/
 | [AgentOrchestrator](01-completados/PLAN_ARQ_30_ORCHESTRATOR.md) | Descartado | — | 2026-04-08 |
 | [ARQ-33 Dynamic Tool Hints](01-completados/PLAN_ARQ_33_DYNAMIC_HINTS.md) | 100% (13/13) | `develop` | 2026-04-08 |
 | [DOC-34 Reescritura de documentación](01-completados/PLAN_DOC_34_DOCS_REWRITE.md) | 100% (26/26) | `develop` | 2026-04-08 |
+| [BOT-40 Resiliencia NetworkError](01-completados/PLAN_BOT_40_NETWORK_RESILIENCE.md) | 100% (4/4) | `develop` | 2026-04-17 |
 
 ---
 
