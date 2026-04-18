@@ -6,7 +6,7 @@ Contiene todo lo que no es lógica de negocio: acceso a datos, observabilidad y 
 
 ---
 
-## DatabaseManager — `src/infra/database/connection.py`
+## DatabaseManager — [`src/infra/database/connection.py`](../../src/infra/database/connection.py)
 
 Gestiona el pool de conexiones a SQL Server usando SQLAlchemy 2.0.
 
@@ -35,7 +35,7 @@ strings está prohibida para evitar SQL injection.
 
 ---
 
-## SchemaIntrospector — `src/infra/database/schema_introspector.py`
+## SchemaIntrospector — [`src/infra/database/schema_introspector.py`](../../src/infra/database/schema_introspector.py)
 
 Introspección del esquema de la BD (tablas y columnas). Extraído de `DatabaseManager`
 para respetar el principio de responsabilidad única.
@@ -54,7 +54,7 @@ y delega.
 
 ---
 
-## DatabaseRegistry — `src/infra/database/registry.py`
+## DatabaseRegistry — [`src/infra/database/registry.py`](../../src/infra/database/registry.py)
 
 Gestiona múltiples conexiones a SQL Server de forma lazy y thread-safe.
 Cada alias se conecta solo cuando se solicita por primera vez.
@@ -95,7 +95,7 @@ registry.close_all()                 # shutdown
 
 ---
 
-## SQLValidator — `src/infra/database/sql_validator.py`
+## SQLValidator — [`src/infra/database/sql_validator.py`](../../src/infra/database/sql_validator.py)
 
 Valida que el SQL generado por el LLM sea seguro antes de ejecutarlo.
 Es usado internamente por `DatabaseTool`.
@@ -122,7 +122,7 @@ if not is_valid:
 
 Sistema de trazabilidad y métricas en memoria + persistencia en BD.
 
-### Tracer — `tracing.py`
+### Tracer — [`tracing.py`](../../src/infra/observability/tracing.py)
 
 ```python
 tracer = get_tracer()
@@ -135,7 +135,7 @@ result = tracer.end_trace()
 # → {trace_id, correlation_id, spans: [...], total_duration_ms: 1250}
 ```
 
-### Metrics — `metrics.py`
+### Metrics — [`metrics.py`](../../src/infra/observability/metrics.py)
 
 Organizado con patrón facade: `MetricsCollector` compone tres clases internas
 (`_RequestMetrics`, `_ToolMetrics`, `_CacheMetrics`). La API pública no cambia.
@@ -151,7 +151,7 @@ stats = metrics.get_stats()
 # → {requests, latency, steps, errors_by_type, tools_usage, cache}
 ```
 
-### SqlLogHandler — `src/infra/observability/logging_config.py`
+### SqlLogHandler — [`src/infra/observability/logging_config.py`](../../src/infra/observability/logging_config.py)
 
 Handler de logging Python estándar que escribe a `BotIAv2_ApplicationLogs`.
 Se inyecta en el logger raíz al arrancar, por lo que todos los `logger.error()`
@@ -170,7 +170,7 @@ sql_handler.set_repository(interaction_repo)  # InteractionRepository
 
 ## Utilidades — `src/utils/`
 
-### encryption_util.py
+### [encryption_util.py](../../src/utils/encryption_util.py)
 
 Encriptación AES compatible con el sistema C# legacy.
 
@@ -182,7 +182,7 @@ token = enc.encrypt("12345:1712500000")     # → string base64
 plain = enc.decrypt(token)                  # → "12345:1712500000"
 ```
 
-### rate_limiter.py
+### [rate_limiter.py](../../src/utils/rate_limiter.py)
 
 Límite de requests por usuario usando ventana deslizante.
 
@@ -191,7 +191,7 @@ limiter = RateLimiter(max_requests=10, window_seconds=60)
 allowed = limiter.check(user_id="123")   # True/False
 ```
 
-### retry.py
+### [retry.py](../../src/utils/retry.py)
 
 Decorador de retry con backoff exponencial para LLM y BD.
 
@@ -206,7 +206,7 @@ async def call_llm(...):
     ...
 ```
 
-### input_validator.py
+### [input_validator.py](../../src/utils/input_validator.py)
 
 Validación de input del usuario antes de pasarlo al agente.
 
@@ -215,7 +215,7 @@ is_valid, reason = InputValidator.validate(text)
 # Rechaza: texto > 2000 chars, patrones de inyección de prompt, contenido vacío
 ```
 
-### status_message.py
+### [status_message.py](../../src/utils/status_message.py)
 
 Mensajes de estado progresivo que Telegram muestra mientras el agente procesa.
 
@@ -227,7 +227,7 @@ await status.show("Consultando la base de datos...")
 
 ---
 
-## AdminNotifier — `src/infra/notifications/admin_notifier.py`
+## AdminNotifier — [`src/infra/notifications/admin_notifier.py`](../../src/infra/notifications/admin_notifier.py)
 
 Envía notificaciones de errores críticos al administrador vía Telegram.
 

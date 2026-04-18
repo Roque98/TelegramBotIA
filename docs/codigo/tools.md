@@ -103,7 +103,7 @@ Las 8 tools del grupo de alertas PRTG tienen documentación detallada en
 
 ### 1. database_query
 
-**Clase**: `DatabaseTool` | **Archivo**: `database_tool.py`
+**Clase**: `DatabaseTool` | **Archivo**: [`database_tool.py`](../../src/agents/tools/database_tool.py)
 
 Consulta la base de datos SQL Server a partir de una descripción en lenguaje natural.
 Internamente usa el `openai_data_model` (GPT-5.4) para generar el SQL.
@@ -124,7 +124,7 @@ Internamente usa el `openai_data_model` (GPT-5.4) para generar el SQL.
 
 ### 2. knowledge_search
 
-**Clase**: `KnowledgeTool` | **Archivo**: `knowledge_tool.py`
+**Clase**: `KnowledgeTool` | **Archivo**: [`knowledge_tool.py`](../../src/agents/tools/knowledge_tool.py)
 
 Busca en la base de conocimiento empresarial.
 
@@ -143,7 +143,7 @@ Busca en la base de conocimiento empresarial.
 
 ### 3. calculate
 
-**Clase**: `CalculateTool` | **Archivo**: `calculate_tool.py`
+**Clase**: `CalculateTool` | **Archivo**: [`calculate_tool.py`](../../src/agents/tools/calculate_tool.py)
 
 Evalúa expresiones matemáticas de forma segura (sin `eval` directo).
 
@@ -160,7 +160,7 @@ módulo, paréntesis. No ejecuta funciones arbitrarias.
 
 ### 4. datetime
 
-**Clase**: `DateTimeTool` | **Archivo**: `datetime_tool.py`
+**Clase**: `DateTimeTool` | **Archivo**: [`datetime_tool.py`](../../src/agents/tools/datetime_tool.py)
 
 Obtiene la fecha y hora actual del sistema.
 
@@ -172,7 +172,7 @@ Sin parámetros requeridos. Retorna fecha, hora, día de la semana y zona horari
 
 ### 5. save_preference
 
-**Clase**: `SavePreferenceTool` | **Archivo**: `preference_tool.py`
+**Clase**: `SavePreferenceTool` | **Archivo**: [`preference_tool.py`](../../src/agents/tools/preference_tool.py)
 
 Guarda preferencias del usuario en la base de datos (`BotIAv2_UserMemoryProfiles.preferencias`).
 
@@ -190,7 +190,7 @@ Invalida el cache de `MemoryService` para que la próxima sesión cargue el valo
 
 ### 6. save_memory
 
-**Clase**: `SaveMemoryTool` | **Archivo**: `save_memory_tool.py`
+**Clase**: `SaveMemoryTool` | **Archivo**: [`save_memory_tool.py`](../../src/agents/tools/save_memory_tool.py)
 
 Guarda un hecho relevante del usuario para recordarlo entre sesiones.
 
@@ -206,7 +206,7 @@ Se persiste en el `long_term_summary` del perfil de memoria.
 
 ### 7. reload_permissions
 
-**Clase**: `ReloadPermissionsTool` | **Archivo**: `reload_permissions_tool.py`
+**Clase**: `ReloadPermissionsTool` | **Archivo**: [`reload_permissions_tool.py`](../../src/agents/tools/reload_permissions_tool.py)
 
 Fuerza la recarga de los permisos del usuario desde la BD, invalidando el cache.
 Útil cuando el admin cambió permisos y el usuario quiere que surtan efecto inmediatamente.
@@ -217,7 +217,7 @@ Sin parámetros. Esta tool es siempre visible (esPublico=1) y no requiere permis
 
 ### 8. read_attachment
 
-**Clase**: `ReadAttachmentTool` | **Archivo**: `read_attachment_tool.py`
+**Clase**: `ReadAttachmentTool` | **Archivo**: [`read_attachment_tool.py`](../../src/agents/tools/read_attachment_tool.py)
 
 Lee el contenido de un archivo adjunto que el usuario envió en Telegram.
 
@@ -245,7 +245,7 @@ Requiere conexión `monitoreo` configurada en `DB_CONNECTIONS`.
 
 ### 10. reload_agent_config
 
-**Clase**: `ReloadAgentConfigTool` | **Archivo**: `reload_agent_config_tool.py` | **Categoría**: `UTILITY`
+**Clase**: `ReloadAgentConfigTool` | **Archivo**: [`reload_agent_config_tool.py`](../../src/agents/tools/reload_agent_config_tool.py) | **Categoría**: `UTILITY`
 
 Recarga la configuración de agentes LLM desde la base de datos invalidando el cache.
 Invalida el cache de `AgentConfigService` y el cache de instancias de `AgentBuilder`,
@@ -269,7 +269,7 @@ cambios sin reiniciar el bot (el trigger de BD incrementa la versión automátic
 
 ## ToolRegistry
 
-**Archivo**: `src/agents/tools/registry.py`
+**Archivo**: [`src/agents/tools/registry.py`](../../src/agents/tools/registry.py)
 **Patrón**: Singleton con double-checked locking (thread-safe)
 
 ```python
@@ -354,13 +354,13 @@ entidades Pydantic, fallback BAZ→EKT). Su documentación detallada está en
 
 | Tool | Clase | Descripción breve |
 |---|---|---|
-| `get_active_alerts` | `GetActiveAlertsTool` | Lista alertas activas con filtros opcionales |
-| `get_alert_detail` | `GetAlertDetailTool` | Contexto completo de un equipo por IP (multi-query paralela) |
-| `get_historical_tickets` | `GetHistoricalTicketsTool` | Tickets históricos con resolución automática de sensor |
-| `get_escalation_matrix` | `GetEscalationMatrixTool` | Escalamiento + contactos de área (inventario como fuente de verdad) |
-| `get_inventory_by_ip` | `GetInventoryByIpTool` | Ficha del equipo: área, OS, ambiente, impacto, urgencia |
-| `get_template_by_id` | `GetTemplateByIdTool` | Ficha de aplicación por ID de template |
-| `get_contacto_gerencia` | `GetContactoGerenciaTool` | Correo y extensiones de una gerencia por ID |
+| `get_active_alerts` | [`GetActiveAlertsTool`](../../src/agents/tools/get_active_alerts_tool.py) | Lista alertas activas con filtros opcionales |
+| `get_alert_detail` | [`GetAlertDetailTool`](../../src/agents/tools/get_alert_detail_tool.py) | Contexto completo de un equipo por IP (multi-query paralela) |
+| `get_historical_tickets` | [`GetHistoricalTicketsTool`](../../src/agents/tools/get_historical_tickets_tool.py) | Tickets históricos con resolución automática de sensor |
+| `get_escalation_matrix` | [`GetEscalationMatrixTool`](../../src/agents/tools/get_escalation_matrix_tool.py) | Escalamiento + contactos de área (inventario como fuente de verdad) |
+| `get_inventory_by_ip` | [`GetInventoryByIpTool`](../../src/agents/tools/get_inventory_by_ip_tool.py) | Ficha del equipo: área, OS, ambiente, impacto, urgencia |
+| `get_template_by_id` | [`GetTemplateByIdTool`](../../src/agents/tools/get_template_by_id_tool.py) | Ficha de aplicación por ID de template |
+| `get_contacto_gerencia` | [`GetContactoGerenciaTool`](../../src/agents/tools/get_contacto_gerencia_tool.py) | Correo y extensiones de una gerencia por ID |
 
 ---
 

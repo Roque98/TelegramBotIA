@@ -10,7 +10,7 @@ y construir todas las dependencias al arrancar.
 
 ## MessageGateway
 
-**Archivo**: `src/gateway/message_gateway.py`
+**Archivo**: [`src/gateway/message_gateway.py`](../../src/gateway/message_gateway.py)
 
 Normaliza entradas de múltiples canales a un único objeto `ConversationEvent`:
 
@@ -40,7 +40,7 @@ El resto del sistema no distingue entre canales — opera sobre `ConversationEve
 
 ## MainHandler
 
-**Archivo**: `src/pipeline/handler.py`
+**Archivo**: [`src/pipeline/handler.py`](../../src/pipeline/handler.py)
 
 Orquesta el flujo completo de procesamiento de una consulta.
 
@@ -98,7 +98,7 @@ Los pasos 3 y 4 son `asyncio.create_task()` — no bloquean la respuesta al usua
 
 ## factory.py — Composición de dependencias
 
-**Archivo**: `src/pipeline/factory.py`
+**Archivo**: [`src/pipeline/factory.py`](../../src/pipeline/factory.py)
 
 Este archivo es el único lugar donde se construyen e inyectan todas las dependencias.
 Es la "composición root" del sistema.

@@ -6,7 +6,7 @@ El `ReActAgent` es el componente central del sistema. Implementa el patrón
 Think-Act-Observe: el LLM alterna entre razonar, llamar tools y observar resultados
 hasta tener suficiente información para responder.
 
-**Archivo**: `src/agents/react/agent.py`
+**Archivo**: [`src/agents/react/agent.py`](../../src/agents/react/agent.py)
 
 > **Nota (ARQ-35):** El `ReActAgent` no se instancia directamente en producción.
 > Es seleccionado y configurado por el `AgentOrchestrator` a través del `AgentBuilder`.
@@ -21,13 +21,13 @@ hasta tener suficiente información para responder.
 
 | Componente | Archivo | Responsabilidad |
 |------------|---------|-----------------|
-| `ReActAgent` | `react/agent.py` | Orquesta el loop completo |
-| `Scratchpad` | `react/scratchpad.py` | Acumula pasos thought/action/observation |
-| `ReActResponse` | `react/schemas.py` | Schema Pydantic de la respuesta del LLM |
-| `build_system_prompt` | `react/prompts.py` | Construye el prompt del sistema |
-| `build_user_prompt` | `react/prompts.py` | Construye el prompt inicial |
-| `build_continue_prompt` | `react/prompts.py` | Construye el prompt post-observación |
-| `build_synthesis_prompt` | `react/prompts.py` | Construye el prompt de síntesis parcial |
+| `ReActAgent` | [`react/agent.py`](../../src/agents/react/agent.py) | Orquesta el loop completo |
+| `Scratchpad` | [`react/scratchpad.py`](../../src/agents/react/scratchpad.py) | Acumula pasos thought/action/observation |
+| `ReActResponse` | [`react/schemas.py`](../../src/agents/react/schemas.py) | Schema Pydantic de la respuesta del LLM |
+| `build_system_prompt` | [`react/prompts.py`](../../src/agents/react/prompts.py) | Construye el prompt del sistema |
+| `build_user_prompt` | [`react/prompts.py`](../../src/agents/react/prompts.py) | Construye el prompt inicial |
+| `build_continue_prompt` | [`react/prompts.py`](../../src/agents/react/prompts.py) | Construye el prompt post-observación |
+| `build_synthesis_prompt` | [`react/prompts.py`](../../src/agents/react/prompts.py) | Construye el prompt de síntesis parcial |
 
 ---
 

@@ -7,7 +7,7 @@ Cada subdominio sigue el patrón Repository + Service.
 
 ---
 
-## Auth — `src/domain/auth/`
+## Auth — [`src/domain/auth/`](../../src/domain/auth/)
 
 Gestiona usuarios, autenticación con Telegram y el sistema de permisos.
 
@@ -29,10 +29,10 @@ class TelegramUser:
 
 | Clase | Archivo | Responsabilidad |
 |-------|---------|-----------------|
-| `UserRepository` | `user_repository.py` | CRUD de usuarios en `Usuarios` |
-| `TelegramAccountRepository` | `telegram_account_repository.py` | Tabla `BotIAv2_UsuariosTelegram` |
-| `UserQueryRepository` | `user_query_repository.py` | Queries de búsqueda y verificación |
-| `PermissionRepository` | `permission_repository.py` | Consulta `BotIAv2_Permisos` con resolución de jerarquía |
+| `UserRepository` | [`user_repository.py`](../../src/domain/auth/user_repository.py) | CRUD de usuarios en `Usuarios` |
+| `TelegramAccountRepository` | [`telegram_account_repository.py`](../../src/domain/auth/telegram_account_repository.py) | Tabla `BotIAv2_UsuariosTelegram` |
+| `UserQueryRepository` | [`user_query_repository.py`](../../src/domain/auth/user_query_repository.py) | Queries de búsqueda y verificación |
+| `PermissionRepository` | [`permission_repository.py`](../../src/domain/auth/permission_repository.py) | Consulta `BotIAv2_Permisos` con resolución de jerarquía |
 
 ### Servicios
 
@@ -64,7 +64,7 @@ El cache LRU tiene TTL de 60 segundos. Máximo 1000 entradas.
 
 ---
 
-## Memory — `src/domain/memory/`
+## Memory — [`src/domain/memory/`](../../src/domain/memory/)
 
 Gestiona el contexto conversacional del usuario entre sesiones.
 
@@ -126,7 +126,7 @@ cargue el contexto fresco desde BD.
 
 ---
 
-## Knowledge — `src/domain/knowledge/`
+## Knowledge — [`src/domain/knowledge/`](../../src/domain/knowledge/)
 
 Gestiona la base de conocimiento empresarial.
 
@@ -174,7 +174,7 @@ Si se modifican artículos en BD, es necesario reiniciar el bot para que los car
 
 ---
 
-## Cost — `src/domain/cost/`
+## Cost — [`src/domain/cost/`](../../src/domain/cost/)
 
 Registra el costo de las llamadas al LLM para monitoreo y auditoría.
 
@@ -215,7 +215,7 @@ El `MainHandler` crea un `CostTracker` por request y lo persiste al finalizar.
 
 ---
 
-## Alerts — `src/domain/alerts/`
+## Alerts — [`src/domain/alerts/`](../../src/domain/alerts/)
 
 Gestiona el acceso a datos de alertas PRTG con fallback automático entre instancias BAZ_CDMX y EKT.
 
@@ -343,7 +343,7 @@ class AlertPromptBuilder:
 
 ---
 
-## Interaction — `src/domain/interaction/`
+## Interaction — [`src/domain/interaction/`](../../src/domain/interaction/)
 
 Centraliza toda la persistencia SQL relacionada con interacciones del bot.
 Todas las consultas a las tablas `BotIAv2_*` pasan por aquí (ARQ-39).
@@ -385,7 +385,7 @@ class InteractionRepository:
 
 ---
 
-## AgentConfig — `src/domain/agent_config/`
+## AgentConfig — [`src/domain/agent_config/`](../../src/domain/agent_config/)
 
 Gestiona la configuración dinámica de agentes LLM almacenada en BD, con cache LRU de 5 minutos.
 

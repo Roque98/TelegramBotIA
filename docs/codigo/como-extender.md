@@ -56,7 +56,7 @@ class MiTool(BaseTool):
 
 ### Paso 2 — Registrar en la factory
 
-Agregar una entrada en `_build_tool_catalog()` dentro de `src/pipeline/factory.py`.
+Agregar una entrada en `_build_tool_catalog()` dentro de [`src/pipeline/factory.py`](../../src/pipeline/factory.py).
 El valor debe ser un **lambda** que retorne la instancia (o `None` si falta alguna
 dependencia — la factory omite silenciosamente las tools que retornan `None`):
 

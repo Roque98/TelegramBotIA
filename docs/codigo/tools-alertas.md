@@ -37,7 +37,7 @@ Consulta del usuario
 
 ---
 
-## Modelos del dominio (`src/domain/alerts/alert_entity.py`)
+## Modelos del dominio ([`src/domain/alerts/alert_entity.py`](../../src/domain/alerts/alert_entity.py))
 
 ### AlertEvent
 Evento activo de PRTG (una fila de `PrtgObtenerEventosEnriquecidos`).
@@ -169,7 +169,7 @@ class AlertContext(BaseModel):
 
 ---
 
-## AlertRepository (`src/domain/alerts/alert_repository.py`)
+## AlertRepository ([`src/domain/alerts/alert_repository.py`](../../src/domain/alerts/alert_repository.py))
 
 Única capa de acceso a datos para todo el dominio de alertas.
 Nunca lanza excepciones al llamador — retorna `[]` o `None` en caso de error.
@@ -236,7 +236,7 @@ nombres distintos (`AreaAtiende` vs `AreaAtendedora`, etc.).
 
 ### 1. `get_active_alerts`
 
-**Clase**: `GetActiveAlertsTool` | **Archivo**: `get_active_alerts_tool.py`
+**Clase**: `GetActiveAlertsTool` | **Archivo**: [`get_active_alerts_tool.py`](../../src/agents/tools/get_active_alerts_tool.py)
 
 Lista alertas activas con filtros opcionales. Sin LLM interno — el agente formatea.
 
@@ -274,7 +274,7 @@ retorna `ToolResult.error_result` con mensaje descriptivo sobre la instancia.
 
 ### 2. `alert_analysis`
 
-**Clase**: `AlertAnalysisTool` | **Archivo**: `alert_analysis_tool.py`
+**Clase**: `AlertAnalysisTool` | **Archivo**: [`alert_analysis_tool.py`](../../src/agents/tools/alert_analysis_tool.py)
 
 La única tool del grupo que invoca un LLM interno (`data_llm`).
 Genera un diagnóstico estructurado en Markdown con acciones recomendadas.
@@ -335,7 +335,7 @@ execute(query, ip, equipo, solo_down)
 
 ### 3. `get_alert_detail`
 
-**Clase**: `GetAlertDetailTool` | **Archivo**: `get_alert_detail_tool.py`
+**Clase**: `GetAlertDetailTool` | **Archivo**: [`get_alert_detail_tool.py`](../../src/agents/tools/get_alert_detail_tool.py)
 
 Contexto completo de un equipo por IP. Combina alerta activa, tickets históricos,
 template, escalamiento y contactos **en paralelo**. Sin LLM.
@@ -392,7 +392,7 @@ execute(ip, sensor)
 
 ### 4. `get_historical_tickets`
 
-**Clase**: `GetHistoricalTicketsTool` | **Archivo**: `get_historical_tickets_tool.py`
+**Clase**: `GetHistoricalTicketsTool` | **Archivo**: [`get_historical_tickets_tool.py`](../../src/agents/tools/get_historical_tickets_tool.py)
 
 Tickets históricos de un equipo con resolución automática de sensor.
 
@@ -426,7 +426,7 @@ Tickets históricos de un equipo con resolución automática de sensor.
 
 ### 5. `get_escalation_matrix`
 
-**Clase**: `GetEscalationMatrixTool` | **Archivo**: `get_escalation_matrix_tool.py`
+**Clase**: `GetEscalationMatrixTool` | **Archivo**: [`get_escalation_matrix_tool.py`](../../src/agents/tools/get_escalation_matrix_tool.py)
 
 Matriz de escalamiento completa + contactos de las áreas responsables.
 Los datos de área vienen del **inventario** (fuente de verdad), no del evento.
@@ -483,7 +483,7 @@ del SP falló. El inventario siempre tiene los IDs correctos de área.
 
 ### 6. `get_inventory_by_ip`
 
-**Clase**: `GetInventoryByIpTool` | **Archivo**: `get_inventory_by_ip_tool.py`
+**Clase**: `GetInventoryByIpTool` | **Archivo**: [`get_inventory_by_ip_tool.py`](../../src/agents/tools/get_inventory_by_ip_tool.py)
 
 Ficha del equipo en el inventario. Busca en 4 tablas en orden hasta encontrar.
 
@@ -515,7 +515,7 @@ El repositorio los normaliza al modelo unificado `InventoryItem`.
 
 ### 7. `get_template_by_id`
 
-**Clase**: `GetTemplateByIdTool` | **Archivo**: `get_template_by_id_tool.py`
+**Clase**: `GetTemplateByIdTool` | **Archivo**: [`get_template_by_id_tool.py`](../../src/agents/tools/get_template_by_id_tool.py)
 
 Ficha completa de un template dado su ID numérico.
 
@@ -543,7 +543,7 @@ execute(template_id, usar_ekt)
 
 ### 8. `get_contacto_gerencia`
 
-**Clase**: `GetContactoGerenciaTool` | **Archivo**: `get_contacto_gerencia_tool.py`
+**Clase**: `GetContactoGerenciaTool` | **Archivo**: [`get_contacto_gerencia_tool.py`](../../src/agents/tools/get_contacto_gerencia_tool.py)
 
 Correo electrónico y extensiones de una gerencia dado su ID.
 Útil cuando ya se tiene el `idAreaAtendedora` de un evento o inventario.
@@ -567,7 +567,7 @@ execute(id_gerencia, usar_ekt)
 
 ---
 
-## AlertPromptBuilder (`src/domain/alerts/alert_prompt_builder.py`)
+## AlertPromptBuilder ([`src/domain/alerts/alert_prompt_builder.py`](../../src/domain/alerts/alert_prompt_builder.py))
 
 Construye el prompt enriquecido que recibe el LLM en `alert_analysis`.
 Recibe un `AlertContext` y produce `(system_prompt, user_prompt)`.
