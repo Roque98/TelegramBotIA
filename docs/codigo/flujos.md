@@ -51,6 +51,8 @@
    └── Si > 4000 chars: se divide en múltiples mensajes
 ```
 
+> **Archivos**: [telegram_bot.py](../../src/bot/telegram_bot.py) · [auth_middleware.py](../../src/bot/middleware/auth_middleware.py) · [query_handlers.py](../../src/bot/handlers/query_handlers.py) · [tools_handlers.py](../../src/bot/handlers/tools_handlers.py) · [handler.py](../../src/pipeline/handler.py) · [orchestrator.py](../../src/agents/orchestrator/orchestrator.py) · [agent.py](../../src/agents/react/agent.py)
+
 ---
 
 ## Flujo de orquestación dinámica (ARQ-35)
@@ -100,6 +102,8 @@ AgentOrchestrator.execute(query, user_context)
    └── Inyecta step del clasificador en response.data["step_traces"]
 ```
 
+> **Archivos**: [orchestrator.py](../../src/agents/orchestrator/orchestrator.py) · [intent_classifier.py](../../src/agents/orchestrator/intent_classifier.py) · [agent_builder.py](../../src/agents/factory/agent_builder.py)
+
 ### Diagrama de componentes
 
 ```
@@ -143,6 +147,8 @@ POST /api/chat
 4. Retorna JSON:
    {"success": true, "response": "...", "numero_empleado": 12345}
 ```
+
+> **Archivos**: [chat_endpoint.py](../../src/api/chat_endpoint.py) · [factory.py](../../src/pipeline/factory.py) · [handler.py](../../src/pipeline/handler.py)
 
 ---
 
