@@ -12,9 +12,9 @@ from typing import Any
 
 from src.agents.providers.openai_provider import OpenAIProvider
 from src.agents.tools.registry import ToolRegistry
-from src.pipeline.agent_factory.agent_builder import AgentBuilder
-from src.pipeline.orchestrator.orchestrator import AgentOrchestrator
-from src.pipeline.orchestrator.intent_classifier import IntentClassifier
+from src.agents.factory.agent_builder import AgentBuilder
+from src.agents.orchestrator.orchestrator import AgentOrchestrator
+from src.agents.orchestrator.intent_classifier import IntentClassifier
 from src.domain.agent_config.agent_config_repository import AgentConfigRepository
 from src.domain.agent_config.agent_config_service import AgentConfigService
 from src.config.settings import settings

@@ -1,4 +1,5 @@
-"""Re-export de compatibilidad hacia src.pipeline.agent_factory."""
-from src.pipeline.agent_factory import AgentBuilder
+"""Paquete agent_factory para construcción de agentes dinámicos desde BD."""
+
+from .agent_builder import AgentBuilder
 
 __all__ = ["AgentBuilder"]

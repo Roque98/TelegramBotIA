@@ -1,4 +1,6 @@
-"""Re-export de compatibilidad hacia src.pipeline.orchestrator."""
-from src.pipeline.orchestrator import IntentClassifier, AgentOrchestrator, AgentConfigException
+"""Orquestador de agentes — routing dinámico N-way desde BD (ARQ-35)."""
 
-__all__ = ["IntentClassifier", "AgentOrchestrator", "AgentConfigException"]
+from .intent_classifier import IntentClassifier, ClassifyResult
+from .orchestrator import AgentOrchestrator, AgentConfigException
+
+__all__ = ["IntentClassifier", "ClassifyResult", "AgentOrchestrator", "AgentConfigException"]
