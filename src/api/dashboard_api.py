@@ -57,11 +57,17 @@ def overview():
         db = _get_db()
 
         stats = db.execute_query("""
+            SELECT
+                COUNT(*)                                                       AS total_mensajes,
+                COUNT(DISTINCT telegramChatId)                                 AS usuarios_activos,
+                SUM(CASE WHEN mensajeError IS NOT NULL THEN 1 ELSE 0 END)      AS errores,
+                ISNULL(SUM(costoUSD), 0)                                       AS costo_total
+            FROM abcmasplus..BotIAv2_InteractionLogs
+            WHERE CAST(fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)
+        """)
+
+        percentiles = db.execute_query("""
             SELECT TOP 1
-                COUNT(*) OVER ()                                              AS total_mensajes,
-                COUNT(DISTINCT telegramChatId) OVER ()                        AS usuarios_activos,
-                SUM(CASE WHEN mensajeError IS NOT NULL THEN 1 ELSE 0 END) OVER () AS errores,
-                ISNULL(SUM(costoUSD) OVER (), 0)                              AS costo_total,
                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p50_ms,
                 PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p90_ms
             FROM abcmasplus..BotIAv2_InteractionLogs
@@ -99,6 +105,7 @@ def overview():
         """)
 
         s = stats[0] if stats else {}
+        pc = percentiles[0] if percentiles else {}
         p = prev[0] if prev else {}
 
         total_hoy = int(s.get("total_mensajes") or 0)
@@ -111,8 +118,8 @@ def overview():
             "usuarios_activos": int(s.get("usuarios_activos") or 0),
             "errores_hoy": int(s.get("errores") or 0),
             "costo_hoy": round(float(s.get("costo_total") or 0), 2),
-            "p50_s": round(float(s.get("p50_ms") or 0) / 1000, 1),
-            "p90_s": round(float(s.get("p90_ms") or 0) / 1000, 1),
+            "p50_s": round(float(pc.get("p50_ms") or 0) / 1000, 1),
+            "p90_s": round(float(pc.get("p90_ms") or 0) / 1000, 1),
             "agentes": [
                 {
                     "nombre": r["agenteSeleccionado"],
