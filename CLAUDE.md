@@ -48,11 +48,16 @@ Tipos:
 - `chore`: Tareas de mantenimiento
 
 Scopes del proyecto:
-- `agent`: LLMAgent y agentes
-- `bot`: Handlers de Telegram
-- `tools`: Sistema de herramientas
-- `db`: Base de datos
-- `auth`: Autenticación
+- `agent`: LLMAgent y agentes (src/agents/)
+- `bootstrap`: Composition Root y factories (src/bootstrap/)
+- `pipeline`: MainHandler y HandlerManager (src/pipeline/)
+- `bot`: Handlers de Telegram (src/bot/)
+- `tools`: Sistema de herramientas (src/agents/tools/)
+- `db`: Base de datos (src/infra/database/)
+- `infra`: Infraestructura transversal (src/infra/)
+- `domain`: Lógica de negocio (src/domain/)
+- `auth`: Autenticación (src/domain/auth/)
+- `api`: Endpoint REST (src/api/)
 - `plan`: Planes de proyecto
 - `skill`: Skills de Claude
 
@@ -95,6 +100,51 @@ Consultar estas skills para convenciones y patrones:
 - `.claude/skills/project-planner/SKILL.md` - Formato de planes con TODOs
 - `.claude/skills/python-bot-context-manager/SKILL.md` - Patrones de desarrollo del bot
 - `.claude/skills/onenote-documentation/SKILL.md` - Documentación de proyectos para OneNote
+
+---
+
+## Arquitectura de Capas
+
+El proyecto sigue una arquitectura de capas con dependencias unidireccionales.
+Las capas superiores dependen de las inferiores, nunca al revés.
+
+```
+src/bootstrap/   → Composition Root: único lugar donde se ensamblan dependencias
+src/pipeline/    → Flujo de conversación (MainHandler, HandlerManager)
+src/agents/      → Lógica de agentes (ReAct, factory, orchestrator, tools)
+src/domain/      → Lógica de negocio (auth, memory, knowledge, alerts, cost)
+src/infra/       → Infraestructura (database, observability, notifications)
+src/bot/         → Entrypoint Telegram (handlers, middleware, keyboards)
+src/api/         → Entrypoint REST (chat_endpoint)
+src/gateway/     → Normalización de canales a ConversationEvent
+```
+
+### Reglas de arquitectura
+- Nuevas dependencias entre objetos solo se crean en `src/bootstrap/`
+- Cada módulo tiene una sola responsabilidad (SRP)
+- Nunca importar `src/bot/` o `src/api/` desde capas internas
+- `src/domain/` no importa de `src/agents/` ni `src/pipeline/`
+
+---
+
+## Estándares de Código
+
+### Comentarios
+- Solo escribir comentarios cuando el **WHY** no es obvio: constraints ocultos, workarounds, invariantes no evidentes
+- Nunca explicar QUÉ hace el código — los nombres de funciones y variables ya lo dicen
+- Sin docstrings multi-párrafo — máximo una línea cuando sea necesario
+- Sin comentarios de contexto de tarea ("agregado para X", "usado por Y", "fix de issue #123")
+
+### Diseño
+- No agregar manejo de errores para escenarios imposibles — confiar en las garantías del framework
+- No agregar abstracciones prematuras — tres líneas similares no justifican un helper
+- No diseñar para requisitos hipotéticos futuros — solo lo que la tarea requiere
+- Validar solo en los bordes del sistema (input de usuario, APIs externas)
+
+### Tipado
+- Usar tipos concretos cuando se conocen — evitar `Any` salvo en firmas de factory
+- `Optional[X]` solo cuando `None` es un valor válido y distinto
+- Nunca usar `Optional[Any]` — es redundante
 
 ---
 
