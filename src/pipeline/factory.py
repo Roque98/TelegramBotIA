@@ -83,6 +83,11 @@ def _build_tool_catalog(
     db_source = db_registry if db_registry is not None else db_manager
     token = bot_token  # None → se omite; el caller decide si pasar settings.telegram_bot_token
 
+    def _monitoreo_repo() -> Optional[AlertRepository]:
+        if db_registry is not None and db_registry.is_configured("monitoreo"):
+            return AlertRepository(db_registry.get("monitoreo"))
+        return None
+
     return {
         "database_query":    lambda: DatabaseTool(db_manager=db_source, llm_provider=data_llm) if (db_source and data_llm) else None,
         "knowledge_search":  lambda: KnowledgeTool(knowledge_manager=knowledge_manager) if knowledge_manager else None,
@@ -92,32 +97,15 @@ def _build_tool_catalog(
         "save_memory":       lambda: SaveMemoryTool(memory_service=memory_service),
         "reload_permissions":    lambda: ReloadPermissionsTool(permission_service=permission_service),
         "reload_agent_config":   lambda: ReloadAgentConfigTool(agent_config_service=agent_config_service),
-        "read_attachment":   lambda: ReadAttachmentTool(bot_token=token) if token else None,
-        "get_active_alerts":      lambda: GetActiveAlertsTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_historical_tickets": lambda: GetHistoricalTicketsTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_escalation_matrix":  lambda: GetEscalationMatrixTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_alert_detail":       lambda: GetAlertDetailTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_template_by_id":     lambda: GetTemplateByIdTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_contacto_gerencia":  lambda: GetContactoGerenciaTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "get_inventory_by_ip":    lambda: GetInventoryByIpTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo")) else None,
-        "alert_analysis":         lambda: AlertAnalysisTool(
-            repo=AlertRepository(db_registry.get("monitoreo")),
-            llm=data_llm,
-        ) if (db_registry is not None and db_registry.is_configured("monitoreo") and data_llm) else None,
+        "read_attachment":        lambda: ReadAttachmentTool(bot_token=token) if token else None,
+        "get_active_alerts":      lambda: GetActiveAlertsTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_historical_tickets": lambda: GetHistoricalTicketsTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_escalation_matrix":  lambda: GetEscalationMatrixTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_alert_detail":       lambda: GetAlertDetailTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_template_by_id":     lambda: GetTemplateByIdTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_contacto_gerencia":  lambda: GetContactoGerenciaTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "get_inventory_by_ip":    lambda: GetInventoryByIpTool(repo=r) if (r := _monitoreo_repo()) else None,
+        "alert_analysis":         lambda: AlertAnalysisTool(repo=r, llm=data_llm) if ((r := _monitoreo_repo()) and data_llm) else None,
     }
 
 
