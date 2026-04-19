@@ -418,7 +418,7 @@ class HandlerManager:
         db_manager: Optional[Any] = None,
     ) -> MainHandler:
         if self._handler is None:
-            self._handler = create_main_handler(db_manager)
+            self._handler, _, __ = create_main_handler(db_manager)
             logger.info("HandlerManager initialized")
         return self._handler
 
