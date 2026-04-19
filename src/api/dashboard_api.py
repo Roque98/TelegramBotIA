@@ -60,10 +60,10 @@ def overview():
             SELECT
                 COUNT(*)                                                       AS total_mensajes,
                 COUNT(DISTINCT telegramChatId)                                 AS usuarios_activos,
-                SUM(CASE WHEN mensajeError IS NOT NULL THEN 1 ELSE 0 END)      AS errores,
-                ISNULL(SUM(costoUSD), 0)                                       AS costo_total
+                SUM(CASE WHEN exitoso = 0 THEN 1 ELSE 0 END)                  AS errores,
+                ISNULL(SUM(costUSD), 0)                                        AS costo_total
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)
         """)
 
         percentiles = db.execute_query("""
@@ -71,23 +71,23 @@ def overview():
                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p50_ms,
                 PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p90_ms
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)
         """)
 
         prev = db.execute_query("""
             SELECT COUNT(*) AS total_ayer
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaCreacion AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+            WHERE CAST(fechaEjecucion AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
         """)
 
         agent_rows = db.execute_query("""
             SELECT
                 ar.agenteSeleccionado,
-                COUNT(*)                                                           AS requests,
-                SUM(CASE WHEN il.mensajeError IS NULL THEN 1 ELSE 0 END)           AS exitosos,
-                ISNULL(AVG(il.duracionMs), 0)                                      AS avg_ms,
-                ISNULL(SUM(il.totalInputTokens + il.totalOutputTokens), 0)         AS total_tokens,
-                ISNULL(SUM(il.costoUSD), 0)                                        AS costo
+                COUNT(*)                                                          AS requests,
+                SUM(CASE WHEN il.exitoso = 1 THEN 1 ELSE 0 END)                  AS exitosos,
+                ISNULL(AVG(il.duracionMs), 0)                                     AS avg_ms,
+                ISNULL(SUM(il.totalInputTokens + il.totalOutputTokens), 0)        AS total_tokens,
+                ISNULL(SUM(il.costUSD), 0)                                        AS costo
             FROM abcmasplus..BotIAv2_AgentRouting ar
             LEFT JOIN abcmasplus..BotIAv2_InteractionLogs il
                 ON ar.correlationId = il.correlationId
@@ -97,10 +97,10 @@ def overview():
         """)
 
         hourly_rows = db.execute_query("""
-            SELECT DATEPART(HOUR, fechaCreacion) AS hora, COUNT(*) AS mensajes
+            SELECT DATEPART(HOUR, fechaEjecucion) AS hora, COUNT(*) AS mensajes
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE fechaCreacion >= DATEADD(HOUR, -12, GETDATE())
-            GROUP BY DATEPART(HOUR, fechaCreacion)
+            WHERE fechaEjecucion >= DATEADD(HOUR, -12, GETDATE())
+            GROUP BY DATEPART(HOUR, fechaEjecucion)
             ORDER BY hora
         """)
 
@@ -156,15 +156,15 @@ def logs():
                 query,
                 agenteNombre,
                 duracionMs,
-                mensajeError,
-                fechaCreacion,
+                exitoso,
+                fechaEjecucion,
                 channel,
                 stepsTomados,
                 totalInputTokens,
                 totalOutputTokens,
-                costoUSD
+                costUSD
             FROM abcmasplus..BotIAv2_InteractionLogs
-            ORDER BY fechaCreacion DESC
+            ORDER BY fechaEjecucion DESC
         """)
         return jsonify([
             {
@@ -173,13 +173,13 @@ def logs():
                 "query": (r["query"] or "")[:120],
                 "agente": r["agenteNombre"],
                 "duracion_ms": int(r["duracionMs"] or 0),
-                "error": r["mensajeError"] is not None,
-                "fecha": str(r["fechaCreacion"]),
+                "error": not bool(r["exitoso"]),
+                "fecha": str(r["fechaEjecucion"]),
                 "channel": r["channel"],
                 "steps": int(r["stepsTomados"] or 0),
                 "tokens_in": int(r["totalInputTokens"] or 0),
                 "tokens_out": int(r["totalOutputTokens"] or 0),
-                "costo": round(float(r["costoUSD"] or 0), 4),
+                "costo": round(float(r["costUSD"] or 0), 4),
             }
             for r in rows
         ])
@@ -195,8 +195,8 @@ def log_detail(correlation_id: str):
         interaction = db.execute_query(
             """
             SELECT correlationId, telegramUsername, query, respuesta, agenteNombre,
-                   duracionMs, mensajeError, fechaCreacion, channel, stepsTomados,
-                   memoryMs, reactMs, classifyMs, totalInputTokens, totalOutputTokens, costoUSD
+                   duracionMs, exitoso, mensajeError, fechaEjecucion, channel, stepsTomados,
+                   memoryMs, reactMs, classifyMs, totalInputTokens, totalOutputTokens, costUSD
             FROM abcmasplus..BotIAv2_InteractionLogs
             WHERE correlationId = :cid
             """,
@@ -227,11 +227,11 @@ def log_detail(correlation_id: str):
             "react_ms": int(i["reactMs"] or 0),
             "classify_ms": int(i["classifyMs"] or 0),
             "error": i["mensajeError"],
-            "fecha": str(i["fechaCreacion"]),
+            "fecha": str(i["fechaEjecucion"]),
             "channel": i["channel"],
             "tokens_in": int(i["totalInputTokens"] or 0),
             "tokens_out": int(i["totalOutputTokens"] or 0),
-            "costo": round(float(i["costoUSD"] or 0), 4),
+            "costo": round(float(i["costUSD"] or 0), 4),
             "steps": [
                 {
                     "num": int(s["stepNum"]),
@@ -354,7 +354,7 @@ def knowledge():
             SELECT COUNT(*) AS total
             FROM abcmasplus..BotIAv2_InteractionLogs
             WHERE agenteNombre LIKE '%conocimiento%'
-              AND CAST(fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)
+              AND CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)
         """)
 
         total_entries = sum(int(r["entry_count"] or 0) for r in cat_rows)
