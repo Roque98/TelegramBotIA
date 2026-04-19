@@ -49,6 +49,9 @@ class ReloadAgentConfigTool(BaseTool):
     def __init__(self, agent_config_service: Optional[Any] = None) -> None:
         self._agent_config_service = agent_config_service
 
+    def set_agent_config_service(self, service: Any) -> None:
+        self._agent_config_service = service
+
     async def execute(
         self,
         user_id: Optional[str] = None,

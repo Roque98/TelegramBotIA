@@ -358,7 +358,7 @@ def create_main_handler(
     # Actualizar la tool de recarga con el service ya construido
     reload_tool = tool_registry.get("reload_agent_config")
     if reload_tool is not None:
-        reload_tool._agent_config_service = agent_config_service
+        reload_tool.set_agent_config_service(agent_config_service)
         logger.info("ReloadAgentConfigTool: agent_config_service inyectado")
 
     obs_repo = InteractionRepository(db_manager=db)
