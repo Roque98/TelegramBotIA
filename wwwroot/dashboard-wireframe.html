@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>BotIA Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0e;
+  --surface:#141417;
+  --surface2:#1c1c20;
+  --surface3:#242428;
+  --border:#26262b;
+  --border2:#2e2e34;
+  --text:#e8e8ed;
+  --text2:#9898a6;
+  --text3:#5a5a68;
+  --green:#34c759;
+  --green-dim:rgba(52,199,89,.12);
+  --amber:#f5a623;
+  --amber-dim:rgba(245,166,35,.12);
+  --red:#ff3b30;
+  --red-dim:rgba(255,59,48,.12);
+  --blue:#0a84ff;
+  --blue-dim:rgba(10,132,255,.12);
+  --purple:#bf5af2;
+  --purple-dim:rgba(191,90,242,.12);
+  --sidebar-w:220px;
+  --bottom-h:60px;
+  --font:'Inter',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100%;}
+
+/* Sidebar (desktop) */
+.sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:0;overflow-y:auto;
+  z-index:10;
+}
+.sb-header{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.sb-logo{display:flex;align-items:center;gap:8px;margin-bottom:2px;}
+.sb-logo-icon{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.sb-title{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+.sb-sub{font-size:11px;color:var(--text3);font-weight:500;}
+.sb-status{display:flex;align-items:center;gap:6px;margin-top:10px;padding:6px 8px;background:var(--green-dim);border-radius:6px;border:1px solid rgba(52,199,89,.2);}
+.sb-status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.sb-status-text{font-size:11px;color:var(--green);font-weight:600;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.sb-nav{padding:10px 8px;flex:1;}
+.nav-section{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:10px 8px 4px;}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:7px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--text2);
+  transition:all .12s;position:relative;
+  border:none;background:none;width:100%;text-align:left;
+}
+.nav-btn:hover{background:var(--surface2);color:var(--text);}
+.nav-btn.active{background:var(--surface3);color:var(--text);font-weight:600;}
+.nav-btn svg{opacity:.6;flex-shrink:0;}
+.nav-btn.active svg{opacity:1;}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;min-width:18px;text-align:center;}
+
+/* Main area */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{
+  display:none;background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 16px;align-items:center;gap:12px;flex-shrink:0;
+}
+.topbar-logo{display:flex;align-items:center;gap:8px;}
+.topbar-logo-icon{width:26px;height:26px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.topbar-title{font-size:14px;font-weight:700;}
+.page{flex:1;overflow-y:auto;padding:20px;}
+
+/* Bottom nav (mobile) */
+.bottom-nav{
+  display:none;background:var(--surface);border-top:1px solid var(--border);
+  height:var(--bottom-h);flex-shrink:0;
+  justify-content:space-around;align-items:center;
+  padding:0 8px;
+  z-index:10;
+}
+.bn-btn{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 12px;border-radius:8px;cursor:pointer;
+  background:none;border:none;color:var(--text3);transition:color .12s;
+  position:relative;
+}
+.bn-btn.active{color:var(--green);}
+.bn-btn span{font-size:10px;font-weight:600;}
+.bn-badge{position:absolute;top:2px;right:6px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:0 4px;border-radius:6px;min-width:14px;text-align:center;}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .topbar{display:flex;}
+  .bottom-nav{display:flex;}
+  .page{padding:14px;}
+}
+
+/* ── SCREENS ── */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ── COMPONENTS ── */
+.page-header{margin-bottom:20px;}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:2px;}
+.page-sub{font-size:12px;color:var(--text3);font-weight:400;}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid;}
+.bg{color:var(--green);border-color:rgba(52,199,89,.3);background:var(--green-dim);}
+.ba{color:var(--amber);border-color:rgba(245,166,35,.3);background:var(--amber-dim);}
+.br{color:var(--red);border-color:rgba(255,59,48,.3);background:var(--red-dim);}
+.bb{color:var(--blue);border-color:rgba(10,132,255,.3);background:var(--blue-dim);}
+.bp{color:var(--purple);border-color:rgba(191,90,242,.3);background:var(--purple-dim);}
+.bm{color:var(--text3);border-color:var(--border2);background:var(--surface2);}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text);transition:all .12s;font-family:var(--font);}
+.btn:hover{background:var(--surface3);}
+.btn.primary{background:var(--green);color:#000;border-color:var(--green);}
+.btn.primary:hover{opacity:.9;}
+.btn.danger{color:var(--red);border-color:rgba(255,59,48,.3);}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+.card-title{font-size:13px;font-weight:600;color:var(--text);}
+.card-sub{font-size:11px;color:var(--text3);}
+
+/* KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+@media(max-width:480px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.kpi-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.03em;margin-bottom:6px;}
+.kpi-value{font-size:26px;font-weight:700;letter-spacing:-.5px;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+.kpi-sub.up{color:var(--green);}
+.kpi-sub.down{color:var(--red);}
+.kpi-sub.warn{color:var(--amber);}
+
+/* Table */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:400px;}
+th{text-align:left;padding:9px 14px;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.04em;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--surface2);}
+.td-mono{font-family:'SF Mono',monospace;font-size:11px;}
+
+/* ── CHART placeholder ── */
+.chart-wrap{padding:16px;height:130px;position:relative;overflow:hidden;}
+.bars-container{display:flex;align-items:flex-end;gap:3px;height:100%;}
+.bar-item{flex:1;border-radius:3px 3px 0 0;background:var(--green);opacity:.2;}
+.chart-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;}
+.chart-note{font-size:11px;color:var(--text3);font-weight:500;}
+
+/* ── SERVICES ── */
+.svc-list{}
+.svc-item{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border);}
+.svc-item:last-child{border-bottom:none;}
+.svc-name{font-size:13px;font-weight:500;}
+.svc-meta{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* ── GRID 2 col ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:680px){.g2{grid-template-columns:1fr;}}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+@media(max-width:680px){.g3{grid-template-columns:1fr 1fr;}}
+@media(max-width:400px){.g3{grid-template-columns:1fr;}}
+
+/* ── LOGS ── */
+.log-layout{display:grid;grid-template-columns:340px 1fr;gap:12px;height:calc(100vh - 140px);}
+@media(max-width:768px){.log-layout{grid-template-columns:1fr;height:auto;}}
+.log-list-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.log-search{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.log-search svg{color:var(--text3);flex-shrink:0;}
+.log-search input{flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text);}
+.log-items{overflow-y:auto;flex:1;}
+.log-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.log-item:last-child{border-bottom:none;}
+.log-item:hover{background:var(--surface2);}
+.log-item.active{background:var(--surface3);border-left:3px solid var(--green);}
+.log-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.log-item-user{font-size:13px;font-weight:600;}
+.log-item-time{font-size:11px;color:var(--text3);}
+.log-item-bottom{display:flex;align-items:center;gap:6px;}
+.log-item-query{font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.log-detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.log-detail-header{padding:16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.log-detail-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.log-detail-meta-item{display:flex;gap:4px;align-items:center;}
+.log-meta-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.04em;}
+.log-meta-value{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);}
+.log-detail-body{overflow-y:auto;flex:1;padding:16px;}
+
+/* Span waterfall */
+.waterfall-title{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px;letter-spacing:.04em;text-transform:uppercase;}
+.waterfall{display:flex;flex-direction:column;gap:6px;}
+.wf-row{display:flex;align-items:center;gap:10px;}
+.wf-label{font-size:12px;font-weight:500;color:var(--text2);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:480px){.wf-label{width:100px;font-size:11px;}}
+.wf-track{flex:1;height:22px;background:var(--surface2);border-radius:4px;position:relative;overflow:hidden;}
+.wf-bar{height:100%;border-radius:4px;position:absolute;top:0;display:flex;align-items:center;padding:0 6px;transition:width .3s ease;}
+.wf-bar-label{font-size:10px;font-weight:600;color:rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;}
+.wf-ms{font-size:11px;font-weight:600;color:var(--text3);width:54px;text-align:right;flex-shrink:0;}
+
+.wf-section{margin-bottom:20px;}
+.wf-row-header{display:flex;gap:10px;padding-bottom:4px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+.wf-row-header .wf-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;}
+.wf-row-header .wf-ms{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;}
+.wf-total-bar{height:4px;background:var(--surface3);border-radius:2px;margin:8px 0 16px;}
+.wf-total-fill{height:100%;border-radius:2px;background:var(--green);}
+
+.span-attrs{background:var(--surface2);border-radius:8px;padding:12px;margin-top:8px;}
+.attr-row{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.attr-row:last-child{border-bottom:none;}
+.attr-key{color:var(--text3);font-weight:500;width:140px;flex-shrink:0;}
+.attr-val{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);word-break:break-all;}
+
+/* ── AGENT CARDS ── */
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px;}
+.agent-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:border-color .15s;}
+.agent-card:hover{border-color:var(--border2);}
+.agent-card.active{border-color:var(--green);}
+.agent-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+.agent-name{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+.agent-desc{font-size:12px;color:var(--text3);margin-bottom:12px;line-height:1.4;}
+.agent-tools{display:flex;flex-wrap:wrap;gap:4px;}
+.tool-chip{font-size:10px;font-weight:500;padding:2px 7px;border-radius:5px;background:var(--surface2);border:1px solid var(--border2);color:var(--text3);}
+.agent-footer{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.agent-stat{font-size:11px;color:var(--text3);font-weight:500;}
+
+/* ── PERM MATRIX ── */
+.perm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;}
+.pd-al{background:var(--green);}
+.pd-de{background:var(--red);}
+.pd-pa{background:var(--amber);}
+.pd-no{background:var(--border2);}
+td.center{text-align:center;padding:10px 8px;}
+
+/* ── MISC ── */
+.section-gap{margin-bottom:16px;}
+.flex-row{display:flex;align-items:center;gap:8px;}
+.spacer{flex:1;}
+.mono{font-family:'SF Mono',monospace;font-size:11px;}
+.text-green{color:var(--green);}
+.text-amber{color:var(--amber);}
+.text-red{color:var(--red);}
+.empty-state{padding:40px;text-align:center;color:var(--text3);}
+.empty-state p{font-size:13px;}
+.divider{height:1px;background:var(--border);margin:16px 0;}
+.prog{height:4px;background:var(--surface3);border-radius:2px;margin-top:6px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;background:var(--green);}
+
+/* Pill tabs */
+.pill-tabs{display:flex;gap:4px;background:var(--surface2);padding:3px;border-radius:8px;margin-bottom:16px;width:fit-content;}
+.pill-tab{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .12s;}
+.pill-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+
+/* trace query box */
+.query-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:16px;}
+.query-box-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}
+.query-box-text{font-size:13px;color:var(--text);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── SIDEBAR (desktop) ── -->
+  <aside class="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <div class="sb-logo-icon">🤖</div>
+        <div>
+          <div class="sb-title">BotIA Admin</div>
+          <div class="sb-sub">orquestador v2</div>
+        </div>
+      </div>
+      <div class="sb-status">
+        <div class="sb-status-dot"></div>
+        <span class="sb-status-text">Sistema operativo</span>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-section">Monitor</div>
+      <button class="nav-btn active" onclick="go('overview',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Overview
+      </button>
+      <button class="nav-btn" onclick="go('logs',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Logs &amp; Trazas
+        <span class="nav-badge">2</span>
+      </button>
+      <button class="nav-btn" onclick="go('alerts',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Alertas
+        <span class="nav-badge">3</span>
+      </button>
+      <div class="nav-section">Sistema</div>
+      <button class="nav-btn" onclick="go('agents',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        Agentes IA
+      </button>
+      <button class="nav-btn" onclick="go('knowledge',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Knowledge
+      </button>
+      <div class="nav-section">Acceso</div>
+      <button class="nav-btn" onclick="go('users',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Usuarios
+      </button>
+      <button class="nav-btn" onclick="go('perms',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Permisos
+      </button>
+    </nav>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-logo">
+        <div class="topbar-logo-icon">🤖</div>
+        <div class="topbar-title">BotIA Admin</div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="sb-status" style="padding:4px 10px">
+        <div class="sb-status-dot"></div>
+        <span class="sb-status-text">Operativo</span>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <!-- ══ OVERVIEW ══ -->
+      <div id="screen-overview" class="screen active">
+        <div class="page-header">
+          <div class="flex-row">
+            <div>
+              <div class="page-title">Overview</div>
+              <div class="page-sub">Actualizado hace 18s · auto-refresh cada 30s</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn primary" style="display:none">↺</button>
+          </div>
+        </div>
+
+        <div class="kpi-grid section-gap">
+          <div class="kpi">
+            <div class="kpi-label">MENSAJES HOY</div>
+            <div class="kpi-value" id="kpi-mensajes">—</div>
+            <div class="kpi-sub" id="kpi-mensajes-sub">cargando...</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">USUARIOS ACTIVOS</div>
+            <div class="kpi-value" id="kpi-usuarios">—</div>
+            <div class="kpi-sub" id="kpi-usuarios-sub">hoy</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">TIEMPO RESP P50</div>
+            <div class="kpi-value" id="kpi-p50">—</div>
+            <div class="kpi-sub warn" id="kpi-p90-sub">P90: —</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">ERRORES HOY</div>
+            <div class="kpi-value" id="kpi-errores">—</div>
+            <div class="kpi-sub" id="kpi-errores-sub">hoy</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">COSTO TOKENS</div>
+            <div class="kpi-value" id="kpi-costo">—</div>
+            <div class="kpi-sub" id="kpi-costo-sub">hoy</div>
+            <div class="prog"><div class="prog-fill" id="kpi-costo-bar" style="width:0%"></div></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">UPTIME</div>
+            <div class="kpi-value text-green">99.9%</div>
+            <div class="kpi-sub up" id="kpi-uptime-sub">sistema operativo</div>
+          </div>
+        </div>
+
+        <div class="g2 section-gap">
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Actividad por hora</div><div class="card-sub">Mensajes — últimas 12h</div></div>
+            </div>
+            <div class="chart-wrap">
+              <div class="bars-container" id="activity-bars">
+                <div class="bar-item" style="height:20%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Estado de servicios</div></div>
+            <div class="svc-list" id="svc-list">
+              <div class="svc-item"><div><div class="svc-name">REST API</div><div class="svc-meta">Flask · /api/chat</div></div><span class="badge bg">Online</span></div>
+              <div class="svc-item"><div><div class="svc-name">SQL Server</div><div class="svc-meta">abcmasplus</div></div><span class="badge" id="svc-db-badge">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+          <div class="card-header"><div class="card-title">Uso por agente — hoy</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>AGENTE</th><th>REQUESTS</th><th>ÉXITO</th><th>AVG</th><th>TOKENS</th><th>COSTO</th></tr></thead>
+              <tbody id="agent-table-body">
+                <tr><td colspan="6" class="empty-state" style="padding:20px;text-align:center;color:var(--text3)">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ LOGS & TRAZAS ══ -->
+      <div id="screen-logs" class="screen">
+        <div class="page-header">
+          <div class="page-title">Logs &amp; Trazas</div>
+          <div class="page-sub">TraceContext · spans · tiempos por operación</div>
+        </div>
+
+        <!-- Mobile: pill tabs to switch list/detail -->
+        <div class="pill-tabs" id="log-tabs" style="display:none">
+          <div class="pill-tab active" onclick="switchLogTab('list',this)">Lista</div>
+          <div class="pill-tab" onclick="switchLogTab('detail',this)">Detalle</div>
+        </div>
+
+        <div class="log-layout">
+          <!-- LIST -->
+          <div class="log-list-panel" id="log-list-panel">
+            <div class="log-search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input placeholder="Buscar usuario, trace_id..." readonly>
+            </div>
+            <div class="log-items" id="log-items">
+              <div class="log-item active" onclick="selectLog(this,null)">
+                <div class="log-item-top"><span class="log-item-user">@jramirez</span><span class="log-item-time">hace 2m</span></div>
+                <div class="log-item-bottom"><span class="badge bb" style="font-size:10px">datos</span><span class="badge bg" style="font-size:10px">OK</span><span class="log-item-query">¿Cuántas ventas hoy?</span><span class="mono" style="color:var(--text3)">2.1s</span></div>
+              </div>
+              <div class="log-item" onclick="selectLog(this)">
+                <div class="log-item-top"><span class="log-item-user">@mlopez</span><span class="log-item-time">hace 5m</span></div>
+                <div class="log-item-bottom"><span class="badge bm" style="font-size:10px">casual</span><span class="badge bg" style="font-size:10px">OK</span><span class="log-item-query">Guarda mi preferencia</span><span class="mono" style="color:var(--text3)">0.9s</span></div>
+              </div>
+              <div class="log-item" onclick="selectLog(this)">
+                <div class="log-item-top"><span class="log-item-user">@cgarcia</span><span class="log-item-time">hace 8m</span></div>
+                <div class="log-item-bottom"><span class="badge bm" style="font-size:10px">conocimiento</span><span class="badge bg" style="font-size:10px">OK</span><span class="log-item-query">Política de vacaciones</span><span class="mono" style="color:var(--text3)">1.4s</span></div>
+              </div>
+              <div class="log-item" onclick="selectLog(this)">
+                <div class="log-item-top"><span class="log-item-user">@aherrera</span><span class="log-item-time">hace 12m</span></div>
+                <div class="log-item-bottom"><span class="badge ba" style="font-size:10px">generalista</span><span class="badge br" style="font-size:10px">ERROR</span><span class="log-item-query">Reporte para gerencia</span><span class="mono" style="color:var(--red)">8.4s</span></div>
+              </div>
+              <div class="log-item" onclick="selectLog(this)">
+                <div class="log-item-top"><span class="log-item-user">@fmendez</span><span class="log-item-time">hace 15m</span></div>
+                <div class="log-item-bottom"><span class="badge bb" style="font-size:10px">datos</span><span class="badge bg" style="font-size:10px">OK</span><span class="log-item-query">Inventario por IP</span><span class="mono" style="color:var(--text3)">1.8s</span></div>
+              </div>
+              <div class="log-item" onclick="selectLog(this)">
+                <div class="log-item-top"><span class="log-item-user">@lsoto</span><span class="log-item-time">hace 22m</span></div>
+                <div class="log-item-bottom"><span class="badge bm" style="font-size:10px">conocimiento</span><span class="badge bg" style="font-size:10px">OK</span><span class="log-item-query">Contacto soporte TI</span><span class="mono" style="color:var(--text3)">1.1s</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DETAIL -->
+          <div class="log-detail-panel" id="log-detail-panel">
+            <div class="log-detail-header">
+              <div class="flex-row">
+                <div>
+                  <div style="font-size:15px;font-weight:700">@jramirez — datos</div>
+                </div>
+                <div class="spacer"></div>
+                <span class="badge bg">SUCCESS</span>
+              </div>
+              <div class="log-detail-meta">
+                <div class="log-detail-meta-item"><span class="log-meta-label">trace_id</span><span class="log-meta-value">a3f8-9c12</span></div>
+                <div style="color:var(--border2)">·</div>
+                <div class="log-detail-meta-item"><span class="log-meta-label">correlation</span><span class="log-meta-value">b7e2-1a45</span></div>
+                <div style="color:var(--border2)">·</div>
+                <div class="log-detail-meta-item"><span class="log-meta-label">channel</span><span class="log-meta-value">telegram</span></div>
+                <div style="color:var(--border2)">·</div>
+                <div class="log-detail-meta-item"><span class="log-meta-label">total</span><span class="log-meta-value" style="color:var(--green);font-weight:700">2,134ms</span></div>
+                <div style="color:var(--border2)">·</div>
+                <div class="log-detail-meta-item"><span class="log-meta-label">steps</span><span class="log-meta-value">3</span></div>
+              </div>
+            </div>
+
+            <div class="log-detail-body">
+              <!-- Query -->
+              <div class="query-box">
+                <div class="query-box-label">Query del usuario</div>
+                <div class="query-box-text">"¿Cuántas ventas se registraron hoy?"</div>
+              </div>
+
+              <!-- Waterfall -->
+              <div class="waterfall-title">Waterfall de Spans</div>
+              <div class="waterfall" id="waterfall-main">
+
+                <!-- Total bar -->
+                <div class="wf-row-header">
+                  <div class="wf-label">SPAN</div>
+                  <div style="flex:1;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;">DURACIÓN RELATIVA</div>
+                  <div class="wf-ms">MS</div>
+                </div>
+
+                <!-- Span: intent_classification -->
+                <div class="wf-row">
+                  <div class="wf-label" title="intent_classification">intent_classify</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:0%;width:6%;background:#0a84ff">
+                      <span class="wf-bar-label"></span>
+                    </div>
+                  </div>
+                  <div class="wf-ms">128ms</div>
+                </div>
+
+                <!-- Span: memory_load -->
+                <div class="wf-row">
+                  <div class="wf-label" title="memory_load">memory_load</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:6%;width:4%;background:#bf5af2">
+                      <span class="wf-bar-label"></span>
+                    </div>
+                  </div>
+                  <div class="wf-ms">84ms</div>
+                </div>
+
+                <!-- Span: llm_call (iter 1) -->
+                <div class="wf-row">
+                  <div class="wf-label" title="llm_generate [iter 1]">llm_generate ①</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:10%;width:28%;background:#f5a623">
+                      <span class="wf-bar-label">THINK</span>
+                    </div>
+                  </div>
+                  <div class="wf-ms">596ms</div>
+                </div>
+
+                <!-- Span: tool database_query -->
+                <div class="wf-row">
+                  <div class="wf-label" title="tool:database_query">tool:db_query</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:38%;width:15%;background:#34c759">
+                      <span class="wf-bar-label">SQL</span>
+                    </div>
+                  </div>
+                  <div class="wf-ms">320ms</div>
+                </div>
+
+                <!-- Span: llm_call (iter 2 - finish) -->
+                <div class="wf-row">
+                  <div class="wf-label" title="llm_generate [iter 2]">llm_generate ②</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:53%;width:38%;background:#f5a623">
+                      <span class="wf-bar-label">FINISH</span>
+                    </div>
+                  </div>
+                  <div class="wf-ms">810ms</div>
+                </div>
+
+                <!-- Span: memory_save (async) -->
+                <div class="wf-row">
+                  <div class="wf-label" title="memory_save [async]">memory_save</div>
+                  <div class="wf-track">
+                    <div class="wf-bar" style="left:92%;width:6%;background:#bf5af2;opacity:.5">
+                      <span class="wf-bar-label"></span>
+                    </div>
+                  </div>
+                  <div class="wf-ms" style="color:var(--text3)">~96ms</div>
+                </div>
+
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- Span attributes -->
+              <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase;">Atributos por Span</div>
+
+              <!-- tool:database_query detail -->
+              <div style="margin-bottom:14px">
+                <div class="flex-row" style="margin-bottom:6px">
+                  <span style="font-size:12px;font-weight:700">tool:database_query</span>
+                  <span class="badge bg" style="font-size:10px">320ms</span>
+                  <span class="mono" style="color:var(--text3);font-size:10px">span: c4a1-f239</span>
+                </div>
+                <div class="span-attrs">
+                  <div class="attr-row"><div class="attr-key">tool.name</div><div class="attr-val">database_query</div></div>
+                  <div class="attr-row"><div class="attr-key">sql.query</div><div class="attr-val">SELECT COUNT(*) FROM Ventas WHERE CAST(fecha AS DATE)=CAST(GETDATE() AS DATE)</div></div>
+                  <div class="attr-row"><div class="attr-key">db.rows_returned</div><div class="attr-val">1</div></div>
+                  <div class="attr-row"><div class="attr-key">db.execution_ms</div><div class="attr-val">187ms</div></div>
+                  <div class="attr-row"><div class="attr-key">result.preview</div><div class="attr-val">{"count": 147}</div></div>
+                  <div class="attr-row"><div class="attr-key">error</div><div class="attr-val" style="color:var(--green)">false</div></div>
+                </div>
+              </div>
+
+              <!-- llm_generate detail -->
+              <div>
+                <div class="flex-row" style="margin-bottom:6px">
+                  <span style="font-size:12px;font-weight:700">llm_generate ① — THINK</span>
+                  <span class="badge ba" style="font-size:10px">596ms</span>
+                </div>
+                <div class="span-attrs">
+                  <div class="attr-row"><div class="attr-key">llm.model</div><div class="attr-val">gpt-5.4-mini</div></div>
+                  <div class="attr-row"><div class="attr-key">llm.tokens_prompt</div><div class="attr-val">1,204</div></div>
+                  <div class="attr-row"><div class="attr-key">llm.tokens_completion</div><div class="attr-val">87</div></div>
+                  <div class="attr-row"><div class="attr-key">react.action</div><div class="attr-val">database_query</div></div>
+                  <div class="attr-row"><div class="attr-key">react.iteration</div><div class="attr-val">1</div></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ALERTAS ══ -->
+      <div id="screen-alerts" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div><div class="page-title">Alertas</div><div class="page-sub">FEAT-36/37 · red e infraestructura</div></div>
+            <div class="spacer"></div>
+            <button class="btn danger">Escalar seleccionadas</button>
+          </div>
+        </div>
+        <div class="g3 section-gap">
+          <div class="kpi"><div class="kpi-label">CRÍTICAS</div><div class="kpi-value text-red" id="alert-criticos">—</div></div>
+          <div class="kpi"><div class="kpi-label">ADVERTENCIAS</div><div class="kpi-value text-amber" id="alert-warnings">—</div></div>
+          <div class="kpi"><div class="kpi-label">TOTAL ACTIVAS</div><div class="kpi-value" id="alert-total">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Alertas activas</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>SEV</th><th>EQUIPO / SENSOR</th><th>IP</th><th>STATUS</th><th>ORIGEN</th></tr></thead>
+              <tbody id="alert-table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ AGENTES ══ -->
+      <div id="screen-agents" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div><div class="page-title">Agentes IA</div><div class="page-sub">BotIAv2_AgenteDef · ARQ-35 · orquestador dinámico</div></div>
+            <div class="spacer"></div>
+            <button class="btn primary">+ Nuevo</button>
+          </div>
+        </div>
+        <div class="agent-grid section-gap" id="agent-grid">
+          <div class="agent-card active">
+            <div class="agent-card-header"><div class="agent-name">datos</div><span class="badge bg">activo</span></div>
+            <div class="agent-desc">Consultas SQL, reportes, estadísticas y análisis de alertas de infraestructura.</div>
+            <div class="agent-tools"><span class="tool-chip">database_query</span><span class="tool-chip">calculate</span><span class="tool-chip">datetime</span><span class="tool-chip">get_active_alerts</span><span class="tool-chip">alert_analysis</span></div>
+            <div class="agent-footer"><span class="agent-stat">v12</span><span class="agent-stat">·</span><span class="agent-stat">temp 0.1</span><span class="agent-stat">·</span><span class="agent-stat">98 req hoy</span></div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-card-header"><div class="agent-name">conocimiento</div><span class="badge bg">activo</span></div>
+            <div class="agent-desc">Búsqueda en knowledge base. Políticas, FAQs, contactos, RRHH, sistemas.</div>
+            <div class="agent-tools"><span class="tool-chip">knowledge_search</span><span class="tool-chip">calculate</span><span class="tool-chip">datetime</span></div>
+            <div class="agent-footer"><span class="agent-stat">v8</span><span class="agent-stat">·</span><span class="agent-stat">temp 0.2</span><span class="agent-stat">·</span><span class="agent-stat">67 req hoy</span></div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-card-header"><div class="agent-name">casual</div><span class="badge bg">activo</span></div>
+            <div class="agent-desc">Conversación general, memoria de usuario y gestión de preferencias.</div>
+            <div class="agent-tools"><span class="tool-chip">save_preference</span><span class="tool-chip">save_memory</span><span class="tool-chip">reload_permissions</span></div>
+            <div class="agent-footer"><span class="agent-stat">v5</span><span class="agent-stat">·</span><span class="agent-stat">temp 0.7</span><span class="agent-stat">·</span><span class="agent-stat">54 req hoy</span></div>
+          </div>
+          <div class="agent-card">
+            <div class="agent-card-header"><div class="agent-name">generalista</div><span class="badge ba">fallback</span></div>
+            <div class="agent-desc">Acceso a todas las tools según permisos del usuario. Se activa cuando ningún agente especialista aplica.</div>
+            <div class="agent-tools"><span class="tool-chip">esGeneralista = true</span></div>
+            <div class="agent-footer"><span class="agent-stat">v3</span><span class="agent-stat">·</span><span class="agent-stat">temp 0.3</span><span class="agent-stat">·</span><span class="agent-stat">28 req hoy</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Historial de versiones — datos</div><div class="card-sub">BotIAv2_AgentePromptHistorial</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>VER</th><th>RAZÓN</th><th>POR</th><th>FECHA</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">v11</td><td>Ajuste tono respuestas alertas</td><td>admin</td><td class="mono" style="color:var(--text3)">2026-04-18 10:22</td></tr>
+                <tr><td class="mono">v10</td><td>Agregar tools de alertas FEAT-37</td><td>admin</td><td class="mono" style="color:var(--text3)">2026-04-12 14:08</td></tr>
+                <tr><td class="mono">v9</td><td>Reducir alucinaciones SQL</td><td>admin</td><td class="mono" style="color:var(--text3)">2026-04-05 09:41</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ KNOWLEDGE ══ -->
+      <div id="screen-knowledge" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div><div class="page-title">Knowledge Base</div><div class="page-sub">knowledge_categories / knowledge_entries</div></div>
+            <div class="spacer"></div>
+            <button class="btn primary">+ Entrada</button>
+          </div>
+        </div>
+        <div class="g3 section-gap">
+          <div class="kpi"><div class="kpi-label">CATEGORÍAS</div><div class="kpi-value" id="kb-categorias">—</div></div>
+          <div class="kpi"><div class="kpi-label">ENTRADAS ACTIVAS</div><div class="kpi-value" id="kb-entradas">—</div></div>
+          <div class="kpi"><div class="kpi-label">BÚSQUEDAS HOY</div><div class="kpi-value" id="kb-busquedas">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Categorías</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>CATEGORÍA</th><th>ENTRADAS</th></tr></thead>
+              <tbody id="kb-table-body">
+                <tr><td colspan="2" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ USUARIOS ══ -->
+      <div id="screen-users" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div><div class="page-title">Usuarios</div><div class="page-sub">Usuarios · UsuariosTelegram · verificación</div></div>
+            <div class="spacer"></div>
+            <button class="btn primary">+ Registrar</button>
+          </div>
+        </div>
+        <div class="g3 section-gap">
+          <div class="kpi"><div class="kpi-label">REGISTRADOS</div><div class="kpi-value" id="usr-total">—</div></div>
+          <div class="kpi"><div class="kpi-label">VERIFICADOS</div><div class="kpi-value" id="usr-verificados">—</div></div>
+          <div class="kpi"><div class="kpi-label">PENDIENTES</div><div class="kpi-value text-amber" id="usr-pendientes">—</div></div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>EMPLEADO</th><th>NOMBRE</th><th>TELEGRAM</th><th>ROL</th><th>ÚLTIMO ACCESO</th><th>ESTADO</th></tr></thead>
+              <tbody id="usr-table-body">
+                <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PERMISOS ══ -->
+      <div id="screen-perms" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div><div class="page-title">Permisos</div><div class="page-sub">BotPermisos · SEC-01 · jerarquía de resolución</div></div>
+            <div class="spacer"></div>
+            <button class="btn primary">+ Regla</button>
+          </div>
+        </div>
+        <div class="card section-gap">
+          <div class="card-header"><div class="card-title">Matriz de permisos por rol</div><div class="card-sub"><span class="perm-dot pd-al" style="vertical-align:middle"></span> permitido &nbsp; <span class="perm-dot pd-de" style="vertical-align:middle"></span> denegado &nbsp; <span class="perm-dot pd-pa" style="vertical-align:middle"></span> parcial</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>RECURSO</th><th style="text-align:center">Admin</th><th style="text-align:center">Gerente TI</th><th style="text-align:center">Analista</th><th style="text-align:center">RRHH</th><th style="text-align:center">Operador</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">tool:database_query</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-pa"></span></td><td class="center"><span class="perm-dot pd-de"></span></td><td class="center"><span class="perm-dot pd-de"></span></td></tr>
+                <tr><td class="mono">tool:knowledge_search</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td></tr>
+                <tr><td class="mono">tool:get_active_alerts</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-de"></span></td><td class="center"><span class="perm-dot pd-de"></span></td><td class="center"><span class="perm-dot pd-de"></span></td></tr>
+                <tr><td class="mono">tool:alert_analysis</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-de"></span></td><td class="center"><span class="perm-dot pd-de"></span></td><td class="center"><span class="perm-dot pd-de"></span></td></tr>
+                <tr><td class="mono">cmd:/ia</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-pa"></span></td></tr>
+                <tr><td class="mono">tool:reload_permissions</td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td><td class="center"><span class="perm-dot pd-al"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page -->
+
+    <!-- ── BOTTOM NAV (mobile) ── -->
+    <nav class="bottom-nav">
+      <button class="bn-btn active" onclick="go('overview',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Overview</span>
+      </button>
+      <button class="bn-btn" onclick="go('logs',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        <span>Logs</span>
+        <span class="bn-badge">2</span>
+      </button>
+      <button class="bn-btn" onclick="go('agents',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2"/></svg>
+        <span>Agentes</span>
+      </button>
+      <button class="bn-btn" onclick="go('users',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Usuarios</span>
+      </button>
+      <button class="bn-btn" onclick="go('alerts',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+        <span>Alertas</span>
+        <span class="bn-badge">3</span>
+      </button>
+    </nav>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+const SCREENS = ['overview','logs','alerts','agents','knowledge','users','perms'];
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+
+function go(id, el, mode) {
+  SCREENS.forEach(s => {
+    const sc = document.getElementById('screen-' + s);
+    if (sc) sc.classList.remove('active');
+  });
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.bn-btn').forEach(b => b.classList.remove('active'));
+  if (mode === 'bn') {
+    el.classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
+    });
+  } else {
+    el.classList.add('active');
+    document.querySelectorAll('.bn-btn').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
+    });
+  }
+  const logTabs = document.getElementById('log-tabs');
+  if (logTabs) logTabs.style.display = (id === 'logs') ? 'flex' : 'none';
+
+  // Lazy load section data
+  if (id === 'logs') loadLogs();
+  if (id === 'agents') loadAgents();
+  if (id === 'knowledge') loadKnowledge();
+  if (id === 'users') loadUsers();
+  if (id === 'alerts') loadAlerts();
+}
+
+let _currentLogId = null;
+
+function selectLog(el, correlationId) {
+  document.querySelectorAll('.log-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  if (window.innerWidth <= 768) switchLogTab('detail', document.querySelectorAll('.pill-tab')[1]);
+  if (correlationId) loadLogDetail(correlationId);
+}
+
+function switchLogTab(tab, el) {
+  document.querySelectorAll('.pill-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const list = document.getElementById('log-list-panel');
+  const detail = document.getElementById('log-detail-panel');
+  if (tab === 'list') { list.style.display = 'flex'; detail.style.display = 'none'; }
+  else { list.style.display = 'none'; detail.style.display = 'flex'; }
+}
+
+function initMobile() {
+  const isMobile = window.innerWidth <= 768;
+  const logTabs = document.getElementById('log-tabs');
+  const logList = document.getElementById('log-list-panel');
+  const logDetail = document.getElementById('log-detail-panel');
+  if (isMobile) {
+    if (logTabs) logTabs.style.display = document.getElementById('screen-logs').classList.contains('active') ? 'flex' : 'none';
+    if (logDetail) logDetail.style.display = 'none';
+    if (logList) logList.style.display = 'flex';
+  } else {
+    if (logTabs) logTabs.style.display = 'none';
+    if (logList) logList.style.display = 'flex';
+    if (logDetail) logDetail.style.display = 'flex';
+  }
+}
+window.addEventListener('resize', initMobile);
+initMobile();
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+function setClass(id, cls) { const el = document.getElementById(id); if (el) { el.className = el.className.replace(/\b(up|down|warn)\b/g,'').trim(); if (cls) el.classList.add(cls); } }
+
+function relativeTime(dateStr) {
+  if (!dateStr || dateStr === 'None') return '—';
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (diff < 60) return 'hace ' + diff + 's';
+  if (diff < 3600) return 'hace ' + Math.floor(diff/60) + 'm';
+  if (diff < 86400) return 'hace ' + Math.floor(diff/3600) + 'h';
+  return 'hace ' + Math.floor(diff/86400) + 'd';
+}
+
+function badgeForAgent(nombre) {
+  const map = { 'datos': 'bb', 'conocimiento': 'bm', 'casual': 'bm', 'generalista': 'ba' };
+  return map[nombre] || 'bm';
+}
+
+// ── Overview ─────────────────────────────────────────────────────────────────
+
+async function loadOverview() {
+  try {
+    const r = await fetch('/api/admin/overview');
+    if (!r.ok) return;
+    const d = await r.json();
+
+    setText('kpi-mensajes', d.mensajes_hoy);
+    const pct = d.mensajes_pct_change;
+    const pctEl = document.getElementById('kpi-mensajes-sub');
+    if (pctEl) {
+      pctEl.textContent = (pct >= 0 ? '↑ ' : '↓ ') + Math.abs(pct) + '% vs ayer';
+      pctEl.className = 'kpi-sub ' + (pct >= 0 ? 'up' : 'down');
+    }
+
+    setText('kpi-usuarios', d.usuarios_activos);
+    setText('kpi-p50', d.p50_s + 's');
+    setText('kpi-p90-sub', 'P90: ' + d.p90_s + 's');
+    setText('kpi-errores', d.errores_hoy);
+    setText('kpi-costo', '$' + d.costo_hoy.toFixed(2));
+
+    const svcBadge = document.getElementById('svc-db-badge');
+    if (svcBadge) {
+      svcBadge.className = 'badge ' + (d.mensajes_hoy >= 0 ? 'bg' : 'br');
+      svcBadge.textContent = d.mensajes_hoy >= 0 ? 'Online' : 'Error';
+    }
+
+    // Agent usage table
+    const tbody = document.getElementById('agent-table-body');
+    if (tbody && d.agentes) {
+      tbody.innerHTML = d.agentes.length === 0
+        ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin datos hoy</td></tr>'
+        : d.agentes.map(a => `
+          <tr>
+            <td><span class="badge ${badgeForAgent(a.nombre)}">${a.nombre}</span></td>
+            <td>${a.requests}</td>
+            <td class="${a.exito_pct >= 95 ? 'text-green' : a.exito_pct >= 80 ? 'text-amber' : 'text-red'}">${a.exito_pct}%</td>
+            <td class="mono">${a.avg_ms}ms</td>
+            <td class="mono">${a.total_tokens >= 1000 ? Math.round(a.total_tokens/1000) + 'k' : a.total_tokens}</td>
+            <td>$${a.costo.toFixed(2)}</td>
+          </tr>`).join('');
+    }
+
+    // Activity bars
+    const bars = document.getElementById('activity-bars');
+    if (bars && d.actividad_por_hora && d.actividad_por_hora.length > 0) {
+      const max = Math.max(...d.actividad_por_hora.map(h => h.mensajes), 1);
+      bars.innerHTML = d.actividad_por_hora.map(h =>
+        `<div class="bar-item" style="height:${Math.round(h.mensajes/max*100)}%" title="${h.hora}h: ${h.mensajes} msgs"></div>`
+      ).join('');
+    }
+
+    // Update sub page title
+    const sub = document.querySelector('#screen-overview .page-sub');
+    if (sub) sub.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-MX') + ' · auto-refresh cada 30s';
+
+  } catch(e) { console.warn('Overview load error', e); }
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────────────
+
+async function loadLogs() {
+  const container = document.getElementById('log-items');
+  if (!container) return;
+  try {
+    const r = await fetch('/api/admin/logs');
+    if (!r.ok) return;
+    const logs = await r.json();
+    if (!Array.isArray(logs) || logs.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Sin interacciones recientes</p></div>';
+      return;
+    }
+    container.innerHTML = logs.map((l, i) => `
+      <div class="log-item ${i===0?'active':''}" onclick="selectLog(this,'${l.correlation_id}')">
+        <div class="log-item-top">
+          <span class="log-item-user">@${l.username}</span>
+          <span class="log-item-time">${relativeTime(l.fecha)}</span>
+        </div>
+        <div class="log-item-bottom">
+          <span class="badge ${badgeForAgent(l.agente)}" style="font-size:10px">${l.agente || '?'}</span>
+          <span class="badge ${l.error ? 'br' : 'bg'}" style="font-size:10px">${l.error ? 'ERROR' : 'OK'}</span>
+          <span class="log-item-query">${l.query}</span>
+          <span class="mono" style="color:${l.error ? 'var(--red)' : 'var(--text3)'}">${(l.duracion_ms/1000).toFixed(1)}s</span>
+        </div>
+      </div>`).join('');
+
+    if (logs[0]) loadLogDetail(logs[0].correlation_id);
+  } catch(e) { console.warn('Logs load error', e); }
+}
+
+async function loadLogDetail(correlationId) {
+  _currentLogId = correlationId;
+  try {
+    const r = await fetch('/api/admin/logs/' + correlationId);
+    if (!r.ok) return;
+    const d = await r.json();
+
+    const header = document.querySelector('.log-detail-header');
+    if (header) {
+      const statusClass = d.error ? 'br' : 'bg';
+      const statusText = d.error ? 'ERROR' : 'SUCCESS';
+      header.innerHTML = `
+        <div class="flex-row">
+          <div><div style="font-size:15px;font-weight:700">@${d.username} — ${d.agente || '?'}</div></div>
+          <div class="spacer"></div>
+          <span class="badge ${statusClass}">${statusText}</span>
+        </div>
+        <div class="log-detail-meta">
+          <div class="log-detail-meta-item"><span class="log-meta-label">correlation</span><span class="log-meta-value">${d.correlation_id.slice(0,8)}</span></div>
+          <div style="color:var(--border2)">·</div>
+          <div class="log-detail-meta-item"><span class="log-meta-label">channel</span><span class="log-meta-value">${d.channel}</span></div>
+          <div style="color:var(--border2)">·</div>
+          <div class="log-detail-meta-item"><span class="log-meta-label">total</span><span class="log-meta-value" style="color:var(--green);font-weight:700">${d.duracion_ms}ms</span></div>
+          <div style="color:var(--border2)">·</div>
+          <div class="log-detail-meta-item"><span class="log-meta-label">steps</span><span class="log-meta-value">${d.steps.length}</span></div>
+        </div>`;
+    }
+
+    const body = document.querySelector('.log-detail-body');
+    if (body) {
+      const totalMs = d.duracion_ms || 1;
+      let elapsed = 0;
+      const stepsHtml = d.steps.map(s => {
+        const pct = Math.max(1, Math.round(s.duracion_ms / totalMs * 100));
+        const left = Math.round(elapsed / totalMs * 100);
+        const color = s.tipo === 'llm' ? '#f5a623' : s.tipo === 'tool' ? '#34c759' : '#0a84ff';
+        elapsed += s.duracion_ms;
+        return `<div class="wf-row">
+          <div class="wf-label" title="${s.nombre}">${s.nombre}</div>
+          <div class="wf-track"><div class="wf-bar" style="left:${left}%;width:${pct}%;background:${color}"></div></div>
+          <div class="wf-ms">${s.duracion_ms}ms</div>
+        </div>`;
+      }).join('');
+
+      body.innerHTML = `
+        <div class="query-box">
+          <div class="query-box-label">Query del usuario</div>
+          <div class="query-box-text">"${d.query}"</div>
+        </div>
+        ${d.steps.length > 0 ? `
+          <div class="waterfall-title">Waterfall de Spans</div>
+          <div class="waterfall">
+            <div class="wf-row-header">
+              <div class="wf-label">SPAN</div>
+              <div style="flex:1;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.04em;text-transform:uppercase">DURACIÓN RELATIVA</div>
+              <div class="wf-ms">MS</div>
+            </div>
+            ${stepsHtml}
+          </div>` : ''}
+        ${d.error ? `<div class="divider"></div><div style="background:var(--red-dim);border:1px solid rgba(255,59,48,.3);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--red)">${d.error}</div>` : ''}
+        ${d.tokens_in || d.tokens_out ? `
+          <div class="divider"></div>
+          <div class="span-attrs">
+            <div class="attr-row"><div class="attr-key">tokens_input</div><div class="attr-val">${d.tokens_in}</div></div>
+            <div class="attr-row"><div class="attr-key">tokens_output</div><div class="attr-val">${d.tokens_out}</div></div>
+            <div class="attr-row"><div class="attr-key">cost_usd</div><div class="attr-val">$${d.costo}</div></div>
+          </div>` : ''}`;
+    }
+  } catch(e) { console.warn('Log detail error', e); }
+}
+
+// ── Agents ───────────────────────────────────────────────────────────────────
+
+async function loadAgents() {
+  const grid = document.getElementById('agent-grid');
+  if (!grid) return;
+  try {
+    const r = await fetch('/api/admin/agents');
+    if (!r.ok) return;
+    const agents = await r.json();
+    grid.innerHTML = agents.map((a, i) => `
+      <div class="agent-card ${i===0?'active':''}">
+        <div class="agent-card-header">
+          <div class="agent-name">${a.nombre}</div>
+          <span class="badge ${a.es_generalista ? 'ba' : 'bg'}">${a.es_generalista ? 'fallback' : 'activo'}</span>
+        </div>
+        <div class="agent-desc">${a.descripcion}</div>
+        <div class="agent-tools">
+          ${a.es_generalista
+            ? '<span class="tool-chip">esGeneralista = true</span>'
+            : a.tools.map(t => `<span class="tool-chip">${t}</span>`).join('')}
+        </div>
+        <div class="agent-footer">
+          <span class="agent-stat">v${a.version}</span>
+          <span class="agent-stat">·</span>
+          <span class="agent-stat">temp ${a.temperatura}</span>
+          <span class="agent-stat">·</span>
+          <span class="agent-stat">${a.requests_hoy} req hoy</span>
+        </div>
+      </div>`).join('');
+
+    // Version history for first agent
+    const hist = agents[0]?.historial || [];
+    const histBody = document.querySelector('#screen-agents .card:last-child tbody');
+    if (histBody) {
+      const agentName = agents[0]?.nombre || 'agente';
+      const histTitle = document.querySelector('#screen-agents .card:last-child .card-title');
+      if (histTitle) histTitle.textContent = `Historial de versiones — ${agentName}`;
+      histBody.innerHTML = hist.length === 0
+        ? '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin historial</td></tr>'
+        : hist.map(h => `<tr>
+            <td class="mono">${h.version}</td>
+            <td>${h.razon || '—'}</td>
+            <td>${h.por || '—'}</td>
+            <td class="mono" style="color:var(--text3)">${h.fecha ? h.fecha.slice(0,16) : '—'}</td>
+          </tr>`).join('');
+    }
+  } catch(e) { console.warn('Agents load error', e); }
+}
+
+// ── Knowledge ─────────────────────────────────────────────────────────────────
+
+async function loadKnowledge() {
+  try {
+    const r = await fetch('/api/admin/knowledge');
+    if (!r.ok) return;
+    const d = await r.json();
+    setText('kb-categorias', d.total_categorias);
+    setText('kb-entradas', d.total_entradas);
+    setText('kb-busquedas', d.busquedas_hoy);
+    const tbody = document.getElementById('kb-table-body');
+    if (tbody) {
+      tbody.innerHTML = (d.categorias || []).map(c =>
+        `<tr><td>${c.icono} ${c.nombre}</td><td>${c.entradas}</td></tr>`
+      ).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--text3)">Sin datos</td></tr>';
+    }
+  } catch(e) { console.warn('Knowledge load error', e); }
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+async function loadUsers() {
+  try {
+    const r = await fetch('/api/admin/users');
+    if (!r.ok) return;
+    const users = await r.json();
+    setText('usr-total', users.length);
+    const verified = users.filter(u => u.verificado).length;
+    setText('usr-verificados', verified);
+    setText('usr-pendientes', users.length - verified);
+    const tbody = document.getElementById('usr-table-body');
+    if (tbody) {
+      tbody.innerHTML = users.length === 0
+        ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin usuarios</td></tr>'
+        : users.map(u => `<tr>
+            <td class="mono">#${String(u.id_usuario).padStart(4,'0')}</td>
+            <td style="font-weight:600">${u.nombre}</td>
+            <td class="mono">${u.username ? '@' + u.username + (u.verificado ? ' ✓' : '') : '<span style="color:var(--text3)">pendiente</span>'}</td>
+            <td><span class="badge bm">${u.rol || '—'}</span></td>
+            <td class="mono" style="color:var(--text3)">${relativeTime(u.ultima_actividad)}</td>
+            <td><span class="badge ${u.estado === 'ACTIVO' ? 'bg' : 'ba'}">${u.estado === 'ACTIVO' ? 'activo' : 'sin verificar'}</span></td>
+          </tr>`).join('');
+    }
+  } catch(e) { console.warn('Users load error', e); }
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────
+
+async function loadAlerts() {
+  try {
+    const r = await fetch('/api/admin/alerts');
+    if (!r.ok) return;
+    const d = await r.json();
+    setText('alert-criticos', d.criticos);
+    setText('alert-warnings', d.warnings);
+    setText('alert-total', (d.criticos || 0) + (d.warnings || 0));
+    const tbody = document.getElementById('alert-table-body');
+    if (tbody) {
+      const alerts = d.alertas || [];
+      tbody.innerHTML = alerts.length === 0
+        ? '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Sin alertas activas</td></tr>'
+        : alerts.map(a => {
+            const sevClass = a.prioridad >= 4 ? 'br' : 'ba';
+            const sevText = a.prioridad >= 4 ? 'Crítico' : 'Warning';
+            return `<tr>
+              <td><span class="badge ${sevClass}">${sevText}</span></td>
+              <td>${a.equipo} — ${a.sensor}</td>
+              <td class="mono">${a.ip}</td>
+              <td><span class="badge ${a.status.toLowerCase() === 'down' ? 'br' : 'ba'}">${a.status}</span></td>
+              <td class="mono" style="color:var(--text3)">${a.origen}</td>
+            </tr>`;
+          }).join('');
+    }
+  } catch(e) { console.warn('Alerts load error', e); }
+}
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+
+loadOverview();
+setInterval(loadOverview, 30000);
+</script>
+</body>
+</html>

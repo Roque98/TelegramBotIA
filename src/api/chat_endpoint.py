@@ -10,6 +10,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+from src.api.dashboard_api import dashboard_bp
 from src.bot.middleware.token_middleware import TokenMiddleware
 from src.config.settings import settings
 from src.pipeline.handler_manager import get_handler_manager
@@ -18,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Crear app Flask
 app = Flask(__name__)
-CORS(app)  # Habilitar CORS para permitir requests desde otras plataformas
+CORS(app)
+app.register_blueprint(dashboard_bp)
 
 
 @app.route('/api/chat', methods=['POST'])
