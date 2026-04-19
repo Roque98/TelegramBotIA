@@ -12,7 +12,7 @@ from flask_cors import CORS
 
 from src.bot.middleware.token_middleware import TokenMiddleware
 from src.config.settings import settings
-from src.pipeline.factory import get_handler_manager
+from src.pipeline.handler_manager import get_handler_manager
 
 logger = logging.getLogger(__name__)
 
