@@ -28,7 +28,7 @@ class HandlerManager:
 
     def initialize(self, db_manager: Any = None) -> MainHandler:
         if self._handler is None:
-            from .factory import create_main_handler
+            from src.bootstrap.factory import create_main_handler
             self._handler, _, __ = create_main_handler(db_manager)
             logger.info("HandlerManager initialized")
         return self._handler

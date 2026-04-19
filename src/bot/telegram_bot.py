@@ -10,7 +10,7 @@ from telegram.error import NetworkError as TelegramNetworkError
 from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
-from src.pipeline import create_main_handler
+from src.bootstrap import create_main_handler
 from .handlers import (
     register_command_handlers,
     register_query_handlers,

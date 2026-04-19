@@ -22,7 +22,7 @@ from src.infra.observability.logging_config import get_sql_handler
 from src.infra.notifications.admin_notifier import fire_admin_notify
 from src.config.settings import settings
 
-from .handler import MainHandler
+from src.pipeline.handler import MainHandler
 from .service_factory import create_permission_service, create_memory_service
 from .tool_factory import create_tool_registry
 from .orchestrator_factory import create_agent_orchestrator
