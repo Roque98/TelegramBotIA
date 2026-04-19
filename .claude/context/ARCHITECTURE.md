@@ -18,7 +18,14 @@
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 CAPA 2: GATEWAY / PIPELINE                      │
+│               CAPA 2: BOOTSTRAP / GATEWAY / PIPELINE            │
+│                                                                 │
+│  src/bootstrap/                                                 │
+│  ├── factory.py           → Ensamblador principal (create_main_ │
+│  │                          handler — Composition Root)         │
+│  ├── tool_factory.py      → Catálogo y registro de tools       │
+│  ├── service_factory.py   → PermissionService, MemoryService   │
+│  └── orchestrator_factory.py → AgentOrchestrator               │
 │                                                                 │
 │  src/gateway/                                                   │
 │  └── message_gateway.py   → Normaliza Telegram/API/WS          │
@@ -26,9 +33,7 @@
 │                                                                 │
 │  src/pipeline/                                                  │
 │  ├── handler.py           → MainHandler (orquesta el flujo)    │
-│  ├── factory.py           → Construcción de dependencias (DI)  │
-│  ├── orchestrator/        → AgentOrchestrator, IntentClassifier│
-│  └── agent_factory/       → AgentBuilder                       │
+│  └── handler_manager.py   → Singleton del MainHandler          │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -39,8 +44,10 @@
 │  ├── base/                → BaseAgent, AgentResponse,          │
 │  │                          ConversationEvent, UserContext      │
 │  ├── react/               → ReActAgent, Scratchpad, schemas    │
+│  ├── factory/             → AgentBuilder (cache por versión)   │
+│  ├── orchestrator/        → AgentOrchestrator, IntentClassifier│
 │  ├── providers/           → OpenAIProvider (LLMProvider)       │
-│  └── tools/               → BaseTool, ToolRegistry + 10 tools │
+│  └── tools/               → BaseTool, ToolRegistry + tools     │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -85,7 +92,7 @@
 | Patrón | Ubicación | Propósito |
 |--------|-----------|-----------|
 | **Singleton** | `ToolRegistry` | Una instancia global del registro de herramientas |
-| **Factory** | `pipeline/factory.py` | Construcción e inyección de dependencias |
+| **Composition Root** | `bootstrap/` | Único lugar donde se ensamblan todas las dependencias |
 | **Strategy** | `agents/providers/` | Intercambio de proveedor LLM |
 | **Template Method** | `agents/tools/base.py` → `BaseTool` | Estructura común para todas las tools |
 | **Gateway** | `gateway/message_gateway.py` | Normaliza entrada de múltiples canales |
@@ -195,10 +202,11 @@ bot/handlers → pipeline/handler → gateway/message_gateway
                                                └── domain/knowledge
                                                └── (calculate, datetime)
 
-pipeline/factory → agents/react/agent
-                → agents/providers/openai_provider
-                → agents/tools/* (registra DatabaseTool, KnowledgeTool, ...)
-                → domain/memory/memory_service
-                → domain/knowledge/knowledge_service
-                → infra/database/connection
+bootstrap/factory → pipeline/handler (MainHandler)
+                 → bootstrap/tool_factory → agents/tools/*
+                 → bootstrap/service_factory → domain/auth, domain/memory
+                 → bootstrap/orchestrator_factory → agents/orchestrator
+                                                  → agents/factory/AgentBuilder
+                 → domain/knowledge/knowledge_service
+                 → infra/database/registry
 ```

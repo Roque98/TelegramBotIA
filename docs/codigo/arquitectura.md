@@ -22,12 +22,18 @@ dependen de inferiores, nunca al revés).
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                 CAPA 2: GATEWAY / PIPELINE                      │
+│               CAPA 2: BOOTSTRAP / GATEWAY / PIPELINE            │
+│                                                                 │
+│  src/bootstrap/                   → Composition Root           │
+│  ├── factory.py                     Ensamblador principal       │
+│  ├── tool_factory.py                Catálogo y registro tools   │
+│  ├── service_factory.py             PermissionSvc, MemorySvc   │
+│  └── orchestrator_factory.py        AgentOrchestrator           │
 │                                                                 │
 │  src/gateway/message_gateway.py  → Normaliza Telegram/API/WS   │
 │                                     a ConversationEvent        │
 │  src/pipeline/handler.py          → MainHandler (orquesta)     │
-│  src/pipeline/factory.py          → Composición de dependencias│
+│  src/pipeline/handler_manager.py  → Singleton del MainHandler  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -35,11 +41,10 @@ dependen de inferiores, nunca al revés).
 │                    CAPA 3: AGENTES LLM                          │
 │                                                                 │
 │  src/agents/orchestrator/      → AgentOrchestrator (ruteo N-   │
-│                                  way por intent), Intentclassi-│
-│                                  fier (nano LLM → agent name)  │
+│                                  way por intent),              │
+│                                  IntentClassifier (nano LLM)   │
 │  src/agents/factory/           → AgentBuilder (construye y     │
-│                                  cachea instancias ReActAgent   │
-│                                  desde AgentDefinition en BD)  │
+│                                  cachea ReActAgent por versión) │
 │  src/agents/react/agent.py     → ReActAgent (loop principal)   │
 │  src/agents/react/prompts.py   → System/user/continue prompts  │
 │  src/agents/react/scratchpad.py→ Historial de pasos del loop   │
@@ -89,7 +94,7 @@ dependen de inferiores, nunca al revés).
 | Patrón | Dónde | Por qué |
 |--------|-------|---------|
 | **Singleton** | `ToolRegistry`, `HandlerManager` | Una instancia global durante toda la vida del proceso |
-| **Factory** | `pipeline/factory.py` | Composición de todas las dependencias en un solo lugar |
+| **Composition Root** | `bootstrap/` | Único lugar donde se ensamblan todas las dependencias del sistema |
 | **Strategy** | `agents/providers/` | Permite intercambiar el proveedor LLM sin tocar el agente |
 | **Template Method** | `agents/tools/base.py → BaseTool` | Estructura común para todas las tools |
 | **Gateway** | `gateway/message_gateway.py` | Normaliza múltiples canales de entrada a un objeto uniforme |
@@ -224,17 +229,20 @@ bot/handlers ──────────────────────�
                                           ┌───────────────┼───────────────┐
                                      infra/database   domain/knowledge   (calculate, datetime)
 
-pipeline/factory ──► agents/orchestrator/AgentOrchestrator
-                 ──► agents/factory/AgentBuilder
-                 ──► agents/react/agent (construido por AgentBuilder)
-                 ──► agents/providers/openai_provider
-                 ──► agents/tools/* (registra 10 tools)
-                 ──► domain/agent_config/agent_config_service
-                 ──► domain/memory/memory_service
-                 ──► domain/knowledge/knowledge_service
-                 ──► domain/auth/permission_service
-                 ──► domain/interaction/interaction_repository
-                 ──► infra/notifications/admin_notifier (inyectado como Protocol)
+bootstrap/factory ──► pipeline/handler (MainHandler)
+                  ──► bootstrap/tool_factory
+                  │       ──► agents/tools/*
+                  ──► bootstrap/service_factory
+                  │       ──► domain/auth/permission_service
+                  │       ──► domain/memory/memory_service
+                  ──► bootstrap/orchestrator_factory
+                  │       ──► agents/orchestrator/AgentOrchestrator
+                  │       ──► agents/factory/AgentBuilder
+                  │       ──► domain/agent_config/agent_config_service
+                  ──► domain/knowledge/knowledge_service
+                  ──► domain/interaction/interaction_repository
+                  ──► infra/database/registry
+                  ──► infra/notifications/admin_notifier
 ```
 
 ---

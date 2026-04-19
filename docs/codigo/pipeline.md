@@ -1,10 +1,11 @@
-[Docs](../index.md) › [Código](README.md) › Pipeline y factory
+[Docs](../index.md) › [Código](README.md) › Pipeline y bootstrap
 
-# Pipeline y factory
+# Pipeline y bootstrap
 
-El pipeline conecta los entrypoints (Telegram/API) con el agente LLM.
-Tiene tres responsabilidades: normalizar la entrada, orquestar el procesamiento,
-y construir todas las dependencias al arrancar.
+El sistema separa dos conceptos distintos:
+
+- **Pipeline** (`src/pipeline/`) — el flujo de procesamiento de cada consulta
+- **Bootstrap** (`src/bootstrap/`) — la construcción de todas las dependencias al arrancar (Composition Root)
 
 ---
 
@@ -96,14 +97,21 @@ Los pasos 3 y 4 son `asyncio.create_task()` — no bloquean la respuesta al usua
 
 ---
 
-## factory.py — Composición de dependencias
+## Bootstrap — Composition Root
 
-**Archivo**: [`src/pipeline/factory.py`](../../src/pipeline/factory.py)
+**Carpeta**: [`src/bootstrap/`](../../src/bootstrap/)
 
-Este archivo es el único lugar donde se construyen e inyectan todas las dependencias.
-Es la "composición root" del sistema.
+Único lugar donde se construyen e inyectan todas las dependencias del sistema.
+Dividido en módulos por responsabilidad:
 
-### `_build_tool_catalog()`
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `factory.py` | Ensamblador principal (`create_main_handler`) |
+| `tool_factory.py` | Catálogo de tools y `create_tool_registry` |
+| `service_factory.py` | `create_permission_service`, `create_memory_service` |
+| `orchestrator_factory.py` | `create_agent_orchestrator` |
+
+### `_build_tool_catalog()` — en `tool_factory.py`
 
 Construye el catálogo completo de tools disponibles como un `dict[str, Callable]`. Cada entrada es una **lambda** que instancia la tool solo cuando es necesario. La clave coincide con el sufijo del campo `recurso` en `BotIAv2_Recurso` (formato `tool:<clave>`).
 
@@ -132,7 +140,7 @@ def _build_tool_catalog(
 
 `create_tool_registry()` consulta `BotIAv2_Recurso` para obtener las tools activas en el proyecto y solo instancia las que corresponden. Si la BD no está disponible en el arranque, registra el catálogo completo como fallback.
 
-### `create_agent_orchestrator()`
+### `create_agent_orchestrator()` — en `orchestrator_factory.py`
 
 Crea el orquestador dinámico N-way (ARQ-35). Maneja la inyección tardía de `AgentBuilder` en `AgentConfigService` para evitar dependencia circular:
 
@@ -217,13 +225,16 @@ create_main_handler(db_manager)
 
 ### HandlerManager (singleton)
 
+**Archivo**: [`src/pipeline/handler_manager.py`](../../src/pipeline/handler_manager.py)
+
 ```python
 class HandlerManager:
     """Mantiene el MainHandler inicializado entre requests."""
 
     def initialize(self, db_manager=None) -> MainHandler:
         if self._handler is None:
-            self._handler = create_main_handler(db_manager)
+            from src.bootstrap.factory import create_main_handler
+            self._handler, _, __ = create_main_handler(db_manager)
         return self._handler
 
     @property
@@ -260,3 +271,4 @@ handler = get_handler_manager().handler
 ---
 
 **← Anterior** [Sistema de tools](tools.md) · [Índice](README.md) · **Siguiente →** [Dominio](dominio.md)
+
