@@ -340,7 +340,7 @@ def create_main_handler(
     active_tool_names: Optional[list[str]] = None
     try:
         perm_repo = PermissionRepository(db_manager=db)
-        active_tool_names = asyncio.get_event_loop().run_until_complete(
+        active_tool_names = asyncio.run(
             perm_repo.get_active_tool_names()
         )
         logger.info(f"Tools activas en BD: {active_tool_names}")
