@@ -11,7 +11,6 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING, Any, Optional
 
-from src.agents.react.agent import ReActAgent
 from src.agents.tools.registry import ToolRegistry
 from src.agents.tools.database_tool import DatabaseTool
 from src.infra.database.registry import DatabaseRegistry
@@ -164,39 +163,6 @@ def create_tool_registry(
     logger.info(f"ToolRegistry creado con {len(registry)} tools: {list(registry._tools.keys())}")
     return registry
 
-
-def create_react_agent(
-    db_manager: Any = None,
-    knowledge_manager: Any = None,
-    memory_service: Any = None,
-    permission_service: Any = None,
-    bot_token: Optional[str] = None,
-) -> ReActAgent:
-    """
-    Crea el agente ReAct con sus dependencias (sin orquestador dinámico).
-
-    - loop_llm (gpt-5.4-mini): reasoning + selección de tools
-    - data_llm (gpt-5.4): generación de SQL dentro de DatabaseTool
-    """
-    if not settings.openai_api_key:
-        raise ValueError("No se encontró OPENAI_API_KEY en la configuración")
-
-    loop_llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_loop_model)
-    data_llm  = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
-
-    tool_registry = create_tool_registry(
-        db_manager, knowledge_manager, memory_service, permission_service,
-        bot_token or settings.telegram_bot_token,
-        data_llm=data_llm,
-    )
-    agent = ReActAgent(
-        llm=loop_llm,
-        tool_registry=tool_registry,
-        max_iterations=10,
-        temperature=0.1,
-    )
-    logger.info(f"ReActAgent created (loop={settings.openai_loop_model}, data={settings.openai_data_model})")
-    return agent
 
 
 def create_permission_service(

@@ -14,7 +14,6 @@ def __getattr__(name: str):
         return MainHandler
     elif name in (
         "create_main_handler",
-        "create_react_agent",
         "create_memory_service",
         "create_tool_registry",
         "HandlerManager",
@@ -28,7 +27,6 @@ def __getattr__(name: str):
 __all__ = [
     "MainHandler",
     "create_main_handler",
-    "create_react_agent",
     "create_memory_service",
     "create_tool_registry",
     "HandlerManager",
