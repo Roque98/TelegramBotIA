@@ -10,7 +10,6 @@ from telegram.error import NetworkError as TelegramNetworkError
 from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
-from src.infra.database.registry import DatabaseRegistry
 from src.pipeline import create_main_handler
 from .handlers import (
     register_command_handlers,
@@ -38,12 +37,10 @@ class TelegramBot:
         # Inicializar gestor de base de datos principal
         self.db_manager = DatabaseManager()
 
-        # DB-37: registry de múltiples conexiones (lazy — conecta al primer uso)
-        self.db_registry = DatabaseRegistry.from_settings()
-
         # Inicializar MainHandler (ReActAgent + MemoryService)
+        # db_registry viene del factory — instancia única compartida
         logger.info("Inicializando MainHandler (ReAct)...")
-        self.main_handler, self._admin_notify = create_main_handler(self.db_manager)
+        self.main_handler, self._admin_notify, self.db_registry = create_main_handler(self.db_manager)
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram

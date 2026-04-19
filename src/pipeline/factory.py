@@ -399,7 +399,7 @@ def create_main_handler(
     )
 
     logger.info("MainHandler created with AgentOrchestrator (ARQ-35 dynamic N-way)")
-    return handler, admin_notify
+    return handler, admin_notify, db_registry
 
 
 class HandlerManager:
