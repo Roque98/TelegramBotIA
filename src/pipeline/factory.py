@@ -110,13 +110,13 @@ def _build_tool_catalog(
 
 
 def create_tool_registry(
-    db_manager: Optional[Any] = None,
-    knowledge_manager: Optional[Any] = None,
-    memory_service: Optional[Any] = None,
-    permission_service: Optional[Any] = None,
+    db_manager: Any = None,
+    knowledge_manager: Any = None,
+    memory_service: Any = None,
+    permission_service: Any = None,
     bot_token: Optional[str] = None,
-    data_llm: Optional[Any] = None,
-    agent_config_service: Optional[Any] = None,
+    data_llm: Any = None,
+    agent_config_service: Any = None,
     db_registry: Optional[DatabaseRegistry] = None,
     active_tool_names: Optional[list[str]] = None,
 ) -> ToolRegistry:
@@ -166,10 +166,10 @@ def create_tool_registry(
 
 
 def create_react_agent(
-    db_manager: Optional[Any] = None,
-    knowledge_manager: Optional[Any] = None,
-    memory_service: Optional[Any] = None,
-    permission_service: Optional[Any] = None,
+    db_manager: Any = None,
+    knowledge_manager: Any = None,
+    memory_service: Any = None,
+    permission_service: Any = None,
     bot_token: Optional[str] = None,
 ) -> ReActAgent:
     """
@@ -200,7 +200,7 @@ def create_react_agent(
 
 
 def create_permission_service(
-    db_manager: Optional[Any] = None,
+    db_manager: Any = None,
 ) -> PermissionService:
     """Crea el servicio de permisos SEC-01."""
     repository = PermissionRepository(db_manager=db_manager)
@@ -210,8 +210,8 @@ def create_permission_service(
 
 
 def create_memory_service(
-    db_manager: Optional[Any] = None,
-    permission_service: Optional[Any] = None,
+    db_manager: Any = None,
+    permission_service: Any = None,
 ) -> MemoryService:
     """Crea el servicio de memoria."""
     repository = MemoryRepository(db_manager=db_manager)
@@ -298,7 +298,7 @@ def create_agent_orchestrator(
 
 
 def create_main_handler(
-    db_manager: Optional[Any] = None,
+    db_manager: Any = None,
 ) -> tuple[MainHandler, Any]:
     """Crea el handler principal con todas sus dependencias."""
     from src.infra.database.connection import DatabaseManager
@@ -403,7 +403,7 @@ class HandlerManager:
 
     def initialize(
         self,
-        db_manager: Optional[Any] = None,
+        db_manager: Any = None,
     ) -> MainHandler:
         if self._handler is None:
             self._handler, _, __ = create_main_handler(db_manager)
