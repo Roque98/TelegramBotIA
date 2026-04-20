@@ -243,6 +243,16 @@ EXEC sp_search_knowledge
     @min_priority = 1
 ```
 
+### BotIAv2_sp_GetAllUsuariosTelegram
+
+Lista todos los usuarios Telegram activos con su rol. Usado por el panel admin (`GET /api/admin/users`).
+
+```sql
+EXEC abcmasplus..BotIAv2_sp_GetAllUsuariosTelegram
+```
+
+Retorna: `idUsuario`, `Nombre`, `idRol`, `rolNombre`, `telegramChatId`, `telegramUsername`, `estado`, `verificado`, `fechaUltimaActividad`.
+
 ---
 
 ## Migraciones
@@ -275,6 +285,7 @@ EXEC sp_search_knowledge
 | `008_feat36_alert_analysis_tool.sql` | FEAT-36: tool de análisis de alertas PRTG |
 | `009_fix_alertas_system_prompt.sql` | Corrige el system prompt del agente `alertas` |
 | `010_feat37_alert_tools_refactor.sql` | FEAT-37: refactor de alert tools (4 tools estructuradas) |
+| `016_sp_get_all_usuarios_telegram.sql` | Crea `BotIAv2_sp_GetAllUsuariosTelegram` — lista todos los usuarios Telegram activos con rol (usado por panel admin) |
 
 ---
 

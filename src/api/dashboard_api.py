@@ -390,23 +390,7 @@ def knowledge():
 def users():
     try:
         db = _get_db()
-        rows = db.execute_query("""
-            SELECT
-                u.idUsuario,
-                u.Nombre,
-                u.idRol,
-                r.rol           AS rolNombre,
-                ut.telegramChatId,
-                ut.telegramUsername,
-                ut.estado,
-                ut.verificado,
-                ut.fechaUltimaActividad
-            FROM abcmasplus..BotIAv2_UsuariosTelegram ut
-            INNER JOIN abcmasplus..Usuarios u ON ut.idUsuario = u.idUsuario
-            LEFT  JOIN abcmasplus..Roles    r ON u.idRol = r.idRol
-            WHERE ut.activo = 1
-            ORDER BY ut.fechaUltimaActividad DESC
-        """)
+        rows = db.execute_query("EXEC abcmasplus..BotIAv2_sp_GetAllUsuariosTelegram")
         return jsonify([
             {
                 "id_usuario": int(r["idUsuario"] or 0),
