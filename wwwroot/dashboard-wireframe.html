@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>BotIA Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="marked.min.js"></script>
+<script src="/admin/marked.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -260,8 +260,7 @@ tbody tr:hover td{background:var(--surface2);}
 .prompt-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .prompt-panel-title{font-size:13px;font-weight:600;color:var(--text);}
 .prompt-panel-sub{font-size:11px;color:var(--text3);margin-top:2px;}
-.prompt-view{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;line-height:1.6;max-height:260px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;}
-.prompt-edit-area{width:100%;min-height:220px;font-family:'SF Mono',monospace;font-size:11px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;resize:vertical;outline:none;line-height:1.6;}
+.prompt-edit-area{width:100%;height:100%;font-family:'SF Mono',monospace;font-size:11px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;resize:none;outline:none;line-height:1.6;}
 .prompt-edit-area:focus{border-color:var(--blue);}
 .prompt-actions{display:flex;align-items:center;gap:8px;margin-top:10px;}
 .prompt-razon{flex:1;font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;outline:none;}
@@ -304,9 +303,10 @@ td.center{text-align:center;padding:10px 8px;}
 .query-box.prompt{border-color:rgba(245,166,35,.2);background:var(--amber-dim);}
 .query-box.prompt .query-box-text{font-style:normal;font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:220px;overflow-y:auto;}
 /* ── PROMPT SPLIT VIEW ── */
-.prompt-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.prompt-split-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}
-.prompt-preview{font-size:12px;color:var(--text2);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;min-height:220px;max-height:400px;overflow-y:auto;line-height:1.6;}
+.prompt-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:360px;}
+.prompt-split>div{display:flex;flex-direction:column;min-height:0;}
+.prompt-split-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;flex-shrink:0;}
+.prompt-preview{font-size:12px;color:var(--text2);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;overflow-y:auto;line-height:1.6;flex:1;min-height:0;}
 .prompt-preview h1,.prompt-preview h2,.prompt-preview h3{color:var(--text);font-size:13px;font-weight:700;margin:10px 0 4px;}
 .prompt-preview h1{font-size:14px;}
 .prompt-preview p{margin-bottom:8px;}
@@ -328,7 +328,7 @@ td.center{text-align:center;padding:10px 8px;}
   <aside class="sidebar">
     <div class="sb-header">
       <div class="sb-logo">
-        <div class="sb-logo-icon"><img src="iris-avatar.jpg" alt="Iris"></div>
+        <div class="sb-logo-icon"><img src="/admin/iris-avatar.jpg" alt="Iris"></div>
         <div>
           <div class="sb-title">BotIA Admin</div>
           <div class="sb-sub">orquestador v2</div>
@@ -380,7 +380,7 @@ td.center{text-align:center;padding:10px 8px;}
   <div class="main">
     <div class="topbar">
       <div class="topbar-logo">
-        <div class="topbar-logo-icon"><img src="iris-avatar.jpg" alt="Iris"></div>
+        <div class="topbar-logo-icon"><img src="/admin/iris-avatar.jpg" alt="Iris"></div>
         <div class="topbar-title">BotIA Admin</div>
       </div>
       <div style="flex:1"></div>
@@ -764,13 +764,13 @@ td.center{text-align:center;padding:10px 8px;}
             <button class="btn" id="btn-edit-prompt" onclick="startEditPrompt()">Editar</button>
           </div>
           <div id="prompt-view-mode">
-            <div class="prompt-view" id="prompt-view-text">—</div>
+            <div class="prompt-preview" id="prompt-view-text" style="max-height:300px">—</div>
           </div>
           <div id="prompt-edit-mode" style="display:none">
             <div class="prompt-split">
               <div>
                 <div class="prompt-split-label">Editor</div>
-                <textarea class="prompt-edit-area" id="prompt-textarea" spellcheck="false" oninput="updatePromptPreview()"></textarea>
+                <textarea class="prompt-edit-area" id="prompt-textarea" spellcheck="false" oninput="updatePromptPreview()" style="flex:1;min-height:0"></textarea>
               </div>
               <div>
                 <div class="prompt-split-label">Vista previa</div>
@@ -1215,7 +1215,9 @@ function selectAgent(idx) {
   const promptView = document.getElementById('prompt-view-text');
   if (panelTitle) panelTitle.textContent = `System Prompt — ${a.nombre}`;
   if (panelSub) panelSub.textContent = `v${a.version} · BotIAv2_AgenteDef.systemPrompt`;
-  if (promptView) promptView.textContent = a.prompt || '(sin prompt definido)';
+  if (promptView) promptView.innerHTML = typeof marked !== 'undefined'
+    ? marked.parse(a.prompt || '')
+    : `<pre>${a.prompt || '(sin prompt definido)'}</pre>`;
   cancelEditPrompt();
 
   // Historial
@@ -1283,7 +1285,9 @@ async function savePrompt() {
     const panelSub = document.getElementById('prompt-panel-sub');
     if (panelSub) panelSub.textContent = `v${a.version} · BotIAv2_AgenteDef.systemPrompt`;
     const promptView = document.getElementById('prompt-view-text');
-    if (promptView) promptView.textContent = newPrompt;
+    if (promptView) promptView.innerHTML = typeof marked !== 'undefined'
+      ? marked.parse(newPrompt)
+      : `<pre>${newPrompt}</pre>`;
     // Refresh historial desde la API
     await loadAgentsHistorial(a.id, _selectedAgentIdx);
     cancelEditPrompt();

@@ -47,6 +47,11 @@ def admin():
     return send_from_directory(os.path.abspath(_WWWROOT), "dashboard-wireframe.html")
 
 
+@dashboard_bp.route("/admin/<path:filename>")
+def admin_static(filename):
+    return send_from_directory(os.path.abspath(_WWWROOT), filename)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Overview
 # ──────────────────────────────────────────────────────────────────────────────
