@@ -215,7 +215,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([[
         InlineKeyboardButton(
             "📖 Abrir guía interactiva",
-            web_app=WebAppInfo(url="https://videocubos.operationscenter.corp:8443/_html/help-miniapp.html")
+            web_app=WebAppInfo(url="https://roque98.github.io/TelegramBotIA/help-miniapp.html")
         )
     ]])
 
