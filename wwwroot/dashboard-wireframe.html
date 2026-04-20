@@ -134,6 +134,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
 .btn.spinning svg{animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.skel{height:12px;border-radius:4px;background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:1200px 100%;animation:shimmer 1.4s infinite;display:inline-block;width:100%;}
+.skel.w40{width:40%;}.skel.w60{width:60%;}.skel.w80{width:80%;}.skel.badge{height:18px;width:52px;border-radius:9px;}
+.section-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:48px;color:var(--text3);font-size:12px;}
+.section-spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
 
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
 .card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
@@ -1001,6 +1006,24 @@ function escHtml(str) {
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
 function setClass(id, cls) { const el = document.getElementById(id); if (el) { el.className = el.className.replace(/\b(up|down|warn)\b/g,'').trim(); if (cls) el.classList.add(cls); } }
 
+function skelSection(msg='Cargando…') {
+  return `<div class="section-loading"><div class="section-spinner"></div><span>${msg}</span></div>`;
+}
+function skelRows(cols, n=4) {
+  const cells = Array.from({length:cols}, () => '<td><div class="skel"></div></td>').join('');
+  return Array.from({length:n}, () => `<tr>${cells}</tr>`).join('');
+}
+function skelKpi(id) { setText(id, '—'); }
+function skelCards(n=4) {
+  return Array.from({length:n}, () => `
+    <div class="agent-card">
+      <div class="agent-card-header"><div class="skel w60" style="height:14px"></div><div class="skel badge"></div></div>
+      <div class="skel w80" style="margin:10px 0 4px"></div>
+      <div class="skel w60"></div>
+      <div class="agent-footer" style="gap:6px"><div class="skel w40"></div></div>
+    </div>`).join('');
+}
+
 function relativeTime(dateStr) {
   if (!dateStr || dateStr === 'None') return '—';
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
@@ -1018,6 +1041,9 @@ function badgeForAgent(nombre) {
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 async function loadOverview() {
+  const tbody = document.getElementById('agent-table-body');
+  if (tbody) tbody.innerHTML = skelRows(6);
+  ['kpi-mensajes','kpi-usuarios','kpi-p50','kpi-errores','kpi-costo'].forEach(id => setText(id,'—'));
   try {
     const r = await fetch('/api/admin/overview');
     if (!r.ok) return;
@@ -1080,6 +1106,9 @@ async function loadOverview() {
 async function loadLogs() {
   const container = document.getElementById('log-items');
   if (!container) return;
+  container.innerHTML = skelSection();
+  const detail = document.getElementById('log-detail-body');
+  if (detail) detail.innerHTML = skelSection();
   try {
     const r = await fetch('/api/admin/logs');
     if (!r.ok) return;
@@ -1108,6 +1137,8 @@ async function loadLogs() {
 
 async function loadLogDetail(correlationId) {
   _currentLogId = correlationId;
+  const body = document.getElementById('log-detail-body');
+  if (body) body.innerHTML = skelSection();
   try {
     const r = await fetch('/api/admin/logs/' + correlationId);
     if (!r.ok) return;
@@ -1324,6 +1355,9 @@ async function loadAgentsHistorial(agentId, idx) {
 async function loadAgents() {
   const grid = document.getElementById('agent-grid');
   if (!grid) return;
+  grid.innerHTML = skelCards(4);
+  const histBody = document.querySelector('#screen-agents .card:last-child tbody');
+  if (histBody) histBody.innerHTML = skelRows(4, 3);
   try {
     const r = await fetch('/api/admin/agents');
     if (!r.ok) return;
@@ -1357,6 +1391,9 @@ async function loadAgents() {
 // ── Knowledge ─────────────────────────────────────────────────────────────────
 
 async function loadKnowledge() {
+  ['kb-categorias','kb-entradas','kb-busquedas'].forEach(id => setText(id,'—'));
+  const tbody = document.getElementById('kb-table-body');
+  if (tbody) tbody.innerHTML = skelRows(2, 4);
   try {
     const r = await fetch('/api/admin/knowledge');
     if (!r.ok) return;
@@ -1376,6 +1413,9 @@ async function loadKnowledge() {
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 async function loadUsers() {
+  ['usr-total','usr-verificados','usr-pendientes'].forEach(id => setText(id,'—'));
+  const tbody = document.getElementById('usr-table-body');
+  if (tbody) tbody.innerHTML = skelRows(6, 5);
   try {
     const r = await fetch('/api/admin/users');
     if (!r.ok) return;
@@ -1403,6 +1443,9 @@ async function loadUsers() {
 // ── Alerts ────────────────────────────────────────────────────────────────────
 
 async function loadAlerts() {
+  ['alert-criticos','alert-warnings','alert-total'].forEach(id => setText(id,'—'));
+  const tbody = document.getElementById('alert-table-body');
+  if (tbody) tbody.innerHTML = skelRows(5);
   try {
     const r = await fetch('/api/admin/alerts');
     if (!r.ok) return;
