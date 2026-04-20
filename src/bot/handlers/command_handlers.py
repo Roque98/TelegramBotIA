@@ -5,7 +5,7 @@ Maneja comandos básicos como /start, /help, /stats, etc.
 """
 import logging
 from typing import Any, List, Dict, Optional
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import CommandHandler, ContextTypes, Application
 from telegram.helpers import escape_markdown as _esc_md
 from src.domain.cost.cost_repository import CostRepository
@@ -202,9 +202,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "¿Algo más en lo que pueda ayudarte? 💡"
     )
 
+    keyboard = InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            "📖 Abrir guía interactiva",
+            web_app=WebAppInfo(url="https://roque98.github.io/TelegramBotIA/help-miniapp")
+        )
+    ]])
+
     await update.message.reply_text(
         help_message,
-        parse_mode='MarkdownV2'
+        parse_mode='MarkdownV2',
+        reply_markup=keyboard
     )
 
 
