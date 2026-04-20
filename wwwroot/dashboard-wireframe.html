@@ -129,6 +129,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .btn.primary:hover{opacity:.9;}
 .btn.danger{color:var(--red);border-color:rgba(255,59,48,.3);}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+.btn.spinning svg{animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
 .card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
@@ -352,7 +354,10 @@ td.center{text-align:center;padding:10px 8px;}
               <div class="page-sub">Actualizado hace 18s · auto-refresh cada 30s</div>
             </div>
             <div class="spacer"></div>
-            <button class="btn primary" style="display:none">↺</button>
+            <button class="btn" id="btn-refresh-overview" onclick="refreshSection('overview')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
           </div>
         </div>
 
@@ -427,8 +432,17 @@ td.center{text-align:center;padding:10px 8px;}
       <!-- ══ LOGS & TRAZAS ══ -->
       <div id="screen-logs" class="screen">
         <div class="page-header">
-          <div class="page-title">Logs &amp; Trazas</div>
-          <div class="page-sub">TraceContext · spans · tiempos por operación</div>
+          <div class="flex-row">
+            <div>
+              <div class="page-title">Logs &amp; Trazas</div>
+              <div class="page-sub">TraceContext · spans · tiempos por operación</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-logs" onclick="refreshSection('logs')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
+          </div>
         </div>
 
         <!-- Mobile: pill tabs to switch list/detail -->
@@ -629,6 +643,10 @@ td.center{text-align:center;padding:10px 8px;}
           <div class="flex-row">
             <div><div class="page-title">Alertas</div><div class="page-sub">FEAT-36/37 · red e infraestructura</div></div>
             <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-alerts" onclick="refreshSection('alerts')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
             <button class="btn danger">Escalar seleccionadas</button>
           </div>
         </div>
@@ -656,6 +674,10 @@ td.center{text-align:center;padding:10px 8px;}
           <div class="flex-row">
             <div><div class="page-title">Agentes IA</div><div class="page-sub">BotIAv2_AgenteDef · ARQ-35 · orquestador dinámico</div></div>
             <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-agents" onclick="refreshSection('agents')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
             <button class="btn primary">+ Nuevo</button>
           </div>
         </div>
@@ -707,6 +729,10 @@ td.center{text-align:center;padding:10px 8px;}
           <div class="flex-row">
             <div><div class="page-title">Knowledge Base</div><div class="page-sub">knowledge_categories / knowledge_entries</div></div>
             <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-knowledge" onclick="refreshSection('knowledge')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
             <button class="btn primary">+ Entrada</button>
           </div>
         </div>
@@ -734,6 +760,10 @@ td.center{text-align:center;padding:10px 8px;}
           <div class="flex-row">
             <div><div class="page-title">Usuarios</div><div class="page-sub">Usuarios · UsuariosTelegram · verificación</div></div>
             <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-users" onclick="refreshSection('users')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
             <button class="btn primary">+ Registrar</button>
           </div>
         </div>
@@ -1189,6 +1219,25 @@ async function loadAlerts() {
           }).join('');
     }
   } catch(e) { console.warn('Alerts load error', e); }
+}
+
+// ── Refresh manual ────────────────────────────────────────────────────────────
+
+const _loaders = {
+  overview: loadOverview,
+  logs: loadLogs,
+  alerts: loadAlerts,
+  agents: loadAgents,
+  knowledge: loadKnowledge,
+  users: loadUsers,
+};
+
+async function refreshSection(section) {
+  const btn = document.getElementById('btn-refresh-' + section);
+  if (btn) btn.classList.add('spinning');
+  try { await _loaders[section]?.(); } finally {
+    if (btn) btn.classList.remove('spinning');
+  }
 }
 
 // ── Auto-refresh ──────────────────────────────────────────────────────────────
