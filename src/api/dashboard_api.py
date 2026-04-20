@@ -359,10 +359,10 @@ def update_agent_prompt(agent_id: int):
         db.execute_non_query(
             """
             INSERT INTO abcmasplus..BotIAv2_AgentePromptHistorial
-                (idAgente, version, razonCambio, modificadoPor, fechaCreacion)
-            VALUES (:id, :version, :razon, :por, GETDATE())
+                (idAgente, systemPrompt, version, razonCambio, modificadoPor, fechaCreacion)
+            VALUES (:id, :prompt, :version, :razon, :por, GETDATE())
             """,
-            {"id": agent_id, "version": new_version, "razon": razon, "por": por},
+            {"id": agent_id, "prompt": new_prompt, "version": new_version, "razon": razon, "por": por},
         )
 
         return jsonify({"ok": True, "version": new_version})
