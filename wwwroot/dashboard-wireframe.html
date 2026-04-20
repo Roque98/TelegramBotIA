@@ -353,12 +353,12 @@ td.center{text-align:center;padding:10px 8px;}
       <button class="nav-btn" onclick="go('logs',this)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Logs &amp; Trazas
-        <span class="nav-badge">2</span>
+        <span class="nav-badge" id="badge-logs" style="display:none"></span>
       </button>
       <button class="nav-btn" onclick="go('alerts',this)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         Alertas
-        <span class="nav-badge">3</span>
+        <span class="nav-badge" id="badge-alerts" style="display:none"></span>
       </button>
       <div class="nav-section">Sistema</div>
       <button class="nav-btn" onclick="go('agents',this)">
@@ -1160,6 +1160,9 @@ async function loadLogs() {
     if (!r.ok) return;
     const logs = await r.json();
     _logsData = Array.isArray(logs) ? logs : [];
+    const errCount = _logsData.filter(l => l.error).length;
+    const badgeLogs = document.getElementById('badge-logs');
+    if (badgeLogs) { badgeLogs.textContent = errCount; badgeLogs.style.display = errCount ? '' : 'none'; }
     if (!_logsData.length) {
       container.innerHTML = '<div class="empty-state"><p>Sin interacciones recientes</p></div>';
       return;
@@ -1486,6 +1489,8 @@ async function loadAlerts() {
     setText('alert-criticos', d.criticos);
     setText('alert-warnings', d.warnings);
     setText('alert-total', (d.criticos || 0) + (d.warnings || 0));
+    const badgeAlerts = document.getElementById('badge-alerts');
+    if (badgeAlerts) { const n = d.criticos || 0; badgeAlerts.textContent = n; badgeAlerts.style.display = n ? '' : 'none'; }
     const tbody = document.getElementById('alert-table-body');
     if (tbody) {
       const alerts = d.alertas || [];
