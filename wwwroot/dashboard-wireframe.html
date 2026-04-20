@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>BotIA Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -302,6 +303,22 @@ td.center{text-align:center;padding:10px 8px;}
 .query-box.response .query-box-text{font-style:normal;color:var(--text);white-space:pre-wrap;}
 .query-box.prompt{border-color:rgba(245,166,35,.2);background:var(--amber-dim);}
 .query-box.prompt .query-box-text{font-style:normal;font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;max-height:220px;overflow-y:auto;}
+/* ── PROMPT SPLIT VIEW ── */
+.prompt-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.prompt-split-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}
+.prompt-preview{font-size:12px;color:var(--text2);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;min-height:220px;max-height:400px;overflow-y:auto;line-height:1.6;}
+.prompt-preview h1,.prompt-preview h2,.prompt-preview h3{color:var(--text);font-size:13px;font-weight:700;margin:10px 0 4px;}
+.prompt-preview h1{font-size:14px;}
+.prompt-preview p{margin-bottom:8px;}
+.prompt-preview ul,.prompt-preview ol{padding-left:18px;margin-bottom:8px;}
+.prompt-preview li{margin-bottom:3px;}
+.prompt-preview code{font-family:'SF Mono',monospace;font-size:10px;background:var(--surface3);padding:1px 5px;border-radius:4px;color:var(--text);}
+.prompt-preview pre{background:var(--surface3);border-radius:6px;padding:10px 12px;margin-bottom:8px;overflow-x:auto;}
+.prompt-preview pre code{background:none;padding:0;}
+.prompt-preview strong{color:var(--text);font-weight:600;}
+.prompt-preview em{color:var(--text2);}
+.prompt-preview blockquote{border-left:3px solid var(--border2);padding-left:10px;color:var(--text3);margin-bottom:8px;}
+.prompt-preview hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
 </style>
 </head>
 <body>
@@ -750,7 +767,16 @@ td.center{text-align:center;padding:10px 8px;}
             <div class="prompt-view" id="prompt-view-text">—</div>
           </div>
           <div id="prompt-edit-mode" style="display:none">
-            <textarea class="prompt-edit-area" id="prompt-textarea" spellcheck="false"></textarea>
+            <div class="prompt-split">
+              <div>
+                <div class="prompt-split-label">Editor</div>
+                <textarea class="prompt-edit-area" id="prompt-textarea" spellcheck="false" oninput="updatePromptPreview()"></textarea>
+              </div>
+              <div>
+                <div class="prompt-split-label">Vista previa</div>
+                <div class="prompt-preview" id="prompt-preview"></div>
+              </div>
+            </div>
             <div class="prompt-actions">
               <input class="prompt-razon" id="prompt-razon" type="text" placeholder="Razón del cambio (opcional)">
               <button class="btn primary" onclick="savePrompt()">Guardar</button>
@@ -1208,6 +1234,15 @@ function selectAgent(idx) {
       </tr>`).join('');
 }
 
+function updatePromptPreview() {
+  const ta = document.getElementById('prompt-textarea');
+  const preview = document.getElementById('prompt-preview');
+  if (!ta || !preview) return;
+  preview.innerHTML = typeof marked !== 'undefined'
+    ? marked.parse(ta.value || '')
+    : `<pre>${ta.value}</pre>`;
+}
+
 function startEditPrompt() {
   const a = _agentsData[_selectedAgentIdx];
   if (!a) return;
@@ -1217,6 +1252,7 @@ function startEditPrompt() {
   document.getElementById('prompt-edit-mode').style.display = 'block';
   document.getElementById('btn-edit-prompt').style.display = 'none';
   document.getElementById('prompt-razon').value = '';
+  updatePromptPreview();
 }
 
 function cancelEditPrompt() {
