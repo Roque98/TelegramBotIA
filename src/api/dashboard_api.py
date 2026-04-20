@@ -291,7 +291,7 @@ def agents():
                 h.idAgente,
                 h.version,
                 h.razonCambio,
-                h.creadoPor,
+                h.modificadoPor,
                 h.fechaCreacion
             FROM abcmasplus..BotIAv2_AgentePromptHistorial h
             ORDER BY h.fechaCreacion DESC
@@ -302,7 +302,7 @@ def agents():
             history_map.setdefault(aid, []).append({
                 "version": f"v{h['version']}",
                 "razon": h["razonCambio"],
-                "por": h["creadoPor"],
+                "por": h["modificadoPor"],
                 "fecha": str(h["fechaCreacion"]),
             })
 
