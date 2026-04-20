@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import date
 
-from flask import Blueprint, jsonify, send_from_directory
+from flask import Blueprint, jsonify, request, send_from_directory
 
 from src.infra.database.connection import DatabaseManager
 from src.infra.database.registry import DatabaseRegistry
@@ -266,6 +266,7 @@ def agents():
                 ad.idAgente,
                 ad.nombre,
                 ad.descripcion,
+                ad.systemPrompt,
                 ad.temperatura,
                 ad.maxIteraciones,
                 ad.modeloOverride,
@@ -314,6 +315,7 @@ def agents():
                 "id": int(r["idAgente"]),
                 "nombre": r["nombre"],
                 "descripcion": r["descripcion"],
+                "prompt": r["systemPrompt"] or "",
                 "temperatura": float(r["temperatura"] or 0),
                 "max_iteraciones": int(r["maxIteraciones"] or 0),
                 "modelo_override": r["modeloOverride"],
@@ -327,6 +329,49 @@ def agents():
         ])
     except Exception as e:
         logger.error(f"Dashboard /agents error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route("/api/admin/agents/<int:agent_id>/prompt", methods=["PUT"])
+def update_agent_prompt(agent_id: int):
+    try:
+        body = request.get_json(silent=True) or {}
+        new_prompt = body.get("prompt", "").strip()
+        razon = body.get("razon", "Edición manual desde dashboard").strip() or "Edición manual desde dashboard"
+        por = body.get("por", "admin").strip() or "admin"
+        if not new_prompt:
+            return jsonify({"error": "prompt requerido"}), 400
+
+        db = _get_db()
+        rows = db.execute_non_query(
+            "UPDATE abcmasplus..BotIAv2_AgenteDef SET systemPrompt = :prompt WHERE idAgente = :id AND activo = 1",
+            {"prompt": new_prompt, "id": agent_id},
+        )
+        if rows == 0:
+            return jsonify({"error": "Agente no encontrado"}), 404
+
+        # El trigger TR_AgenteDef_VersionHistorial incrementa version e inserta en historial.
+        # Actualizamos razonCambio y modificadoPor en la fila recién creada.
+        db.execute_non_query(
+            """
+            UPDATE h SET h.razonCambio = :razon, h.modificadoPor = :por
+            FROM abcmasplus..BotIAv2_AgentePromptHistorial h
+            WHERE h.idHistorial = (
+                SELECT MAX(idHistorial) FROM abcmasplus..BotIAv2_AgentePromptHistorial
+                WHERE idAgente = :id
+            )
+            """,
+            {"razon": razon, "por": por, "id": agent_id},
+        )
+
+        version_row = db.execute_query(
+            "SELECT version FROM abcmasplus..BotIAv2_AgenteDef WHERE idAgente = :id",
+            {"id": agent_id},
+        )
+        new_version = int(version_row[0]["version"]) if version_row else None
+        return jsonify({"ok": True, "version": new_version})
+    except Exception as e:
+        logger.error(f"Dashboard PUT /agents/{agent_id}/prompt error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

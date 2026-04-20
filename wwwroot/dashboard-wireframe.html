@@ -252,6 +252,19 @@ tbody tr:hover td{background:var(--surface2);}
 .agent-footer{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
 .agent-stat{font-size:11px;color:var(--text3);font-weight:500;}
 
+/* ── AGENT PROMPT PANEL ── */
+.prompt-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
+.prompt-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.prompt-panel-title{font-size:13px;font-weight:600;color:var(--text);}
+.prompt-panel-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.prompt-view{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;line-height:1.6;max-height:260px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;}
+.prompt-edit-area{width:100%;min-height:220px;font-family:'SF Mono',monospace;font-size:11px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:7px;padding:12px 14px;resize:vertical;outline:none;line-height:1.6;}
+.prompt-edit-area:focus{border-color:var(--blue);}
+.prompt-actions{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.prompt-razon{flex:1;font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;outline:none;}
+.prompt-razon:focus{border-color:var(--blue);}
+.prompt-razon::placeholder{color:var(--text3);}
+
 /* ── PERM MATRIX ── */
 .perm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;}
 .pd-al{background:var(--green);}
@@ -723,6 +736,27 @@ td.center{text-align:center;padding:10px 8px;}
           </div>
         </div>
 
+        <div class="prompt-panel" id="prompt-panel">
+          <div class="prompt-panel-header">
+            <div>
+              <div class="prompt-panel-title" id="prompt-panel-title">System Prompt — datos</div>
+              <div class="prompt-panel-sub" id="prompt-panel-sub">v12 · BotIAv2_AgenteDef.systemPrompt</div>
+            </div>
+            <button class="btn" id="btn-edit-prompt" onclick="startEditPrompt()">Editar</button>
+          </div>
+          <div id="prompt-view-mode">
+            <div class="prompt-view" id="prompt-view-text">—</div>
+          </div>
+          <div id="prompt-edit-mode" style="display:none">
+            <textarea class="prompt-edit-area" id="prompt-textarea" spellcheck="false"></textarea>
+            <div class="prompt-actions">
+              <input class="prompt-razon" id="prompt-razon" type="text" placeholder="Razón del cambio (opcional)">
+              <button class="btn primary" onclick="savePrompt()">Guardar</button>
+              <button class="btn" onclick="cancelEditPrompt()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header"><div class="card-title">Historial de versiones — datos</div><div class="card-sub">BotIAv2_AgentePromptHistorial</div></div>
           <div class="table-wrap">
@@ -1137,14 +1171,26 @@ async function loadLogDetail(correlationId) {
 // ── Agents ───────────────────────────────────────────────────────────────────
 
 let _agentsData = [];
+let _selectedAgentIdx = 0;
 
 function selectAgent(idx) {
-  _agentsData; // ensure ref
+  _selectedAgentIdx = idx;
   const grid = document.getElementById('agent-grid');
   if (!grid) return;
   grid.querySelectorAll('.agent-card').forEach((c, i) => c.classList.toggle('active', i === idx));
   const a = _agentsData[idx];
   if (!a) return;
+
+  // Prompt panel
+  const panelTitle = document.getElementById('prompt-panel-title');
+  const panelSub = document.getElementById('prompt-panel-sub');
+  const promptView = document.getElementById('prompt-view-text');
+  if (panelTitle) panelTitle.textContent = `System Prompt — ${a.nombre}`;
+  if (panelSub) panelSub.textContent = `v${a.version} · BotIAv2_AgenteDef.systemPrompt`;
+  if (promptView) promptView.textContent = a.prompt || '(sin prompt definido)';
+  cancelEditPrompt();
+
+  // Historial
   const histTitle = document.querySelector('#screen-agents .card:last-child .card-title');
   if (histTitle) histTitle.textContent = `Historial de versiones — ${a.nombre}`;
   const histBody = document.querySelector('#screen-agents .card:last-child tbody');
@@ -1158,6 +1204,79 @@ function selectAgent(idx) {
         <td>${h.por || '—'}</td>
         <td class="mono" style="color:var(--text3)">${h.fecha ? h.fecha.slice(0,16) : '—'}</td>
       </tr>`).join('');
+}
+
+function startEditPrompt() {
+  const a = _agentsData[_selectedAgentIdx];
+  if (!a) return;
+  const ta = document.getElementById('prompt-textarea');
+  if (ta) ta.value = a.prompt || '';
+  document.getElementById('prompt-view-mode').style.display = 'none';
+  document.getElementById('prompt-edit-mode').style.display = 'block';
+  document.getElementById('btn-edit-prompt').style.display = 'none';
+  document.getElementById('prompt-razon').value = '';
+}
+
+function cancelEditPrompt() {
+  document.getElementById('prompt-view-mode').style.display = 'block';
+  document.getElementById('prompt-edit-mode').style.display = 'none';
+  const btn = document.getElementById('btn-edit-prompt');
+  if (btn) btn.style.display = '';
+}
+
+async function savePrompt() {
+  const a = _agentsData[_selectedAgentIdx];
+  if (!a) return;
+  const newPrompt = document.getElementById('prompt-textarea').value.trim();
+  const razon = document.getElementById('prompt-razon').value.trim();
+  if (!newPrompt) return;
+  const btn = document.querySelector('#prompt-edit-mode .btn.primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  try {
+    const r = await fetch(`/api/admin/agents/${a.id}/prompt`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({prompt: newPrompt, razon, por: 'admin'}),
+    });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Error al guardar'); return; }
+    a.prompt = newPrompt;
+    if (data.version) a.version = data.version;
+    const panelSub = document.getElementById('prompt-panel-sub');
+    if (panelSub) panelSub.textContent = `v${a.version} · BotIAv2_AgenteDef.systemPrompt`;
+    const promptView = document.getElementById('prompt-view-text');
+    if (promptView) promptView.textContent = newPrompt;
+    // Refresh historial desde la API
+    await loadAgentsHistorial(a.id, _selectedAgentIdx);
+    cancelEditPrompt();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+  }
+}
+
+async function loadAgentsHistorial(agentId, idx) {
+  try {
+    const r = await fetch('/api/admin/agents');
+    if (!r.ok) return;
+    const agents = await r.json();
+    const fresh = agents.find(a => a.id === agentId);
+    if (!fresh) return;
+    _agentsData[idx] = {..._agentsData[idx], ...fresh};
+    const histTitle = document.querySelector('#screen-agents .card:last-child .card-title');
+    const a = _agentsData[idx];
+    if (histTitle) histTitle.textContent = `Historial de versiones — ${a.nombre}`;
+    const histBody = document.querySelector('#screen-agents .card:last-child tbody');
+    if (!histBody) return;
+    const hist = a.historial || [];
+    histBody.innerHTML = hist.length === 0
+      ? '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">Sin historial</td></tr>'
+      : hist.map(h => `<tr>
+          <td class="mono">${h.version}</td>
+          <td>${h.razon || '—'}</td>
+          <td>${h.por || '—'}</td>
+          <td class="mono" style="color:var(--text3)">${h.fecha ? h.fecha.slice(0,16) : '—'}</td>
+        </tr>`).join('');
+  } catch(e) { console.warn('Historial refresh error', e); }
 }
 
 async function loadAgents() {
