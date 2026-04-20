@@ -395,7 +395,7 @@ def users():
                 u.idUsuario,
                 u.Nombre,
                 u.idRol,
-                r.nombre        AS rolNombre,
+                r.rol           AS rolNombre,
                 ut.telegramChatId,
                 ut.telegramUsername,
                 ut.estado,
