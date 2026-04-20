@@ -836,11 +836,8 @@ function go(id, el, mode) {
       if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
     });
   }
-  const logTabs = document.getElementById('log-tabs');
-  if (logTabs) logTabs.style.display = (id === 'logs') ? 'flex' : 'none';
-
   // Lazy load section data
-  if (id === 'logs') loadLogs();
+  if (id === 'logs') { initLogLayout(); loadLogs(); }
   if (id === 'agents') loadAgents();
   if (id === 'knowledge') loadKnowledge();
   if (id === 'users') loadUsers();
@@ -865,23 +862,28 @@ function switchLogTab(tab, el) {
   else { list.style.display = 'none'; detail.style.display = 'flex'; }
 }
 
-function initMobile() {
+function initLogLayout() {
   const isMobile = window.innerWidth <= 768;
   const logTabs = document.getElementById('log-tabs');
-  const logList = document.getElementById('log-list-panel');
-  const logDetail = document.getElementById('log-detail-panel');
+  const list = document.getElementById('log-list-panel');
+  const detail = document.getElementById('log-detail-panel');
   if (isMobile) {
-    if (logTabs) logTabs.style.display = document.getElementById('screen-logs').classList.contains('active') ? 'flex' : 'none';
-    if (logDetail) logDetail.style.display = 'none';
-    if (logList) logList.style.display = 'flex';
+    // Mobile: mostrar pill-tabs, lista visible, detalle oculto hasta seleccionar
+    if (logTabs) logTabs.style.display = 'flex';
+    if (list) list.style.display = 'flex';
+    if (detail) detail.style.display = 'none';
+    const tabs = document.querySelectorAll('.pill-tab');
+    tabs[0]?.classList.add('active');
+    tabs[1]?.classList.remove('active');
   } else {
+    // Desktop: ocultar pill-tabs, dejar que el grid CSS muestre ambos paneles
     if (logTabs) logTabs.style.display = 'none';
-    if (logList) logList.style.display = 'flex';
-    if (logDetail) logDetail.style.display = 'flex';
+    if (list) list.style.display = '';
+    if (detail) detail.style.display = '';
   }
 }
-window.addEventListener('resize', initMobile);
-initMobile();
+window.addEventListener('resize', initLogLayout);
+initLogLayout();
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
