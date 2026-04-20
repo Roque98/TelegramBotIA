@@ -26,6 +26,7 @@ from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.gateway.message_gateway import MessageGateway
 from src.domain.interaction.interaction_repository import InteractionRepository
+from src.domain.auth.user_query_repository import UserQueryRepository
 
 try:
     from src.infra.observability import get_tracer
@@ -95,6 +96,7 @@ class MainHandler:
         observability_repo: Optional[InteractionRepository] = None,
         cost_repository: Optional[CostRepository] = None,
         admin_notifier: Optional[AdminNotifier] = None,
+        user_query_repo: Optional[UserQueryRepository] = None,
     ):
         """
         Inicializa el handler.
@@ -114,6 +116,7 @@ class MainHandler:
         self.observability_repo = observability_repo
         self.cost_repo = cost_repository
         self._admin_notifier = admin_notifier
+        self._user_query_repo = user_query_repo
         self.gateway = MessageGateway()
 
         logger.info(
@@ -418,8 +421,14 @@ class MainHandler:
                     used_fallback=response.used_fallback,
                 )
 
-            # Actualizar contador de interacciones en perfil
+            # Actualizar contador de interacciones y última actividad
             await self.memory.repository.increment_interaction_count(event.user_id)
+            if self._user_query_repo and event.channel == "telegram":
+                try:
+                    chat_id = int(event.user_id)
+                    await self._user_query_repo.update_last_activity(chat_id)
+                except Exception:
+                    pass
 
             # Persistir costo si está disponible
             cost = (response.data or {}).get("cost")
