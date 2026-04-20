@@ -216,17 +216,12 @@ def log_detail(correlation_id: str):
             {"cid": correlation_id},
         )
 
-        # Último prompt enviado al LLM (entrada del último step de tipo 'llm')
-        llm_steps = [s for s in steps if s["tipo"] == "llm"]
-        ultimo_prompt_llm = llm_steps[-1]["entrada"] if llm_steps else None
-
         i = interaction[0]
         return jsonify({
             "correlation_id": i["correlationId"],
             "username": i["telegramUsername"] or "api",
             "query": i["query"],
             "respuesta": i["respuesta"],
-            "ultimo_prompt_llm": ultimo_prompt_llm,
             "agente": i["agenteNombre"],
             "duracion_ms": int(i["duracionMs"] or 0),
             "memory_ms": int(i["memoryMs"] or 0),
@@ -247,6 +242,8 @@ def log_detail(correlation_id: str):
                     "tokens_in": int(s["tokensIn"] or 0),
                     "tokens_out": int(s["tokensOut"] or 0),
                     "costo": round(float(s["costoUSD"] or 0), 4),
+                    "entrada": s["entrada"] or "",
+                    "salida": s["salida"] or "",
                 }
                 for s in steps
             ],
