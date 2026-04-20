@@ -350,25 +350,21 @@ def update_agent_prompt(agent_id: int):
         if rows == 0:
             return jsonify({"error": "Agente no encontrado"}), 404
 
-        # El trigger TR_AgenteDef_VersionHistorial incrementa version e inserta en historial.
-        # Actualizamos razonCambio y modificadoPor en la fila recién creada.
-        db.execute_non_query(
-            """
-            UPDATE h SET h.razonCambio = :razon, h.modificadoPor = :por
-            FROM abcmasplus..BotIAv2_AgentePromptHistorial h
-            WHERE h.idHistorial = (
-                SELECT MAX(idHistorial) FROM abcmasplus..BotIAv2_AgentePromptHistorial
-                WHERE idAgente = :id
-            )
-            """,
-            {"razon": razon, "por": por, "id": agent_id},
-        )
-
         version_row = db.execute_query(
             "SELECT version FROM abcmasplus..BotIAv2_AgenteDef WHERE idAgente = :id",
             {"id": agent_id},
         )
-        new_version = int(version_row[0]["version"]) if version_row else None
+        new_version = int(version_row[0]["version"]) if version_row else 1
+
+        db.execute_non_query(
+            """
+            INSERT INTO abcmasplus..BotIAv2_AgentePromptHistorial
+                (idAgente, version, razonCambio, modificadoPor, fechaCreacion)
+            VALUES (:id, :version, :razon, :por, GETDATE())
+            """,
+            {"id": agent_id, "version": new_version, "razon": razon, "por": por},
+        )
+
         return jsonify({"ok": True, "version": new_version})
     except Exception as e:
         logger.error(f"Dashboard PUT /agents/{agent_id}/prompt error: {e}")
