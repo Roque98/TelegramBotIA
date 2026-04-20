@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Iris — Ayuda</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c0e;
+  --surface:#141417;
+  --s2:#1c1c20;
+  --s3:#242428;
+  --border:#26262b;
+  --border2:#2e2e34;
+  --text:#e8e8ed;
+  --text2:#9898a6;
+  --text3:#5a5a68;
+  --green:#34c759;
+  --green-dim:rgba(52,199,89,.12);
+  --amber:#f5a623;
+  --amber-dim:rgba(245,166,35,.12);
+  --red:#ff3b30;
+  --red-dim:rgba(255,59,48,.12);
+  --blue:#0a84ff;
+  --blue-dim:rgba(10,132,255,.12);
+  --purple:#bf5af2;
+  --purple-dim:rgba(191,90,242,.12);
+  --font:'Inter',system-ui,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased;overflow:hidden;}
+.app{display:flex;flex-direction:column;height:100%;}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;height:54px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.topbar-avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid rgba(52,199,89,.4);}
+.topbar-info{flex:1;}
+.topbar-name{font-size:15px;font-weight:700;letter-spacing:-.3px;line-height:1.2;}
+.topbar-sub{font-size:11px;color:var(--text3);}
+.status-pill{display:flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid rgba(52,199,89,.25);padding:4px 10px;border-radius:20px;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-size:11px;color:var(--green);font-weight:600;}
+
+/* SEG NAV */
+.seg-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 14px;height:46px;display:flex;align-items:center;overflow-x:auto;flex-shrink:0;scrollbar-width:none;gap:2px;}
+.seg-nav::-webkit-scrollbar{display:none;}
+.seg-btn{padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text3);white-space:nowrap;border-bottom:2px solid transparent;transition:all .12s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font);}
+.seg-btn:hover{color:var(--text2);}
+.seg-btn.active{color:var(--green);border-bottom-color:var(--green);}
+
+/* BODY */
+.body{flex:1;overflow-y:auto;padding-bottom:calc(20px + var(--safe-b));}
+.sec{display:none;padding:18px 16px;}
+.sec.active{display:block;}
+
+/* COMPONENTS */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid;}
+.bg{color:var(--green);border-color:rgba(52,199,89,.3);background:var(--green-dim);}
+.ba{color:var(--amber);border-color:rgba(245,166,35,.3);background:var(--amber-dim);}
+.br{color:var(--red);border-color:rgba(255,59,48,.3);background:var(--red-dim);}
+.bb{color:var(--blue);border-color:rgba(10,132,255,.3);background:var(--blue-dim);}
+.bp{color:var(--purple);border-color:rgba(191,90,242,.3);background:var(--purple-dim);}
+.bm{color:var(--text3);border-color:var(--border2);background:var(--s2);}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);}
+.card-title{font-size:13px;font-weight:700;}
+.card-sub{font-size:11px;color:var(--text3);}
+
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--text3);margin-bottom:18px;line-height:1.5;}
+
+/* HERO */
+.hero{background:linear-gradient(145deg,rgba(52,199,89,.08) 0%,rgba(191,90,242,.06) 100%);border:1px solid rgba(52,199,89,.15);border-radius:16px;padding:22px 20px;margin-bottom:16px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.hero-avatar{width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(52,199,89,.4);margin-bottom:14px;box-shadow:0 0 24px rgba(52,199,89,.2);}
+.hero-name{font-size:22px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;}
+.hero-desc{font-size:13px;color:var(--text2);line-height:1.6;max-width:320px;}
+
+/* NOTE */
+.note{display:flex;gap:10px;align-items:flex-start;background:var(--blue-dim);border:1px solid rgba(10,132,255,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.5;}
+.note-icon{flex-shrink:0;font-size:15px;}
+.note.warn{background:var(--amber-dim);border-color:rgba(245,166,35,.2);}
+.note.ok{background:var(--green-dim);border-color:rgba(52,199,89,.2);}
+
+/* TOOL CARD */
+.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+.tool-card-hd{display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid var(--border);}
+.tool-icon{font-size:22px;flex-shrink:0;}
+.tool-title{font-size:15px;font-weight:700;letter-spacing:-.2px;margin-bottom:4px;}
+.tool-desc{font-size:12px;color:var(--text3);line-height:1.5;}
+.tool-body{padding:14px 16px;}
+.tool-section-lbl{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+.example-list{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.example-item{background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text2);font-style:italic;line-height:1.4;}
+.example-item::before{content:'"';color:var(--text3);}
+.example-item::after{content:'"';color:var(--text3);}
+
+/* PARAMS TABLE */
+.param-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.param-row{background:var(--s2);border-radius:8px;padding:9px 12px;}
+.param-name{font-family:'SF Mono',monospace;font-size:12px;color:var(--blue);font-weight:600;margin-bottom:3px;}
+.param-desc{font-size:12px;color:var(--text3);line-height:1.4;}
+.param-badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+
+/* RETURN BOX */
+.return-box{background:var(--s3);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;}
+.return-field{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.return-field:last-child{border-bottom:none;}
+.rf-key{font-family:'SF Mono',monospace;color:var(--blue);min-width:130px;flex-shrink:0;}
+.rf-val{color:var(--text3);line-height:1.4;}
+
+/* FLOW STEPS */
+.flow{display:flex;flex-direction:column;}
+.flow-step{display:flex;gap:14px;padding:13px 16px;border-bottom:1px solid var(--border);align-items:flex-start;}
+.flow-step:last-child{border-bottom:none;}
+.flow-num{width:26px;height:26px;border-radius:50%;background:var(--green);color:#000;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.flow-num.orange{background:var(--amber);}
+.flow-num.done{background:var(--purple);}
+.flow-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+.flow-desc{font-size:12px;color:var(--text3);line-height:1.5;}
+.code{display:block;background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:8px 12px;font-family:'SF Mono',monospace;font-size:12px;color:var(--green);margin:7px 0;white-space:pre-wrap;word-break:break-all;}
+.code.blue{color:var(--blue);}
+
+/* LIMIT LIST */
+.limit-item{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:flex-start;}
+.limit-item:last-child{border-bottom:none;}
+.limit-icon{font-size:16px;flex-shrink:0;}
+.limit-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.limit-desc{font-size:12px;color:var(--text3);line-height:1.5;}
+
+/* TROUBLE */
+.trouble-item{padding:14px 16px;border-bottom:1px solid var(--border);}
+.trouble-item:last-child{border-bottom:none;}
+.trouble-q{font-size:13px;font-weight:700;color:var(--amber);margin-bottom:4px;}
+.trouble-a{font-size:12px;color:var(--text2);line-height:1.5;}
+
+/* COMPARE */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.cbox{background:var(--s2);border-radius:8px;padding:10px 12px;}
+.cbox.bad{border:1px solid rgba(255,59,48,.2);}
+.cbox.good{border:1px solid rgba(52,199,89,.2);}
+.cbox-lbl{font-size:10px;font-weight:700;letter-spacing:.04em;margin-bottom:5px;}
+.cbox-lbl.bad{color:var(--red);}
+.cbox-lbl.good{color:var(--green);}
+.cbox-text{font-size:12px;color:var(--text2);font-style:italic;line-height:1.4;}
+
+/* DIVIDER LABEL */
+.div-lbl{display:flex;align-items:center;gap:10px;margin:16px 0 12px;}
+.div-lbl span{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+.div-lbl::before,.div-lbl::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* CONTACT CARD */
+.contact-card{background:var(--s2);border:1px solid var(--border2);border-radius:10px;padding:13px 14px;margin-bottom:10px;}
+.contact-title{font-size:12px;font-weight:700;margin-bottom:8px;}
+.contact-row{display:flex;gap:8px;font-size:12px;padding:3px 0;}
+.contact-key{color:var(--text3);min-width:80px;}
+.contact-val{color:var(--text2);font-family:'SF Mono',monospace;font-size:11px;}
+
+/* MISC */
+.mt{margin-top:14px;}
+.flex{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <img class="topbar-avatar" src="iris-avatar.jpg" alt="Iris">
+    <div class="topbar-info">
+      <div class="topbar-name">Iris</div>
+      <div class="topbar-sub">Agente de Monitoreo &amp; Alertas</div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span class="status-text">Online</span>
+    </div>
+  </div>
+
+  <!-- SEG NAV -->
+  <div class="seg-nav">
+    <button class="seg-btn active" onclick="go('inicio',this)">Inicio</button>
+    <button class="seg-btn" onclick="go('alertas',this)">Alertas activas</button>
+    <button class="seg-btn" onclick="go('detalle',this)">Detalle</button>
+    <button class="seg-btn" onclick="go('historial',this)">Historial</button>
+    <button class="seg-btn" onclick="go('escalamiento',this)">Escalamiento</button>
+    <button class="seg-btn" onclick="go('tips',this)">Tips</button>
+    <button class="seg-btn" onclick="go('problemas',this)">Problemas</button>
+  </div>
+
+  <div class="body">
+
+    <!-- ══ INICIO ══ -->
+    <div id="sec-inicio" class="sec active">
+      <div class="hero">
+        <img class="hero-avatar" src="iris-avatar.jpg" alt="Iris">
+        <div class="hero-name">Hola, soy Iris</div>
+        <div class="hero-desc">Soy tu agente de monitoreo de infraestructura. Puedo decirte qué equipos están caídos, mostrar el historial de incidentes y darte los contactos de escalamiento — todo desde Telegram.</div>
+      </div>
+
+      <div class="note ok">
+        <span class="note-icon">⚡</span>
+        <span>Escribime directamente, sin comandos. Simplemente preguntame en español qué querés saber sobre las alertas.</span>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><div class="card-title">Mis 4 capacidades principales</div></div>
+        <div class="limit-item">
+          <div class="limit-icon">🔴</div>
+          <div><div class="limit-title">Ver alertas activas</div><div class="limit-desc">Lista todos los equipos con alertas en este momento, con IP, sensor y área responsable.</div></div>
+        </div>
+        <div class="limit-item">
+          <div class="limit-icon">🔍</div>
+          <div><div class="limit-title">Detalle completo de una alerta</div><div class="limit-desc">Para una IP específica: estado actual, historial de tickets, escalamiento y contactos. Todo en una sola consulta.</div></div>
+        </div>
+        <div class="limit-item">
+          <div class="limit-icon">📋</div>
+          <div><div class="limit-title">Historial de tickets</div><div class="limit-desc">Qué incidentes tuvo un equipo, cuándo ocurrieron y qué acción correctiva se tomó.</div></div>
+        </div>
+        <div class="limit-item">
+          <div class="limit-icon">📞</div>
+          <div><div class="limit-title">Matriz de escalamiento</div><div class="limit-desc">Quién atiende, quién administra y los niveles de escalamiento con extensión, celular y correo.</div></div>
+        </div>
+      </div>
+
+      <div class="div-lbl"><span>Ejemplos rápidos</span></div>
+      <div class="card">
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+          <code class="code">¿Qué alertas hay activas ahora?</code>
+          <code class="code">¿Qué equipos están caídos?</code>
+          <code class="code">Dame el detalle de la IP 10.118.57.142</code>
+          <code class="code">¿Quién atiende la IP 10.53.34.130?</code>
+          <code class="code">¿Qué tickets tuvo el servidor 10.1.2.3?</code>
+          <code class="code">¿A quién escalo la alerta del SWITCH-CORE?</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ALERTAS ACTIVAS ══ -->
+    <div id="sec-alertas" class="sec">
+      <div class="page-title">Alertas activas</div>
+      <div class="page-sub">Ver el resumen de equipos con incidentes en este momento.</div>
+
+      <div class="tool-card">
+        <div class="tool-card-hd">
+          <div class="tool-icon">🔴</div>
+          <div>
+            <div class="tool-title">get_active_alerts</div>
+            <div class="tool-desc">Consulta todos los equipos con alertas activas en PRTG. Retorna IP, sensor y área responsable de cada uno. Soporta dos instancias: Banco y EKT (Comercio).</div>
+          </div>
+        </div>
+        <div class="tool-body">
+
+          <div class="tool-section-lbl">Cómo pedirlo</div>
+          <div class="example-list">
+            <div class="example-item">¿Qué alertas hay activas ahora?</div>
+            <div class="example-item">¿Qué equipos están caídos?</div>
+            <div class="example-item">Mostrame solo los que están completamente down</div>
+            <div class="example-item">¿Hay alertas en la IP 10.53.34.130?</div>
+            <div class="example-item">¿Hay incidentes con el equipo SWITCH-CORE?</div>
+          </div>
+
+          <div class="tool-section-lbl">Filtros disponibles</div>
+          <div class="param-list">
+            <div class="param-row">
+              <div class="param-name">ip</div>
+              <div class="param-desc">Filtra por IP exacta del equipo. Ej: <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">10.53.34.130</code></div>
+              <div class="param-badges"><span class="badge bm">opcional</span></div>
+            </div>
+            <div class="param-row">
+              <div class="param-name">equipo</div>
+              <div class="param-desc">Filtra por nombre del equipo, búsqueda parcial. Ej: <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">SWITCH-CORE</code></div>
+              <div class="param-badges"><span class="badge bm">opcional</span></div>
+            </div>
+            <div class="param-row">
+              <div class="param-name">solo_down</div>
+              <div class="param-desc">Si solo querés los equipos completamente caídos (status "down"), pedímelo explícitamente.</div>
+              <div class="param-badges"><span class="badge bm">opcional</span><span class="badge bb">default: false</span></div>
+            </div>
+          </div>
+
+          <div class="tool-section-lbl">Qué te respondo</div>
+          <div class="return-box">
+            <div class="return-field"><div class="rf-key">banco_total</div><div class="rf-val">Cantidad de alertas en instancia Banco</div></div>
+            <div class="return-field"><div class="rf-key">ekt_total</div><div class="rf-val">Cantidad de alertas en instancia EKT (Comercio)</div></div>
+            <div class="return-field"><div class="rf-key">banco[ ]</div><div class="rf-val">Lista de {ip, sensor} con alertas activas — Banco</div></div>
+            <div class="return-field"><div class="rf-key">ekt[ ]</div><div class="rf-val">Lista de {ip, sensor} con alertas activas — Comercio</div></div>
+          </div>
+
+          <div class="note mt">
+            <span class="note-icon">💡</span>
+            <span>Si hay 0 alertas activas para los filtros que usaste, te lo informo explícitamente.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DETALLE ══ -->
+    <div id="sec-detalle" class="sec">
+      <div class="page-title">Detalle de alerta</div>
+      <div class="page-sub">Contexto completo de un equipo: estado, historial, escalamiento y contactos — todo en una sola consulta.</div>
+
+      <div class="tool-card">
+        <div class="tool-card-hd">
+          <div class="tool-icon">🔍</div>
+          <div>
+            <div class="tool-title">get_alert_detail</div>
+            <div class="tool-desc">La consulta más completa. Para una IP específica combina en paralelo: estado actual del sensor, últimos 15 tickets, template de aplicación, matriz de escalamiento y contactos de las áreas responsables.</div>
+          </div>
+        </div>
+        <div class="tool-body">
+
+          <div class="tool-section-lbl">Cómo pedirlo</div>
+          <div class="example-list">
+            <div class="example-item">Dame el detalle completo de la IP 10.118.57.142</div>
+            <div class="example-item">Contame todo sobre el equipo 10.53.34.130</div>
+            <div class="example-item">¿Qué está pasando con el servidor 10.1.2.3?</div>
+            <div class="example-item">Analizá la alerta de 10.118.57.142, sensor Memoria</div>
+          </div>
+
+          <div class="tool-section-lbl">Parámetros</div>
+          <div class="param-list">
+            <div class="param-row">
+              <div class="param-name">ip</div>
+              <div class="param-desc">IP del equipo a analizar. Podés decirla en lenguaje natural y la detecto.</div>
+              <div class="param-badges"><span class="badge br">requerido</span></div>
+            </div>
+            <div class="param-row">
+              <div class="param-name">sensor</div>
+              <div class="param-desc">Nombre del sensor para filtrar tickets históricos. Si no lo especificás, lo resuelvo automáticamente desde la alerta activa.</div>
+              <div class="param-badges"><span class="badge bm">opcional</span></div>
+            </div>
+          </div>
+
+          <div class="tool-section-lbl">Qué incluye la respuesta</div>
+          <div class="return-box">
+            <div class="return-field"><div class="rf-key">evento</div><div class="rf-val">Estado actual: equipo, sensor, status, prioridad, mensaje, áreas responsables</div></div>
+            <div class="return-field"><div class="rf-key">tickets[ ]</div><div class="rf-val">Hasta 15 tickets históricos con detalle y acción correctiva</div></div>
+            <div class="return-field"><div class="rf-key">template</div><div class="rf-val">Aplicación asociada al equipo y gerencia de desarrollo</div></div>
+            <div class="return-field"><div class="rf-key">escalamiento[ ]</div><div class="rf-val">Niveles de escalamiento: nombre, puesto, extensión, celular, correo, tiempo</div></div>
+            <div class="return-field"><div class="rf-key">contacto_atendedora</div><div class="rf-val">Gerencia, responsable, correos y extensiones del área que atiende</div></div>
+            <div class="return-field"><div class="rf-key">contacto_administradora</div><div class="rf-val">Gerencia, responsable, correos y extensiones del área administradora</div></div>
+          </div>
+
+          <div class="note warn mt">
+            <span class="note-icon">⚠️</span>
+            <span>Si el equipo no tiene alerta activa, busco automáticamente la última alerta registrada en el historial y te lo indico.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIAL ══ -->
+    <div id="sec-historial" class="sec">
+      <div class="page-title">Historial de tickets</div>
+      <div class="page-sub">Incidentes pasados de un equipo: qué pasó, cuándo y cómo se resolvió.</div>
+
+      <div class="tool-card">
+        <div class="tool-card-hd">
+          <div class="tool-icon">📋</div>
+          <div>
+            <div class="tool-title">get_historical_tickets</div>
+            <div class="tool-desc">Retorna todos los tickets históricos registrados para una IP. Incluye descripción de la alerta, detalle técnico y la acción correctiva tomada. Útil para entender la recurrencia de un problema.</div>
+          </div>
+        </div>
+        <div class="tool-body">
+
+          <div class="tool-section-lbl">Cómo pedirlo</div>
+          <div class="example-list">
+            <div class="example-item">¿Qué tickets tuvo el servidor 10.118.57.142?</div>
+            <div class="example-item">Historial de incidentes de la IP 10.53.34.130</div>
+            <div class="example-item">¿Qué pasó antes con ese equipo?</div>
+            <div class="example-item">Tickets de 10.1.2.3, solo el sensor de Memoria</div>
+            <div class="example-item">¿Cuántas veces falló el CPU de 10.118.57.142?</div>
+          </div>
+
+          <div class="tool-section-lbl">Parámetros</div>
+          <div class="param-list">
+            <div class="param-row">
+              <div class="param-name">ip</div>
+              <div class="param-desc">IP del equipo a consultar.</div>
+              <div class="param-badges"><span class="badge br">requerido</span></div>
+            </div>
+            <div class="param-row">
+              <div class="param-name">sensor</div>
+              <div class="param-desc">Filtrar por sensor específico: <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">Memoria</code>, <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">CPU</code>, <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">Ping</code>. Si no lo especificás, busco el sensor de la alerta activa actual o la última registrada.</div>
+              <div class="param-badges"><span class="badge bm">opcional</span><span class="badge bb">auto-resolve</span></div>
+            </div>
+          </div>
+
+          <div class="tool-section-lbl">Qué incluye cada ticket</div>
+          <div class="return-box">
+            <div class="return-field"><div class="rf-key">#ticket</div><div class="rf-val">ID del ticket</div></div>
+            <div class="return-field"><div class="rf-key">alerta</div><div class="rf-val">Descripción del incidente</div></div>
+            <div class="return-field"><div class="rf-key">detalle</div><div class="rf-val">Información técnica adicional del problema</div></div>
+            <div class="return-field"><div class="rf-key">acción correctiva</div><div class="rf-val">Lo que se hizo para resolverlo</div></div>
+          </div>
+
+          <div class="note mt">
+            <span class="note-icon">💡</span>
+            <span>Si el sensor no viene en tu consulta, lo resuelvo automáticamente primero desde alertas activas y si no, desde el último evento histórico del equipo.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ESCALAMIENTO ══ -->
+    <div id="sec-escalamiento" class="sec">
+      <div class="page-title">Escalamiento</div>
+      <div class="page-sub">A quién llamar, quién atiende y los niveles de escalamiento para cualquier equipo.</div>
+
+      <div class="tool-card">
+        <div class="tool-card-hd">
+          <div class="tool-icon">📞</div>
+          <div>
+            <div class="tool-title">get_escalation_matrix</div>
+            <div class="tool-desc">Dado un IP, busca el template de aplicación asociado y retorna la jerarquía de escalamiento completa: niveles de contacto, área atendedora y área administradora con todos sus datos.</div>
+          </div>
+        </div>
+        <div class="tool-body">
+
+          <div class="tool-section-lbl">Cómo pedirlo</div>
+          <div class="example-list">
+            <div class="example-item">¿A quién escalo la alerta de 10.118.57.142?</div>
+            <div class="example-item">¿Quién atiende el equipo con IP 10.53.34.130?</div>
+            <div class="example-item">Dame los contactos de escalamiento de ese servidor</div>
+            <div class="example-item">¿Cuánto tiempo tengo para escalar al nivel 2?</div>
+            <div class="example-item">¿Cuál es el correo del área administradora de ese equipo?</div>
+          </div>
+
+          <div class="tool-section-lbl">Parámetros</div>
+          <div class="param-list">
+            <div class="param-row">
+              <div class="param-name">ip</div>
+              <div class="param-desc">IP del equipo. La instancia (Banco o Comercio/EKT) se determina automáticamente.</div>
+              <div class="param-badges"><span class="badge br">requerido</span></div>
+            </div>
+          </div>
+
+          <div class="tool-section-lbl">Qué incluye la respuesta</div>
+          <div class="return-box">
+            <div class="return-field"><div class="rf-key">encabezado</div><div class="rf-val">Template del equipo: ID, nombre de aplicación e instancia</div></div>
+            <div class="return-field"><div class="rf-key">gerencia_desarrollo</div><div class="rf-val">Gerencia de desarrollo asociada al template</div></div>
+            <div class="return-field"><div class="rf-key">area_atendedora</div><div class="rf-val">Gerencia, responsable, correos y extensiones del área que atiende el incidente</div></div>
+            <div class="return-field"><div class="rf-key">area_administradora</div><div class="rf-val">Gerencia, responsable, correos y extensiones del área administradora</div></div>
+            <div class="return-field"><div class="rf-key">niveles[ ]</div><div class="rf-val">Jerarquía: nivel, nombre, puesto, extensión, celular, correo, tiempo de escalación</div></div>
+          </div>
+
+          <div class="div-lbl"><span>Ejemplo de nivel de escalamiento</span></div>
+          <div class="contact-card">
+            <div class="contact-title">Nivel 1 — Atención inicial</div>
+            <div class="contact-row"><div class="contact-key">Nombre</div><div class="contact-val">Juan Pérez</div></div>
+            <div class="contact-row"><div class="contact-key">Puesto</div><div class="contact-val">Técnico de Soporte</div></div>
+            <div class="contact-row"><div class="contact-key">Extensión</div><div class="contact-val">4521</div></div>
+            <div class="contact-row"><div class="contact-key">Celular</div><div class="contact-val">55 1234 5678</div></div>
+            <div class="contact-row"><div class="contact-key">Correo</div><div class="contact-val">jperez@empresa.com</div></div>
+            <div class="contact-row"><div class="contact-key">Tiempo escalación</div><div class="contact-val">30 minutos</div></div>
+          </div>
+          <div class="note">
+            <span class="note-icon">ℹ️</span>
+            <span>Iris detecta automáticamente si el equipo pertenece a la instancia Banco o EKT (Comercio) y consulta la base correcta.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="div-lbl"><span>Flujo recomendado ante una alerta</span></div>
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-num">1</div>
+            <div>
+              <div class="flow-title">Verificar el panorama general</div>
+              <div class="flow-desc">Primero preguntame qué alertas hay activas para tener el contexto completo.</div>
+              <code class="code">¿Qué alertas hay activas ahora?</code>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num">2</div>
+            <div>
+              <div class="flow-title">Obtener el detalle del equipo afectado</div>
+              <div class="flow-desc">Con la IP que identifiques, pedí el análisis completo.</div>
+              <code class="code">Dame el detalle de la IP 10.118.57.142</code>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num orange">3</div>
+            <div>
+              <div class="flow-title">Revisar el historial si hay recurrencia</div>
+              <div class="flow-desc">Si el equipo ya falló antes, te digo qué se hizo para resolverlo.</div>
+              <code class="code">¿Cuántas veces tuvo este problema?</code>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-num done">4</div>
+            <div>
+              <div class="flow-title">Escalar si es necesario</div>
+              <div class="flow-desc">Te doy el contacto exacto de quién debe recibir el escalamiento.</div>
+              <code class="code">¿A quién escalo esta alerta?</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TIPS ══ -->
+    <div id="sec-tips" class="sec">
+      <div class="page-title">Tips</div>
+      <div class="page-sub">Cómo sacarle más provecho a Iris.</div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">Dá siempre la IP</div></div>
+        <div class="compare">
+          <div class="cbox bad"><div class="cbox-lbl bad">✗ Sin IP</div><div class="cbox-text">¿Qué le pasa al servidor de base de datos?</div></div>
+          <div class="cbox good"><div class="cbox-lbl good">✓ Con IP</div><div class="cbox-text">¿Qué le pasa al servidor 10.118.57.142?</div></div>
+        </div>
+        <div style="padding:0 14px 14px;font-size:12px;color:var(--text3)">Iris trabaja con IPs, no con nombres. Si no la tenés, primero consultá las alertas activas para obtenerla.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">Pedí el detalle completo de una vez</div></div>
+        <div style="padding:14px 16px;">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:10px">En lugar de hacer 3 consultas separadas, pedí el análisis completo:</div>
+          <code class="code">Analizá en detalle la IP 10.118.57.142</code>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px">Esto activa <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">get_alert_detail</code> que corre todas las consultas en paralelo y te da todo junto.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">Especificá el sensor si lo conocés</div></div>
+        <div class="compare">
+          <div class="cbox bad"><div class="cbox-lbl bad">✗ Vago</div><div class="cbox-text">Tickets del servidor 10.1.2.3</div></div>
+          <div class="cbox good"><div class="cbox-lbl good">✓ Específico</div><div class="cbox-text">Tickets de 10.1.2.3 del sensor de Memoria</div></div>
+        </div>
+        <div style="padding:0 14px 14px;font-size:12px;color:var(--text3)">Si no especificás el sensor, Iris lo resuelve automáticamente, pero podés filtrar resultados siendo más preciso.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-title">Para solo ver equipos caídos</div></div>
+        <div style="padding:14px 16px;">
+          <code class="code">Mostrá solo los equipos completamente down</code>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px">Esto activa el filtro <code style="background:var(--s3);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">solo_down=true</code> y excluye advertencias o sensores degradados.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><div class="card-title">Seguimiento en conversación</div></div>
+        <div style="padding:14px 16px;">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Podés hacer preguntas de seguimiento sin repetir la IP:</div>
+          <code class="code">¿Y cuál es el historial de ese equipo?</code>
+          <code class="code">¿A quién escalo esa alerta?</code>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px">Iris recuerda el contexto reciente de la conversación.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROBLEMAS ══ -->
+    <div id="sec-problemas" class="sec">
+      <div class="page-title">Solución de problemas</div>
+      <div class="page-sub">Si Iris no responde lo que esperás.</div>
+
+      <div class="card" style="margin-bottom:14px">
+        <div class="trouble-item">
+          <div class="trouble-q">No encontró alertas activas</div>
+          <div class="trouble-a">El sistema de monitoreo está limpio o hay un problema de conexión con PRTG. Si sabés que hay una alerta, revisá con tu administrador la conectividad a la instancia Banco/EKT.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">"No se encontró template para esta IP"</div>
+          <div class="trouble-a">La IP no tiene un template de aplicación configurado en la base de datos. Solicitá a tu administrador que asocie un template a esa IP para habilitar el escalamiento.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">"Sin tickets históricos"</div>
+          <div class="trouble-a">El equipo no tiene tickets registrados para ese sensor. Puede ser un equipo nuevo o que los incidentes anteriores fueron registrados bajo un sensor diferente. Probá sin especificar el sensor.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">No tengo permisos para consultar alertas</div>
+          <div class="trouble-a">Las tools de alertas (<code style="background:var(--s2);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">get_active_alerts</code>, <code style="background:var(--s2);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">get_alert_detail</code>) requieren permisos específicos en tu rol. Contactá a tu administrador para que los habilite.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">La respuesta tarda mucho</div>
+          <div class="trouble-a"><code style="background:var(--s2);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--blue)">get_alert_detail</code> hace múltiples consultas en paralelo y puede tardar unos segundos. Si pasa de 15s, puede haber un problema de conectividad con PRTG o la base de datos.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">Los contactos de escalamiento están vacíos</div>
+          <div class="trouble-a">El inventario del equipo no tiene asignadas las áreas atendedora/administradora. Reportalo a tu administrador para que actualice el inventario en la base de datos.</div>
+        </div>
+        <div class="trouble-item">
+          <div class="trouble-q">No sé la IP del equipo</div>
+          <div class="trouble-a">Primero preguntame qué alertas hay activas con <span style="font-style:italic;color:var(--text2)">"¿Qué alertas hay activas?"</span>. La respuesta incluye la IP de cada equipo afectado.</div>
+        </div>
+      </div>
+
+      <div class="note ok">
+        <span class="note-icon">👥</span>
+        <span>Para problemas de acceso, permisos o comportamientos inesperados, contactá a tu administrador con la hora aproximada del incidente.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Telegram Mini App
+if (window.Telegram && window.Telegram.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.expand();
+  tg.ready();
+}
+
+function go(id, btn) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + id).classList.add('active');
+  btn.classList.add('active');
+  document.querySelector('.body').scrollTop = 0;
+  btn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+}
+</script>
+</body>
+</html>
