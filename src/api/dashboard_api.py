@@ -207,7 +207,8 @@ def log_detail(correlation_id: str):
 
         steps = db.execute_query(
             """
-            SELECT stepNum, tipo, nombre, duracionMs, tokensIn, tokensOut, costoUSD, fechaInicio
+            SELECT stepNum, tipo, nombre, duracionMs, tokensIn, tokensOut, costoUSD, fechaInicio,
+                   entrada, salida
             FROM abcmasplus..BotIAv2_InteractionSteps
             WHERE correlationId = :cid
             ORDER BY stepNum
@@ -215,12 +216,17 @@ def log_detail(correlation_id: str):
             {"cid": correlation_id},
         )
 
+        # Último prompt enviado al LLM (entrada del último step de tipo 'llm')
+        llm_steps = [s for s in steps if s["tipo"] == "llm"]
+        ultimo_prompt_llm = llm_steps[-1]["entrada"] if llm_steps else None
+
         i = interaction[0]
         return jsonify({
             "correlation_id": i["correlationId"],
             "username": i["telegramUsername"] or "api",
             "query": i["query"],
             "respuesta": i["respuesta"],
+            "ultimo_prompt_llm": ultimo_prompt_llm,
             "agente": i["agenteNombre"],
             "duracion_ms": int(i["duracionMs"] or 0),
             "memory_ms": int(i["memoryMs"] or 0),
