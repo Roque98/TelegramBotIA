@@ -299,6 +299,30 @@ td.center{text-align:center;padding:10px 8px;}
 .pill-tab{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .12s;}
 .pill-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3);}
 
+/* ── API REFERENCE ── */
+.api-layout{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:start;}
+@media(max-width:768px){.api-layout{grid-template-columns:1fr;}}
+.api-ep-list{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:sticky;top:0;}
+.api-ep-section{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:12px 14px 4px;}
+.api-ep-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border);}
+.api-ep-item:last-child{border-bottom:none;}
+.api-ep-item:hover{background:var(--surface2);}
+.api-ep-item.active{background:var(--surface3);}
+.api-method-badge{font-size:9px!important;padding:1px 5px!important;min-width:36px;text-align:center;flex-shrink:0;line-height:14px;}
+.api-ep-path{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);}
+.api-ep-item.active .api-ep-path{color:var(--text);}
+.api-detail-pane{min-width:0;}
+.api-detail-hero{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;}
+.api-detail-url{font-family:'SF Mono',monospace;font-size:14px;font-weight:600;color:var(--text);}
+.api-detail-desc{font-size:13px;color:var(--text2);margin-top:10px;line-height:1.6;}
+.api-param-row{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:flex-start;}
+.api-param-row:last-child{border-bottom:none;}
+.api-param-name{font-family:'SF Mono',monospace;font-size:11px;color:var(--text);font-weight:600;width:130px;flex-shrink:0;}
+.api-param-type{font-size:10px;color:var(--blue);font-weight:600;width:58px;flex-shrink:0;}
+.api-param-req{width:40px;flex-shrink:0;}
+.api-param-desc{color:var(--text3);flex:1;line-height:1.5;}
+.api-url-box{font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);margin-bottom:12px;padding:8px 12px;background:var(--surface2);border-radius:6px;border:1px solid var(--border2);word-break:break-all;}
+
 /* trace query box */
 .query-box{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;margin-bottom:16px;}
 .query-box-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}
@@ -377,6 +401,11 @@ td.center{text-align:center;padding:10px 8px;}
       <button class="nav-btn" onclick="go('perms',this)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         Permisos
+      </button>
+      <div class="nav-section">Integración</div>
+      <button class="nav-btn" onclick="go('api',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        API
       </button>
     </nav>
   </aside>
@@ -893,6 +922,106 @@ td.center{text-align:center;padding:10px 8px;}
         </div>
       </div>
 
+      <!-- ══ API REFERENCE ══ -->
+      <div id="screen-api" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div>
+              <div class="page-title">API Reference</div>
+              <div class="page-sub">Documentación y playground interactivo</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="api-layout">
+          <!-- endpoint list -->
+          <div class="api-ep-list">
+            <div class="api-ep-section">Chat</div>
+            <div class="api-ep-item active" id="api-item-chat" onclick="selectApiEndpoint('chat',this)">
+              <span class="badge bb api-method-badge">POST</span>
+              <span class="api-ep-path">/api/chat</span>
+            </div>
+            <div class="api-ep-item" id="api-item-validate-token" onclick="selectApiEndpoint('validate-token',this)">
+              <span class="badge bb api-method-badge">POST</span>
+              <span class="api-ep-path">/api/chat/validate-token</span>
+            </div>
+            <div class="api-ep-section">Sistema</div>
+            <div class="api-ep-item" id="api-item-health" onclick="selectApiEndpoint('health',this)">
+              <span class="badge bg api-method-badge">GET</span>
+              <span class="api-ep-path">/api/health</span>
+            </div>
+          </div>
+
+          <!-- detail + tester -->
+          <div class="api-detail-pane">
+            <div class="api-detail-hero">
+              <div class="flex-row">
+                <span class="badge bb" id="api-ep-method-badge">POST</span>
+                <span class="api-detail-url" id="api-ep-url">/api/chat</span>
+              </div>
+              <div class="api-detail-desc" id="api-ep-description">Enviar un mensaje al bot. Requiere un token encriptado AES+Base64 válido generado por la plataforma externa.</div>
+            </div>
+
+            <div class="pill-tabs">
+              <div class="pill-tab active" id="api-tab-docs" onclick="switchApiTab('docs',this)">Documentación</div>
+              <div class="pill-tab" id="api-tab-tester" onclick="switchApiTab('tester',this)">Playground</div>
+            </div>
+
+            <!-- DOCS panel -->
+            <div id="api-panel-docs">
+              <div class="g2">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">Request body</div></div>
+                  <div id="api-docs-request" style="padding:14px 16px"></div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div class="card-title">Response</div></div>
+                  <div id="api-docs-response" style="padding:14px 16px"></div>
+                </div>
+              </div>
+              <div class="card" style="margin-top:12px">
+                <div class="card-header"><div class="card-title">Códigos de estado</div></div>
+                <div id="api-docs-statuses" style="padding:14px 16px"></div>
+              </div>
+            </div>
+
+            <!-- TESTER panel -->
+            <div id="api-panel-tester" style="display:none">
+              <div class="card" style="margin-bottom:12px">
+                <div class="card-header">
+                  <div class="card-title">Request</div>
+                  <button class="btn primary" id="api-send-btn" onclick="sendApiRequest()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Enviar
+                  </button>
+                </div>
+                <div style="padding:14px 16px">
+                  <div class="api-url-box" id="api-tester-url-display"></div>
+                  <div id="api-body-wrap">
+                    <div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">Body (JSON)</div>
+                    <textarea id="api-body-input" class="prompt-edit-area" style="height:130px;resize:vertical" spellcheck="false"></textarea>
+                  </div>
+                </div>
+              </div>
+              <div id="api-tester-loading" style="display:none" class="section-loading">
+                <div class="section-spinner"></div>
+                <span>Enviando solicitud...</span>
+              </div>
+              <div class="card" id="api-response-card" style="display:none">
+                <div class="card-header">
+                  <div class="card-title">Response</div>
+                  <div class="flex-row" style="gap:10px">
+                    <span class="badge" id="api-resp-status-badge"></span>
+                    <span style="font-size:11px;color:var(--text3)" id="api-resp-time"></span>
+                  </div>
+                </div>
+                <pre id="api-resp-body" style="padding:14px 16px;font-family:'SF Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;word-break:break-word;overflow:auto;max-height:320px;line-height:1.6"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /page -->
 
     <!-- ── BOTTOM NAV (mobile) ── -->
@@ -919,13 +1048,17 @@ td.center{text-align:center;padding:10px 8px;}
         <span>Alertas</span>
         <span class="bn-badge">3</span>
       </button>
+      <button class="bn-btn" onclick="go('api',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span>API</span>
+      </button>
     </nav>
 
   </div><!-- /main -->
 </div><!-- /app -->
 
 <script>
-const SCREENS = ['overview','logs','alerts','agents','knowledge','users','perms'];
+const SCREENS = ['overview','logs','alerts','agents','knowledge','users','perms','api'];
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -954,6 +1087,7 @@ function go(id, el, mode) {
   if (id === 'knowledge') loadKnowledge();
   if (id === 'users') loadUsers();
   if (id === 'alerts') loadAlerts();
+  if (id === 'api') initApiSection();
 }
 
 let _currentLogId = null;
@@ -1548,6 +1682,176 @@ async function refreshSection(section) {
   if (btn) btn.classList.add('spinning');
   try { await _loaders[section]?.(); } finally {
     if (btn) btn.classList.remove('spinning');
+  }
+}
+
+// ── API Reference ─────────────────────────────────────────────────────────────
+
+const API_ENDPOINTS = {
+  'chat': {
+    method: 'POST', methodClass: 'bb',
+    path: '/api/chat',
+    desc: 'Enviar un mensaje al bot. Requiere un token encriptado AES+Base64 generado por la plataforma externa (C#). La respuesta incluye el texto generado por el agente.',
+    body: JSON.stringify({token: 'base64_del_token_encriptado', message: 'Hola, ¿cuál es mi saldo?'}, null, 2),
+    request: [
+      {name: 'token',   type: 'string', req: true,  desc: 'Token encriptado en Base64 (AES). Generado por la plataforma C# con número_empleado + timestamp.'},
+      {name: 'message', type: 'string', req: true,  desc: 'Texto del mensaje a procesar por el orquestador de agentes.'},
+    ],
+    response: [
+      {name: 'success',          type: 'bool',     desc: 'true si la petición se procesó correctamente.'},
+      {name: 'response',         type: 'string',   desc: 'Respuesta generada por el agente IA.'},
+      {name: 'numero_empleado',  type: 'int',      desc: 'Número de empleado extraído del token.'},
+      {name: 'timestamp',        type: 'ISO 8601', desc: 'Fecha y hora del servidor al responder.'},
+    ],
+    statuses: [
+      {code: '200', cls: 'bg', desc: 'Mensaje procesado exitosamente.'},
+      {code: '400', cls: 'ba', desc: 'Request malformado o campos requeridos faltantes.'},
+      {code: '401', cls: 'br', desc: 'Token inválido, expirado o malformado.'},
+      {code: '500', cls: 'br', desc: 'Error interno del servidor.'},
+    ]
+  },
+  'validate-token': {
+    method: 'POST', methodClass: 'bb',
+    path: '/api/chat/validate-token',
+    desc: 'Validar un token encriptado sin enviar ningún mensaje. Útil para verificar credenciales al inicio de sesión antes de abrir la interfaz de chat.',
+    body: JSON.stringify({token: 'base64_del_token_encriptado'}, null, 2),
+    request: [
+      {name: 'token', type: 'string', req: true, desc: 'Token encriptado en Base64 (AES) a validar.'},
+    ],
+    response: [
+      {name: 'success',          type: 'bool',     desc: 'true si la petición fue procesada.'},
+      {name: 'valid',            type: 'bool',     desc: 'true si el token es válido y no ha expirado.'},
+      {name: 'numero_empleado',  type: 'int',      desc: 'Número de empleado (si el token es válido).'},
+      {name: 'timestamp_token',  type: 'ISO 8601', desc: 'Fecha de emisión embebida en el token.'},
+      {name: 'edad_segundos',    type: 'int',      desc: 'Antigüedad del token en segundos al momento de validar.'},
+    ],
+    statuses: [
+      {code: '200', cls: 'bg', desc: 'Validación realizada. Ver campo "valid" para el resultado.'},
+      {code: '400', cls: 'ba', desc: 'Request malformado o campo "token" faltante.'},
+      {code: '500', cls: 'br', desc: 'Error interno del servidor.'},
+    ]
+  },
+  'health': {
+    method: 'GET', methodClass: 'bg',
+    path: '/api/health',
+    desc: 'Verificar el estado del servicio REST. No requiere autenticación. Útil para health checks de infraestructura y monitoreo externo.',
+    body: null,
+    request: [],
+    response: [
+      {name: 'status',    type: 'string',   desc: 'Estado del servicio. Valor esperado: "ok".'},
+      {name: 'timestamp', type: 'ISO 8601', desc: 'Fecha y hora actual del servidor.'},
+    ],
+    statuses: [
+      {code: '200', cls: 'bg', desc: 'Servicio operativo y respondiendo correctamente.'},
+    ]
+  }
+};
+
+let _apiCurrentId = 'chat';
+let _apiCurrentTab = 'docs';
+let _apiInitialized = false;
+
+function initApiSection() {
+  if (!_apiInitialized) {
+    _apiInitialized = true;
+    renderApiDetail(_apiCurrentId);
+  }
+}
+
+function selectApiEndpoint(id, el) {
+  document.querySelectorAll('.api-ep-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  _apiCurrentId = id;
+  document.getElementById('api-response-card').style.display = 'none';
+  renderApiDetail(id);
+}
+
+function switchApiTab(tab, el) {
+  document.querySelectorAll('#screen-api .pill-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  _apiCurrentTab = tab;
+  document.getElementById('api-panel-docs').style.display = tab === 'docs' ? '' : 'none';
+  document.getElementById('api-panel-tester').style.display = tab === 'tester' ? '' : 'none';
+}
+
+function renderApiDetail(id) {
+  const ep = API_ENDPOINTS[id];
+  if (!ep) return;
+
+  document.getElementById('api-ep-method-badge').textContent = ep.method;
+  document.getElementById('api-ep-method-badge').className = 'badge ' + ep.methodClass;
+  document.getElementById('api-ep-url').textContent = ep.path;
+  document.getElementById('api-ep-description').textContent = ep.desc;
+  document.getElementById('api-tester-url-display').textContent = ep.method + '  ' + location.origin + ep.path;
+
+  const bodyWrap = document.getElementById('api-body-wrap');
+  if (ep.body) {
+    bodyWrap.style.display = '';
+    document.getElementById('api-body-input').value = ep.body;
+  } else {
+    bodyWrap.style.display = 'none';
+  }
+
+  const emptyRow = '<p style="font-size:12px;color:var(--text3);padding:4px 0">Sin parámetros.</p>';
+
+  document.getElementById('api-docs-request').innerHTML = ep.request.length === 0 ? emptyRow
+    : ep.request.map(p => `<div class="api-param-row">
+        <div class="api-param-name">${p.name}</div>
+        <div class="api-param-type">${p.type}</div>
+        <div class="api-param-req"><span class="badge ${p.req ? 'br' : 'bm'}" style="font-size:9px;padding:1px 4px">${p.req ? 'req' : 'opt'}</span></div>
+        <div class="api-param-desc">${p.desc}</div>
+      </div>`).join('');
+
+  document.getElementById('api-docs-response').innerHTML = ep.response.map(p => `<div class="api-param-row">
+      <div class="api-param-name">${p.name}</div>
+      <div class="api-param-type">${p.type}</div>
+      <div class="api-param-req"></div>
+      <div class="api-param-desc">${p.desc}</div>
+    </div>`).join('');
+
+  document.getElementById('api-docs-statuses').innerHTML = ep.statuses.map(s => `<div class="api-param-row">
+      <div class="api-param-name"><span class="badge ${s.cls}">${s.code}</span></div>
+      <div class="api-param-type"></div>
+      <div class="api-param-req"></div>
+      <div class="api-param-desc">${s.desc}</div>
+    </div>`).join('');
+}
+
+async function sendApiRequest() {
+  const ep = API_ENDPOINTS[_apiCurrentId];
+  if (!ep) return;
+  const btn = document.getElementById('api-send-btn');
+  const loading = document.getElementById('api-tester-loading');
+  const respCard = document.getElementById('api-response-card');
+
+  btn.classList.add('spinning');
+  loading.style.display = 'flex';
+  respCard.style.display = 'none';
+
+  const t0 = Date.now();
+  try {
+    const opts = {method: ep.method, headers: {'Content-Type': 'application/json'}};
+    if (ep.body !== null) opts.body = document.getElementById('api-body-input').value;
+    const r = await fetch(ep.path, opts);
+    const elapsed = Date.now() - t0;
+    let text;
+    try { text = JSON.stringify(await r.json(), null, 2); } catch { text = await r.text(); }
+    const badge = document.getElementById('api-resp-status-badge');
+    badge.textContent = r.status + ' ' + r.statusText;
+    badge.className = 'badge ' + (r.ok ? 'bg' : r.status < 500 ? 'ba' : 'br');
+    document.getElementById('api-resp-time').textContent = elapsed + ' ms';
+    document.getElementById('api-resp-body').textContent = text;
+    respCard.style.display = '';
+  } catch(e) {
+    const badge = document.getElementById('api-resp-status-badge');
+    badge.textContent = 'Error de red';
+    badge.className = 'badge br';
+    document.getElementById('api-resp-time').textContent = '';
+    document.getElementById('api-resp-body').textContent = e.message;
+    respCard.style.display = '';
+  } finally {
+    btn.classList.remove('spinning');
+    loading.style.display = 'none';
   }
 }
 
