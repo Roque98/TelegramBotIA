@@ -456,6 +456,130 @@ def users():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Chats
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/api/admin/chats")
+def chats():
+    try:
+        db = _get_db()
+        rows = db.execute_query("""
+            SELECT TOP 150
+                il.telegramChatId,
+                ISNULL(u.nombre, il.telegramUsername)    AS nombre,
+                il.telegramUsername,
+                COUNT(*)                                  AS total_mensajes,
+                SUM(CASE WHEN il.exitoso = 1 THEN 1 ELSE 0 END) AS exitosos,
+                SUM(CASE WHEN il.exitoso = 0 THEN 1 ELSE 0 END) AS errores,
+                MAX(il.fechaEjecucion)                    AS ultima_actividad,
+                MIN(il.fechaEjecucion)                    AS primera_actividad,
+                (
+                    SELECT TOP 1 query
+                    FROM abcmasplus..BotIAv2_InteractionLogs sub
+                    WHERE sub.telegramChatId = il.telegramChatId
+                    ORDER BY sub.fechaEjecucion DESC
+                ) AS ultimo_query
+            FROM abcmasplus..BotIAv2_InteractionLogs il
+            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u
+                ON il.telegramChatId = u.chat_id
+            WHERE il.telegramChatId IS NOT NULL
+            GROUP BY il.telegramChatId, il.telegramUsername, u.nombre
+            ORDER BY MAX(il.fechaEjecucion) DESC
+        """)
+        return jsonify([
+            {
+                "chat_id": str(r["telegramChatId"]),
+                "nombre": r["nombre"] or r["telegramUsername"] or "Desconocido",
+                "username": r["telegramUsername"] or "",
+                "total": int(r["total_mensajes"] or 0),
+                "exitosos": int(r["exitosos"] or 0),
+                "errores": int(r["errores"] or 0),
+                "ultima_actividad": str(r["ultima_actividad"] or ""),
+                "primera_actividad": str(r["primera_actividad"] or ""),
+                "ultimo_query": (r["ultimo_query"] or "")[:100],
+            }
+            for r in rows
+        ])
+    except Exception as e:
+        logger.error(f"Dashboard /chats error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@dashboard_bp.route("/api/admin/chats/<chat_id>")
+def chat_history(chat_id: str):
+    try:
+        db = _get_db()
+
+        messages = db.execute_query(
+            """
+            SELECT TOP 300
+                correlationId, query, respuesta, agenteNombre,
+                fechaEjecucion, exitoso, duracionMs, costUSD,
+                mensajeError, channel, stepsTomados,
+                totalInputTokens, totalOutputTokens, memoryMs, reactMs
+            FROM abcmasplus..BotIAv2_InteractionLogs
+            WHERE telegramChatId = :cid
+            ORDER BY fechaEjecucion ASC
+            """,
+            {"cid": chat_id},
+        )
+
+        try:
+            profile_rows = db.execute_query(
+                "EXEC abcmasplus..BotIAv2_sp_GetPerfilMemoria @telegramChatId = :cid",
+                {"cid": chat_id},
+            )
+            profile = dict(profile_rows[0]) if profile_rows else None
+            if profile:
+                for k, v in profile.items():
+                    if hasattr(v, "isoformat"):
+                        profile[k] = v.isoformat()
+        except Exception:
+            profile = None
+
+        try:
+            stats_rows = db.execute_query(
+                "EXEC abcmasplus..BotIAv2_sp_GetEstadisticasUsuario @telegramChatId = :cid",
+                {"cid": chat_id},
+            )
+            stats = dict(stats_rows[0]) if stats_rows else None
+            if stats:
+                for k, v in stats.items():
+                    if hasattr(v, "isoformat"):
+                        stats[k] = v.isoformat()
+        except Exception:
+            stats = None
+
+        return jsonify({
+            "messages": [
+                {
+                    "correlation_id": m["correlationId"],
+                    "query": m["query"] or "",
+                    "respuesta": m["respuesta"] or "",
+                    "agente": m["agenteNombre"] or "",
+                    "fecha": str(m["fechaEjecucion"] or ""),
+                    "exitoso": bool(m["exitoso"]),
+                    "duracion_ms": int(m["duracionMs"] or 0),
+                    "costo": round(float(m["costUSD"] or 0), 4),
+                    "error": m["mensajeError"] or "",
+                    "channel": m["channel"] or "",
+                    "steps": int(m["stepsTomados"] or 0),
+                    "tokens_in": int(m["totalInputTokens"] or 0),
+                    "tokens_out": int(m["totalOutputTokens"] or 0),
+                    "memory_ms": int(m["memoryMs"] or 0),
+                    "react_ms": int(m["reactMs"] or 0),
+                }
+                for m in messages
+            ],
+            "profile": profile,
+            "stats": stats,
+        })
+    except Exception as e:
+        logger.error(f"Dashboard /chats/{chat_id} error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Alertas
 # ──────────────────────────────────────────────────────────────────────────────
 

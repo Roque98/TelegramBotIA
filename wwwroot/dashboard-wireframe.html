@@ -299,6 +299,60 @@ td.center{text-align:center;padding:10px 8px;}
 .pill-tab{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text3);transition:all .12s;}
 .pill-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3);}
 
+/* ── CHATS ── */
+.chat-layout{display:grid;grid-template-columns:300px 1fr;gap:12px;height:calc(100vh - 140px);}
+@media(max-width:768px){.chat-layout{grid-template-columns:1fr;height:auto;}}
+.chat-user-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.chat-conv-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.chat-search{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.chat-search svg{color:var(--text3);flex-shrink:0;}
+.chat-search input{flex:1;background:none;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--text);}
+.chat-user-items{overflow-y:auto;flex:1;}
+.chat-user-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.chat-user-item:hover{background:var(--surface2);}
+.chat-user-item.active{background:var(--surface3);border-left:3px solid var(--green);}
+.chat-user-item:last-child{border-bottom:none;}
+.chat-ui-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.chat-ui-name{font-size:13px;font-weight:600;}
+.chat-ui-time{font-size:11px;color:var(--text3);}
+.chat-ui-bottom{display:flex;align-items:center;gap:6px;}
+.chat-ui-preview{font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-ui-count{font-size:10px;font-weight:700;background:var(--surface3);border:1px solid var(--border2);color:var(--text3);padding:1px 6px;border-radius:8px;flex-shrink:0;}
+.chat-ui-err{font-size:10px;font-weight:700;background:var(--red-dim);border:1px solid rgba(255,59,48,.3);color:var(--red);padding:1px 6px;border-radius:8px;flex-shrink:0;}
+.chat-conv-header{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.chat-conv-user{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+.chat-conv-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.chat-conv-meta-item{font-size:11px;color:var(--text3);}
+.chat-conv-meta-item strong{color:var(--text2);font-weight:600;}
+.chat-conv-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.chat-conv-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px;flex-direction:column;gap:8px;}
+.chat-msg-group{display:flex;flex-direction:column;gap:6px;}
+.chat-msg-date{font-size:10px;font-weight:600;color:var(--text3);text-align:center;letter-spacing:.04em;text-transform:uppercase;margin:4px 0;}
+.chat-bubble{max-width:80%;padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.55;word-break:break-word;position:relative;}
+.chat-bubble-user-wrap{display:flex;justify-content:flex-end;}
+.chat-bubble-user{background:var(--blue-dim);border:1px solid rgba(10,132,255,.25);border-radius:12px 12px 4px 12px;color:var(--text);}
+.chat-bubble-bot-wrap{display:flex;justify-content:flex-start;}
+.chat-bubble-bot{background:var(--surface2);border:1px solid var(--border2);border-radius:12px 12px 12px 4px;color:var(--text);}
+.chat-bubble-error{background:var(--red-dim);border:1px solid rgba(255,59,48,.25);color:var(--red);}
+.chat-bubble-footer{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap;}
+.chat-bubble-footer-right{justify-content:flex-end;}
+.chat-bfooter-item{font-size:10px;color:var(--text3);}
+.chat-bfooter-agent{font-size:10px;font-weight:600;color:var(--purple);background:var(--purple-dim);border:1px solid rgba(191,90,242,.2);padding:1px 6px;border-radius:5px;}
+.chat-bfooter-steps{font-size:10px;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.chat-bfooter-steps:hover{color:var(--text);}
+.chat-steps-drawer{margin-top:6px;background:var(--surface3);border:1px solid var(--border2);border-radius:8px;overflow:hidden;display:none;}
+.chat-steps-drawer.open{display:block;}
+.chat-steps-body{padding:10px 12px;display:flex;flex-direction:column;gap:4px;}
+.chat-step-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.chat-step-row:last-child{border-bottom:none;}
+.chat-step-num{color:var(--text3);width:20px;flex-shrink:0;font-weight:600;}
+.chat-step-tipo{width:64px;flex-shrink:0;}
+.chat-step-nombre{color:var(--text2);flex:1;font-family:'SF Mono',monospace;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chat-step-ms{color:var(--text3);width:50px;text-align:right;flex-shrink:0;}
+.chat-memory-card{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:8px;flex-shrink:0;}
+.chat-memory-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}
+.chat-memory-text{font-size:12px;color:var(--text2);line-height:1.6;}
+
 /* ── API REFERENCE ── */
 .api-layout{display:grid;grid-template-columns:230px 1fr;gap:12px;align-items:start;}
 @media(max-width:768px){.api-layout{grid-template-columns:1fr;}}
@@ -394,6 +448,10 @@ td.center{text-align:center;padding:10px 8px;}
         Knowledge
       </button>
       <div class="nav-section">Acceso</div>
+      <button class="nav-btn" onclick="go('chats',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chats
+      </button>
       <button class="nav-btn" onclick="go('users',this)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Usuarios
@@ -895,6 +953,49 @@ td.center{text-align:center;padding:10px 8px;}
         </div>
       </div>
 
+      <!-- ══ CHATS ══ -->
+      <div id="screen-chats" class="screen">
+        <div class="page-header">
+          <div class="flex-row">
+            <div>
+              <div class="page-title">Chats</div>
+              <div class="page-sub">Historial de conversación por usuario</div>
+            </div>
+            <div class="spacer"></div>
+            <button class="btn" id="btn-refresh-chats" onclick="refreshSection('chats')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+        <div class="chat-layout">
+          <!-- panel izquierdo: lista de usuarios -->
+          <div class="chat-user-panel">
+            <div class="chat-search">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="chat-search-input" placeholder="Buscar usuario..." oninput="filterChatUsers(this.value)">
+            </div>
+            <div class="chat-user-items" id="chat-user-list">
+              <div class="section-loading"><div class="section-spinner"></div><span>Cargando...</span></div>
+            </div>
+          </div>
+          <!-- panel derecho: conversación -->
+          <div class="chat-conv-panel" id="chat-conv-panel">
+            <div class="chat-conv-empty" id="chat-conv-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Selecciona un usuario para ver su historial</span>
+            </div>
+            <div id="chat-conv-content" style="display:none;flex:1;display:none;flex-direction:column;overflow:hidden">
+              <div class="chat-conv-header" id="chat-conv-header">
+                <div class="chat-conv-user" id="chat-conv-name">—</div>
+                <div class="chat-conv-meta" id="chat-conv-meta"></div>
+              </div>
+              <div class="chat-conv-body" id="chat-conv-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ PERMISOS ══ -->
       <div id="screen-perms" class="screen">
         <div class="page-header">
@@ -1039,6 +1140,10 @@ td.center{text-align:center;padding:10px 8px;}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2"/></svg>
         <span>Agentes</span>
       </button>
+      <button class="bn-btn" onclick="go('chats',this,'bn')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Chats</span>
+      </button>
       <button class="bn-btn" onclick="go('users',this,'bn')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         <span>Usuarios</span>
@@ -1058,7 +1163,7 @@ td.center{text-align:center;padding:10px 8px;}
 </div><!-- /app -->
 
 <script>
-const SCREENS = ['overview','logs','alerts','agents','knowledge','users','perms','api'];
+const SCREENS = ['overview','logs','alerts','agents','knowledge','chats','users','perms','api'];
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -1087,6 +1192,7 @@ function go(id, el, mode) {
   if (id === 'knowledge') loadKnowledge();
   if (id === 'users') loadUsers();
   if (id === 'alerts') loadAlerts();
+  if (id === 'chats') loadChats();
   if (id === 'api') initApiSection();
 }
 
@@ -1674,6 +1780,7 @@ const _loaders = {
   alerts: loadAlerts,
   agents: loadAgents,
   knowledge: loadKnowledge,
+  chats: loadChats,
   users: loadUsers,
 };
 
@@ -1683,6 +1790,252 @@ async function refreshSection(section) {
   try { await _loaders[section]?.(); } finally {
     if (btn) btn.classList.remove('spinning');
   }
+}
+
+// ── Chats ─────────────────────────────────────────────────────────────────────
+
+let _chatUsers = [];
+let _chatStepsCache = {};
+
+function relativeDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'ahora';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+  if (diff < 604800) return Math.floor(diff / 86400) + 'd';
+  return d.toLocaleDateString('es-MX', {day:'2-digit', month:'short'});
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'})
+    + ' ' + d.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'});
+}
+
+function tipoBadge(tipo) {
+  const map = {thought:'bm', action:'bb', observation:'bg', error:'br'};
+  return `<span class="badge ${map[tipo] || 'bm'}" style="font-size:9px;padding:1px 4px">${tipo || '—'}</span>`;
+}
+
+async function loadChats() {
+  const list = document.getElementById('chat-user-list');
+  list.innerHTML = '<div class="section-loading"><div class="section-spinner"></div><span>Cargando...</span></div>';
+  try {
+    const r = await fetch('/api/admin/chats');
+    if (!r.ok) throw new Error(r.statusText);
+    _chatUsers = await r.json();
+    renderChatUserList(_chatUsers);
+  } catch(e) {
+    list.innerHTML = `<div class="empty-state"><p>Error al cargar: ${e.message}</p></div>`;
+  }
+}
+
+function renderChatUserList(users) {
+  const list = document.getElementById('chat-user-list');
+  if (!users.length) {
+    list.innerHTML = '<div class="empty-state"><p>Sin conversaciones registradas</p></div>';
+    return;
+  }
+  list.innerHTML = users.map(u => `
+    <div class="chat-user-item" id="cui-${u.chat_id}" onclick="selectChatUser(this,'${u.chat_id}','${escHtml(u.nombre)}','${escHtml(u.username)}')">
+      <div class="chat-ui-top">
+        <span class="chat-ui-name">${escHtml(u.nombre)}</span>
+        <span class="chat-ui-time">${relativeDate(u.ultima_actividad)}</span>
+      </div>
+      <div class="chat-ui-bottom">
+        <span class="chat-ui-preview">${escHtml(u.ultimo_query || 'Sin mensajes')}</span>
+        <span class="chat-ui-count">${u.total}</span>
+        ${u.errores > 0 ? `<span class="chat-ui-err">${u.errores} err</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function filterChatUsers(q) {
+  const term = q.toLowerCase();
+  const filtered = _chatUsers.filter(u =>
+    (u.nombre || '').toLowerCase().includes(term) ||
+    (u.username || '').toLowerCase().includes(term) ||
+    (u.ultimo_query || '').toLowerCase().includes(term)
+  );
+  renderChatUserList(filtered);
+}
+
+async function selectChatUser(el, chatId, nombre, username) {
+  document.querySelectorAll('.chat-user-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+
+  const empty = document.getElementById('chat-conv-empty');
+  const content = document.getElementById('chat-conv-content');
+  const body = document.getElementById('chat-conv-body');
+  const nameEl = document.getElementById('chat-conv-name');
+  const metaEl = document.getElementById('chat-conv-meta');
+
+  empty.style.display = 'none';
+  content.style.display = 'flex';
+  nameEl.textContent = nombre || username || chatId;
+  metaEl.innerHTML = '<span class="chat-conv-meta-item">Cargando historial...</span>';
+  body.innerHTML = '<div class="section-loading"><div class="section-spinner"></div><span>Cargando conversación...</span></div>';
+
+  try {
+    const r = await fetch(`/api/admin/chats/${chatId}`);
+    if (!r.ok) throw new Error(r.statusText);
+    const data = await r.json();
+    renderChatConv(data, nombre, username);
+  } catch(e) {
+    body.innerHTML = `<div class="chat-conv-empty"><p>Error: ${e.message}</p></div>`;
+  }
+}
+
+function renderChatConv(data, nombre, username) {
+  const metaEl = document.getElementById('chat-conv-meta');
+  const body = document.getElementById('chat-conv-body');
+  const msgs = data.messages || [];
+  const stats = data.stats || {};
+  const profile = data.profile || {};
+
+  const total = msgs.length;
+  const errores = msgs.filter(m => !m.exitoso).length;
+  const avgMs = total > 0 ? Math.round(msgs.reduce((a,m) => a + m.duracion_ms, 0) / total) : 0;
+  const primera = msgs[0]?.fecha || '';
+  const ultima = msgs[msgs.length - 1]?.fecha || '';
+
+  metaEl.innerHTML = `
+    <span class="chat-conv-meta-item"><strong>${total}</strong> mensajes</span>
+    <span class="chat-conv-meta-item">·</span>
+    <span class="chat-conv-meta-item text-${errores > 0 ? 'red' : 'green'}"><strong>${errores}</strong> errores</span>
+    <span class="chat-conv-meta-item">·</span>
+    <span class="chat-conv-meta-item">Resp. avg <strong>${(avgMs/1000).toFixed(1)}s</strong></span>
+    <span class="chat-conv-meta-item">·</span>
+    <span class="chat-conv-meta-item">Desde <strong>${fmtDate(primera)}</strong></span>
+    ${username ? `<span class="chat-conv-meta-item">· @${escHtml(username)}</span>` : ''}
+    ${profile.resumenHistorialBreve ? `<span class="chat-conv-meta-item">· <span class="badge bp">Con memoria</span></span>` : ''}
+  `;
+
+  if (!msgs.length) {
+    body.innerHTML = '<div class="chat-conv-empty"><p>Sin mensajes registrados</p></div>';
+    return;
+  }
+
+  let html = '';
+
+  // Resumen de memoria si existe
+  if (profile.resumenHistorialBreve || profile.resumenTemasRecientes) {
+    html += `<div class="chat-memory-card">
+      <div class="chat-memory-label">Resumen de memoria</div>
+      <div class="chat-memory-text">${escHtml(profile.resumenHistorialBreve || profile.resumenTemasRecientes)}</div>
+    </div>`;
+  }
+
+  // Agrupar mensajes por día
+  let lastDay = '';
+  msgs.forEach((m, idx) => {
+    const dayKey = m.fecha ? m.fecha.slice(0, 10) : '';
+    if (dayKey !== lastDay) {
+      lastDay = dayKey;
+      const label = fmtDate(m.fecha);
+      html += `<div class="chat-msg-date">${label}</div>`;
+    }
+
+    const drawerId = `csd-${m.correlation_id}`;
+    const time = m.fecha ? new Date(m.fecha).toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'}) : '';
+    const costoStr = m.costo > 0 ? `$${m.costo.toFixed(4)}` : '';
+    const tokStr = (m.tokens_in + m.tokens_out) > 0 ? `${m.tokens_in + m.tokens_out} tok` : '';
+    const durStr = m.duracion_ms > 0 ? `${(m.duracion_ms/1000).toFixed(1)}s` : '';
+
+    // Burbuja del usuario
+    html += `<div class="chat-msg-group">
+      <div class="chat-bubble-user-wrap">
+        <div>
+          <div class="chat-bubble chat-bubble-user">${escHtml(m.query)}</div>
+          <div class="chat-bubble-footer chat-bubble-footer-right">
+            <span class="chat-bfooter-item">${time}</span>
+          </div>
+        </div>
+      </div>`;
+
+    // Burbuja del bot
+    const botClass = m.exitoso ? 'chat-bubble-bot' : 'chat-bubble-error';
+    const botContent = m.exitoso
+      ? escHtml(m.respuesta || '(sin respuesta)')
+      : `⚠ ${escHtml(m.error || m.respuesta || 'Error desconocido')}`;
+
+    html += `<div class="chat-bubble-bot-wrap">
+        <div style="max-width:80%">
+          <div class="chat-bubble ${botClass}">${botContent}</div>
+          <div class="chat-bubble-footer">
+            ${m.agente ? `<span class="chat-bfooter-agent">${escHtml(m.agente)}</span>` : ''}
+            ${durStr ? `<span class="chat-bfooter-item">${durStr}</span>` : ''}
+            ${tokStr ? `<span class="chat-bfooter-item">${tokStr}</span>` : ''}
+            ${costoStr ? `<span class="chat-bfooter-item">${costoStr}</span>` : ''}
+            ${m.steps > 0 ? `<span class="chat-bfooter-steps" onclick="toggleChatSteps('${m.correlation_id}','${drawerId}')">${m.steps} pasos ReAct</span>` : ''}
+          </div>
+          <div class="chat-steps-drawer" id="${drawerId}">
+            <div class="chat-steps-body" id="${drawerId}-body">
+              <div style="font-size:11px;color:var(--text3);padding:4px 0">Cargando pasos...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+  body.scrollTop = body.scrollHeight;
+}
+
+async function toggleChatSteps(correlationId, drawerId) {
+  const drawer = document.getElementById(drawerId);
+  const bodyEl = document.getElementById(drawerId + '-body');
+  if (!drawer) return;
+  const isOpen = drawer.classList.toggle('open');
+  if (!isOpen) return;
+
+  if (_chatStepsCache[correlationId]) {
+    renderChatSteps(bodyEl, _chatStepsCache[correlationId]);
+    return;
+  }
+
+  bodyEl.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0">Cargando pasos...</div>';
+  try {
+    const r = await fetch(`/api/admin/logs/${correlationId}`);
+    if (!r.ok) throw new Error(r.statusText);
+    const detail = await r.json();
+    _chatStepsCache[correlationId] = detail.steps || [];
+    renderChatSteps(bodyEl, detail.steps || []);
+  } catch(e) {
+    bodyEl.innerHTML = `<div style="font-size:11px;color:var(--red);padding:4px 0">Error: ${e.message}</div>`;
+  }
+}
+
+function renderChatSteps(el, steps) {
+  if (!steps.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:4px 0">Sin pasos registrados</div>';
+    return;
+  }
+  el.innerHTML = steps.map(s => `
+    <div class="chat-step-row">
+      <span class="chat-step-num">${s.num}</span>
+      <span class="chat-step-tipo">${tipoBadge(s.tipo)}</span>
+      <span class="chat-step-nombre">${escHtml(s.nombre || '—')}</span>
+      <span class="chat-step-ms">${s.duracion_ms > 0 ? s.duracion_ms + 'ms' : '—'}</span>
+    </div>
+  `).join('');
 }
 
 // ── API Reference ─────────────────────────────────────────────────────────────
