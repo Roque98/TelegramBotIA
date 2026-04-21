@@ -1,10 +1,3 @@
-"""
-GetInventoryByIpTool — Datos de inventario de un equipo por su IP.
-
-Busca en EquiposFisicos y MaquinasVirtuales (BAZ y EKT) y retorna
-área atendedora, área administradora y datos técnicos del equipo.
-"""
-
 import logging
 import time
 from typing import Any
@@ -17,13 +10,10 @@ logger = logging.getLogger(__name__)
 
 class GetInventoryByIpTool(BaseTool):
     """
-    Retorna los datos de inventario de un equipo dado su IP.
+    Retorna datos de inventario para una o varias IPs.
 
-    Busca primero en EquiposFisicos (equipos físicos) y luego en
-    MaquinasVirtuales (VMs), tanto en instancia BAZ como EKT.
-
-    Útil para obtener el área atendedora y administradora real del
-    inventario cuando no están disponibles en el evento de alerta.
+    Busca en EquiposFisicos y MaquinasVirtuales (BAZ y EKT) usando SPs
+    de lista, permitiendo consultar múltiples equipos en una sola llamada.
     """
 
     is_read_only: bool = True
@@ -38,8 +28,9 @@ class GetInventoryByIpTool(BaseTool):
         return ToolDefinition(
             name="get_inventory_by_ip",
             description=(
-                "Busca un equipo en el inventario por su dirección IP. "
-                "Retorna el área atendedora, área administradora y datos técnicos "
+                "Busca uno o varios equipos en el inventario por dirección IP. "
+                "Acepta una IP o varias separadas por coma. "
+                "Retorna área atendedora, área administradora y datos técnicos "
                 "(hostname, sistema operativo, ambiente, capa, impacto, urgencia, prioridad). "
                 "Busca en equipos físicos y máquinas virtuales, instancias BAZ y EKT. "
                 "Usar cuando se necesita saber qué área es responsable de un equipo "
@@ -48,80 +39,80 @@ class GetInventoryByIpTool(BaseTool):
             category=ToolCategory.MONITORING,
             parameters=[
                 ToolParameter(
-                    name="ip",
+                    name="ips",
                     param_type="string",
-                    description="Dirección IP del equipo a buscar en el inventario",
+                    description="Una o varias IPs separadas por coma",
                     required=True,
-                    examples=["10.80.133.56", "10.118.57.142", "192.168.1.10"],
+                    examples=["10.80.133.56", "10.80.133.56,10.118.57.142"],
                 ),
             ],
             examples=[
-                {"ip": "10.80.133.56"},
-                {"ip": "10.118.57.142"},
+                {"ips": "10.80.133.56"},
+                {"ips": "10.80.133.56,10.118.57.142,192.168.1.10"},
             ],
             returns=(
-                "Dict con 'ip', 'hostname', 'area_atendedora', 'area_administradora', "
-                "'fuente' (Fisico|Virtual), 'tipo_equipo', 'version_os', 'status', "
-                "'capa', 'ambiente', 'impacto', 'urgencia', 'prioridad', 'negocio'. "
-                "Si no se encuentra, retorna 'mensaje' indicando que no existe en inventario."
+                "Lista de equipos encontrados. Cada elemento contiene: 'ip', 'hostname', "
+                "'area_atendedora', 'area_administradora', 'fuente' (Fisico|Virtual), "
+                "'tipo_equipo', 'version_os', 'status', 'capa', 'ambiente', 'impacto', "
+                "'urgencia', 'prioridad', 'negocio'. "
+                "Incluye lista 'no_encontradas' con las IPs sin resultado."
             ),
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
         t0 = time.perf_counter()
 
-        ip = kwargs.get("ip", "").strip()
+        raw = kwargs.get("ips", "").strip()
+        if not raw:
+            return ToolResult.error_result(error="El parámetro 'ips' es requerido.", execution_time_ms=0)
 
-        if not ip:
-            return ToolResult.error_result(
-                error="El parámetro 'ip' es requerido.",
-                execution_time_ms=0,
-            )
+        ips = [ip.strip() for ip in raw.split(",") if ip.strip()]
+        if not ips:
+            return ToolResult.error_result(error="El parámetro 'ips' no contiene IPs válidas.", execution_time_ms=0)
 
         try:
-            item = await self._repo.get_inventory_by_ip(ip)
+            items = await self._repo.get_inventory_by_ip_list(ips)
             elapsed = (time.perf_counter() - t0) * 1000
 
-            if not item:
-                return ToolResult.success_result(
-                    data={
-                        "ip": ip,
-                        "mensaje": f"No se encontró el equipo con IP {ip} en el inventario.",
-                    },
-                    execution_time_ms=elapsed,
-                )
+            found_ips = {item.ip for item in items}
+            not_found = [ip for ip in ips if ip not in found_ips]
 
             logger.info(
-                f"GetInventoryByIpTool: {ip} → {item.hostname} "
-                f"({item.fuente}, atendedora={item.area_atendedora!r}) en {elapsed:.0f}ms"
+                f"GetInventoryByIpTool: {len(items)}/{len(ips)} encontradas en {elapsed:.0f}ms"
             )
 
             return ToolResult.success_result(
                 data={
-                    "ip": item.ip,
-                    "hostname": item.hostname,
-                    "id_area_atendedora": item.id_area_atendedora,
-                    "id_area_administradora": item.id_area_administradora,
-                    "area_atendedora": item.area_atendedora,
-                    "area_administradora": item.area_administradora,
-                    "fuente": item.fuente,
-                    "tipo_equipo": item.tipo_equipo,
-                    "version_os": item.version_os,
-                    "status": item.status,
-                    "capa": item.capa,
-                    "ambiente": item.ambiente,
-                    "impacto": item.impacto,
-                    "urgencia": item.urgencia,
-                    "prioridad": item.prioridad,
-                    "negocio": item.negocio,
+                    "equipos": [
+                        {
+                            "ip": item.ip,
+                            "hostname": item.hostname,
+                            "id_area_atendedora": item.id_area_atendedora,
+                            "id_area_administradora": item.id_area_administradora,
+                            "area_atendedora": item.area_atendedora,
+                            "area_administradora": item.area_administradora,
+                            "fuente": item.fuente,
+                            "tipo_equipo": item.tipo_equipo,
+                            "version_os": item.version_os,
+                            "status": item.status,
+                            "capa": item.capa,
+                            "ambiente": item.ambiente,
+                            "impacto": item.impacto,
+                            "urgencia": item.urgencia,
+                            "prioridad": item.prioridad,
+                            "negocio": item.negocio,
+                        }
+                        for item in items
+                    ],
+                    "no_encontradas": not_found,
                 },
                 execution_time_ms=elapsed,
             )
 
         except Exception as e:
             elapsed = (time.perf_counter() - t0) * 1000
-            logger.exception(f"GetInventoryByIpTool: error para ip={ip}: {e}")
+            logger.exception(f"GetInventoryByIpTool: error para ips={raw}: {e}")
             return ToolResult.error_result(
-                error=f"Error al buscar equipo en inventario: {e}",
+                error=f"Error al buscar equipos en inventario: {e}",
                 execution_time_ms=elapsed,
             )
