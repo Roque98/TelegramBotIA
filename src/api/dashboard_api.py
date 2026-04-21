@@ -503,8 +503,8 @@ def chats():
         return jsonify([
             {
                 "chat_id": str(r["telegramChatId"]),
-                "nombre": r["nombre"] or r["telegramUsername"] or "Desconocido",
-                "username": r["telegramUsername"] or "",
+                "nombre": r["nombre"] or r["username"] or "Desconocido",
+                "username": r["username"] or "",
                 "total": int(r["total_mensajes"] or 0),
                 "exitosos": int(r["exitosos"] or 0),
                 "errores": int(r["errores"] or 0),
