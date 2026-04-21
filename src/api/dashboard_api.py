@@ -466,8 +466,16 @@ def chats():
         rows = db.execute_query("""
             SELECT TOP 150
                 il.telegramChatId,
-                ISNULL(u.nombre, il.telegramUsername)    AS nombre,
-                il.telegramUsername,
+                ISNULL(
+                    u.alias,
+                    ISNULL(
+                        NULLIF(LTRIM(
+                            ISNULL(u.telegramFirstName,'') + ' ' + ISNULL(u.telegramLastName,'')
+                        ), ''),
+                        il.telegramUsername
+                    )
+                )                                         AS nombre,
+                ISNULL(u.telegramUsername, il.telegramUsername) AS username,
                 COUNT(*)                                  AS total_mensajes,
                 SUM(CASE WHEN il.exitoso = 1 THEN 1 ELSE 0 END) AS exitosos,
                 SUM(CASE WHEN il.exitoso = 0 THEN 1 ELSE 0 END) AS errores,
@@ -481,9 +489,15 @@ def chats():
                 ) AS ultimo_query
             FROM abcmasplus..BotIAv2_InteractionLogs il
             LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u
-                ON il.telegramChatId = u.chat_id
+                ON il.telegramChatId = u.telegramChatId
             WHERE il.telegramChatId IS NOT NULL
-            GROUP BY il.telegramChatId, il.telegramUsername, u.nombre
+            GROUP BY
+                il.telegramChatId,
+                il.telegramUsername,
+                u.alias,
+                u.telegramFirstName,
+                u.telegramLastName,
+                u.telegramUsername
             ORDER BY MAX(il.fechaEjecucion) DESC
         """)
         return jsonify([
