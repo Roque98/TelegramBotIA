@@ -1517,7 +1517,7 @@ async function loadLogDetail(correlationId) {
           <div><div style="font-size:15px;font-weight:700">@${d.username} — ${d.agente || '?'}</div></div>
           <div class="spacer"></div>
           <span class="badge ${statusClass}">${statusText}</span>
-          <button class="btn-sm" onclick="exportLogDetail()" title="Exportar como JSON">⬇ Exportar</button>
+          <button onclick="exportLogDetail()" title="Exportar como JSON" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-family:var(--font);transition:background .12s;" onmouseover="this.style.background='var(--surface3)'" onmouseout="this.style.background='var(--surface2)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar</button>
         </div>
         <div class="log-detail-meta">
           <div class="log-detail-meta-item"><span class="log-meta-label">correlation</span><span class="log-meta-value">${d.correlation_id.slice(0,8)}</span></div>
