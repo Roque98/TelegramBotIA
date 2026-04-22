@@ -438,6 +438,11 @@ td.center{text-align:center;padding:10px 8px;}
         Alertas
         <span class="nav-badge" id="badge-alerts" style="display:none"></span>
       </button>
+      <button class="nav-btn" onclick="go('applogs',this)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        App Logs
+        <span class="nav-badge" id="badge-applogs" style="display:none"></span>
+      </button>
       <div class="nav-section">Sistema</div>
       <button class="nav-btn" onclick="go('agents',this)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -1023,6 +1028,68 @@ td.center{text-align:center;padding:10px 8px;}
         </div>
       </div>
 
+      <!-- ══ APP LOGS ══ -->
+      <div id="screen-applogs" class="screen">
+        <div class="page-header">
+          <div class="flex-row" style="gap:10px;align-items:center;flex-wrap:wrap;">
+            <div>
+              <div class="page-title">App Logs</div>
+              <div class="page-sub">Errores y advertencias del aplicativo</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+              <select id="al-level-filter" class="filter-input" style="width:130px;" onchange="loadAppLogs()">
+                <option value="">Todos los niveles</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARNING">WARNING</option>
+                <option value="CRITICAL">CRITICAL</option>
+              </select>
+              <input id="al-search" class="filter-input" placeholder="Buscar en mensaje / evento…" style="width:220px;"
+                onkeydown="if(event.key==='Enter')loadAppLogs()">
+              <button class="btn-sm btn-primary" onclick="loadAppLogs()">Buscar</button>
+              <button class="btn-sm" onclick="loadAppLogs()">↻ Refrescar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="al-summary" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;"></div>
+
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="al-table">
+              <thead>
+                <tr>
+                  <th style="width:140px;">Fecha</th>
+                  <th style="width:90px;">Nivel</th>
+                  <th style="width:180px;">Módulo</th>
+                  <th style="width:180px;">Evento</th>
+                  <th>Mensaje</th>
+                  <th style="width:80px;">corrId</th>
+                </tr>
+              </thead>
+              <tbody id="al-body">
+                <tr><td colspan="6" class="section-loading"><span class="section-spinner"></span> Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--text3);">
+          <span id="al-info"></span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-sm" id="al-prev" onclick="alPage(-1)" disabled>‹ Anterior</button>
+            <button class="btn-sm" id="al-next" onclick="alPage(1)">Siguiente ›</button>
+          </div>
+        </div>
+
+        <div id="al-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;overflow-y:auto;">
+          <div style="max-width:700px;margin:40px auto;background:var(--surface1);border:1px solid var(--border1);border-radius:10px;padding:24px;position:relative;">
+            <button onclick="document.getElementById('al-detail-modal').style.display='none'"
+              style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;">✕</button>
+            <div id="al-detail-content"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ API REFERENCE ══ -->
       <div id="screen-api" class="screen">
         <div class="page-header">
@@ -1163,7 +1230,7 @@ td.center{text-align:center;padding:10px 8px;}
 </div><!-- /app -->
 
 <script>
-const SCREENS = ['overview','logs','alerts','agents','knowledge','chats','users','perms','api'];
+const SCREENS = ['overview','logs','alerts','applogs','agents','knowledge','chats','users','perms','api'];
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -1192,6 +1259,7 @@ function go(id, el, mode) {
   if (id === 'knowledge') loadKnowledge();
   if (id === 'users') loadUsers();
   if (id === 'alerts') loadAlerts();
+  if (id === 'applogs') loadAppLogs();
   if (id === 'chats') loadChats();
   if (id === 'api') initApiSection();
 }
@@ -1751,6 +1819,105 @@ async function loadAlerts() {
   } catch(e) { console.warn('Alerts load error', e); }
 }
 
+// ── App Logs ──────────────────────────────────────────────────────────────────
+
+let _alOffset = 0;
+const _alLimit = 50;
+let _alTotal = 0;
+
+function alPage(dir) {
+  _alOffset = Math.max(0, _alOffset + dir * _alLimit);
+  loadAppLogs(false);
+}
+
+async function loadAppLogs(resetPage = true) {
+  if (resetPage) _alOffset = 0;
+  const level  = document.getElementById('al-level-filter')?.value || '';
+  const search = document.getElementById('al-search')?.value.trim() || '';
+  const tbody  = document.getElementById('al-body');
+  if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="section-loading"><span class="section-spinner"></span> Cargando…</td></tr>`;
+
+  const params = new URLSearchParams({ limit: _alLimit, offset: _alOffset });
+  if (level)  params.set('level', level);
+  if (search) params.set('search', search);
+
+  try {
+    const r = await fetch('/api/admin/app-logs?' + params);
+    if (!r.ok) throw new Error(r.statusText);
+    const d = await r.json();
+    _alTotal = d.total || 0;
+
+    // Summary badges
+    const sumEl = document.getElementById('al-summary');
+    if (sumEl) {
+      const errors   = (d.logs || []).filter(l => l.level === 'ERROR').length;
+      const warnings = (d.logs || []).filter(l => l.level === 'WARNING').length;
+      const crits    = (d.logs || []).filter(l => l.level === 'CRITICAL').length;
+      sumEl.innerHTML = `
+        <div class="kpi" style="min-width:120px"><div class="kpi-label">TOTAL</div><div class="kpi-value">${_alTotal}</div></div>
+        <div class="kpi" style="min-width:120px"><div class="kpi-label">ERRORES (pág.)</div><div class="kpi-value text-red">${errors}</div></div>
+        <div class="kpi" style="min-width:120px"><div class="kpi-label">WARNINGS (pág.)</div><div class="kpi-value text-iris">${warnings}</div></div>
+        <div class="kpi" style="min-width:120px"><div class="kpi-label">CRÍTICOS (pág.)</div><div class="kpi-value text-red">${crits}</div></div>`;
+    }
+
+    // Badge sidebar
+    const badge = document.getElementById('badge-applogs');
+    if (badge) { const n = _alTotal; badge.textContent = n > 99 ? '99+' : n; badge.style.display = n ? '' : 'none'; }
+
+    // Pagination info
+    const from = _alOffset + 1, to = Math.min(_alOffset + _alLimit, _alTotal);
+    setText('al-info', _alTotal ? `Mostrando ${from}–${to} de ${_alTotal}` : 'Sin resultados');
+    const prev = document.getElementById('al-prev'), next = document.getElementById('al-next');
+    if (prev) prev.disabled = _alOffset === 0;
+    if (next) next.disabled = _alOffset + _alLimit >= _alTotal;
+
+    // Table
+    const levelColor = { ERROR: 'br', WARNING: 'ba', CRITICAL: 'br' };
+    if (tbody) {
+      tbody.innerHTML = (d.logs || []).length === 0
+        ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Sin registros</td></tr>'
+        : (d.logs || []).map(l => `
+          <tr style="cursor:pointer" onclick="showAlDetail(${JSON.stringify(l).replace(/"/g,'&quot;')})">
+            <td class="mono" style="font-size:12px;color:var(--text3)">${l.fecha || ''}</td>
+            <td><span class="badge ${levelColor[l.level] || ''}">${l.level || ''}</span></td>
+            <td class="mono" style="font-size:12px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.module||''}">${l.module||'—'}</td>
+            <td style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${l.event||''}">${l.event||'—'}</td>
+            <td style="font-size:13px;color:var(--text2);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(l.message||'').replace(/"/g,'&quot;')}">${l.message||'—'}</td>
+            <td class="mono" style="font-size:11px;color:var(--text3)">${(l.correlationId||'').slice(0,8)}</td>
+          </tr>`).join('');
+    }
+  } catch(e) {
+    console.warn('AppLogs load error', e);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:20px">Error cargando logs: ${e.message}</td></tr>`;
+  }
+}
+
+function showAlDetail(l) {
+  const modal = document.getElementById('al-detail-modal');
+  const content = document.getElementById('al-detail-content');
+  if (!modal || !content) return;
+  const levelColor = { ERROR: 'var(--red)', WARNING: 'var(--iris)', CRITICAL: 'var(--red)' };
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <span class="badge ${l.level==='WARNING'?'ba':'br'}">${l.level}</span>
+      <span style="font-size:16px;font-weight:600">${l.event||'Sin evento'}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px;margin-bottom:16px;">
+      <span style="color:var(--text3)">Fecha</span><span>${l.fecha||'—'}</span>
+      <span style="color:var(--text3)">Módulo</span><span class="mono">${l.module||'—'}</span>
+      <span style="color:var(--text3)">Usuario</span><span>${l.userId||'—'}</span>
+      <span style="color:var(--text3)">Duración</span><span>${l.durationMs!=null?l.durationMs+'ms':'—'}</span>
+      <span style="color:var(--text3)">correlationId</span><span class="mono" style="font-size:11px">${l.correlationId||'—'}</span>
+    </div>
+    ${l.message ? `<div style="margin-bottom:12px"><div style="font-size:12px;color:var(--text3);margin-bottom:4px">Mensaje</div>
+      <pre style="background:var(--surface2);border:1px solid var(--border1);border-radius:6px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;color:var(--text)">${escHtml(l.message)}</pre></div>` : ''}
+    ${l.extra ? `<div><div style="font-size:12px;color:var(--text3);margin-bottom:4px">Extra</div>
+      <pre style="background:var(--surface2);border:1px solid var(--border1);border-radius:6px;padding:10px;font-size:12px;white-space:pre-wrap;word-break:break-all;color:var(--text)">${escHtml(l.extra)}</pre></div>` : ''}`;
+  modal.style.display = '';
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 // ── Waterfall drawers ─────────────────────────────────────────────────────────
 
 function toggleWfDrawer(rowId, drawerId) {
@@ -1778,6 +1945,7 @@ const _loaders = {
   overview: loadOverview,
   logs: loadLogs,
   alerts: loadAlerts,
+  applogs: loadAppLogs,
   agents: loadAgents,
   knowledge: loadKnowledge,
   chats: loadChats,

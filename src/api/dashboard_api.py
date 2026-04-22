@@ -594,6 +594,86 @@ def chat_history(chat_id: str):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Application Logs
+# ──────────────────────────────────────────────────────────────────────────────
+
+@dashboard_bp.route("/api/admin/app-logs")
+def app_logs():
+    try:
+        db = _get_db()
+        level   = request.args.get("level", "")        # WARNING, ERROR, CRITICAL
+        module  = request.args.get("module", "")
+        search  = request.args.get("search", "")
+        limit   = min(int(request.args.get("limit", 100)), 500)
+        offset  = int(request.args.get("offset", 0))
+
+        where = ["1=1"]
+        params: dict = {}
+
+        if level:
+            where.append("level = :level")
+            params["level"] = level
+        if module:
+            where.append("module LIKE :module")
+            params["module"] = f"%{module}%"
+        if search:
+            where.append("(message LIKE :search OR event LIKE :search)")
+            params["search"] = f"%{search}%"
+
+        where_sql = " AND ".join(where)
+
+        rows = db.execute_query(f"""
+            SELECT
+                id,
+                correlationId,
+                userId,
+                level,
+                event,
+                message,
+                module,
+                durationMs,
+                extra,
+                fechaCreacion
+            FROM abcmasplus..BotIAv2_ApplicationLogs
+            WHERE {where_sql}
+            ORDER BY fechaCreacion DESC
+            OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY
+        """, params if params else None)
+
+        total_row = db.execute_query(f"""
+            SELECT COUNT(*) AS total
+            FROM abcmasplus..BotIAv2_ApplicationLogs
+            WHERE {where_sql}
+        """, params if params else None)
+
+        total = int((total_row[0].get("total") or 0)) if total_row else 0
+
+        return jsonify({
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "logs": [
+                {
+                    "id":             r.get("id"),
+                    "correlationId":  r.get("correlationId"),
+                    "userId":         r.get("userId"),
+                    "level":          r.get("level"),
+                    "event":          r.get("event"),
+                    "message":        r.get("message"),
+                    "module":         r.get("module"),
+                    "durationMs":     r.get("durationMs"),
+                    "extra":          r.get("extra"),
+                    "fecha":          r["fechaCreacion"].strftime("%Y-%m-%d %H:%M:%S") if r.get("fechaCreacion") else None,
+                }
+                for r in rows
+            ],
+        })
+    except Exception as e:
+        logger.error(f"Dashboard /app-logs error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Alertas
 # ──────────────────────────────────────────────────────────────────────────────
 
