@@ -102,10 +102,13 @@ class TemplateSearchByNameTool(BaseTool):
                     data={
                         "templates": [],
                         "total": 0,
+                        "truncado": False,
                         "mensaje": f"No se encontraron templates con nombre '{nombre}'.",
                     },
                     execution_time_ms=elapsed,
                 )
+
+            truncado = len(templates) == 10  # 5 BAZ + 5 EKT = 10 significa que el SP llegó al límite
 
             return ToolResult.success_result(
                 data={
@@ -127,7 +130,13 @@ class TemplateSearchByNameTool(BaseTool):
                         for t in templates
                     ],
                     "total": len(templates),
-                    "mensaje": f"{len(templates)} template(s) encontrado(s) para '{nombre}'.",
+                    "truncado": truncado,
+                    "mensaje": (
+                        f"Se muestran los primeros {len(templates)} resultados para '{nombre}'. "
+                        f"Puede haber más — refiná la búsqueda para acotar los resultados."
+                        if truncado else
+                        f"{len(templates)} template(s) encontrado(s) para '{nombre}'."
+                    ),
                 },
                 execution_time_ms=elapsed,
             )
