@@ -231,10 +231,10 @@ def log_detail(correlation_id: str):
 
         app_logs_rows = db.execute_query(
             """
-            SELECT id, level, event, message, module, durationMs, extra, fechaCreacion
+            SELECT id, level, event, message, module, durationMs, extra, createdAt
             FROM abcmasplus..BotIAv2_ApplicationLogs
             WHERE correlationId = :cid
-            ORDER BY fechaCreacion
+            ORDER BY createdAt
             """,
             {"cid": correlation_id},
         )
@@ -279,7 +279,7 @@ def log_detail(correlation_id: str):
                     "module": al["module"] or "",
                     "duration_ms": al["durationMs"],
                     "extra": al["extra"] or "",
-                    "fecha": al["fechaCreacion"].strftime("%Y-%m-%d %H:%M:%S") if al.get("fechaCreacion") else None,
+                    "fecha": al["createdAt"].strftime("%Y-%m-%d %H:%M:%S") if al.get("createdAt") else None,
                 }
                 for al in app_logs_rows
             ],
@@ -676,10 +676,10 @@ def app_logs():
                 module,
                 durationMs,
                 extra,
-                fechaCreacion
+                createdAt
             FROM abcmasplus..BotIAv2_ApplicationLogs
             WHERE {where_sql}
-            ORDER BY fechaCreacion DESC
+            ORDER BY createdAt DESC
             OFFSET {offset} ROWS FETCH NEXT {limit} ROWS ONLY
         """, params if params else None)
 
@@ -706,7 +706,7 @@ def app_logs():
                     "module":         r.get("module"),
                     "durationMs":     r.get("durationMs"),
                     "extra":          r.get("extra"),
-                    "fecha":          r["fechaCreacion"].strftime("%Y-%m-%d %H:%M:%S") if r.get("fechaCreacion") else None,
+                    "fecha":          r["createdAt"].strftime("%Y-%m-%d %H:%M:%S") if r.get("createdAt") else None,
                 }
                 for r in rows
             ],
