@@ -1462,13 +1462,16 @@ async function loadOverview() {
     const bars = document.getElementById('activity-bars');
     if (bars && d.actividad && d.actividad.length > 0) {
       const max = Math.max(...d.actividad.map(h => h.mensajes), 1);
-      const showLbls = d.actividad.length <= 15;
-      bars.innerHTML = d.actividad.map(h => {
+      const n = d.actividad.length;
+      // Para muchas barras: mostrar etiqueta cada N slots para evitar saturación
+      const lblStep = n > 20 ? 4 : n > 10 ? 2 : 1;
+      bars.innerHTML = d.actividad.map((h, i) => {
         const pct = Math.max(3, Math.round(h.mensajes / max * 100));
+        const showLbl = (i % lblStep === 0) || (i === n - 1);
         return `<div class="bar-col" title="${h.label}: ${h.mensajes} msgs">
-          <span class="bar-val">${h.mensajes}</span>
+          <span class="bar-val">${h.mensajes > 0 ? h.mensajes : ''}</span>
           <div class="bar-area"><div class="bar-fill" style="height:${pct}%"></div></div>
-          ${showLbls ? `<span class="bar-lbl">${h.label}</span>` : ''}
+          <span class="bar-lbl">${showLbl ? h.label : ''}</span>
         </div>`;
       }).join('');
     }

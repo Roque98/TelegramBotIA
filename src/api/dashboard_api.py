@@ -7,7 +7,7 @@ No requiere autenticación adicional al estar dentro de la red.
 import asyncio
 import logging
 import os
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, jsonify, request, send_from_directory
 
@@ -122,7 +122,9 @@ def overview():
             ORDER BY requests DESC
         """)
 
-        # Actividad horaria para hoy/ayer, diaria para 7d/30d
+        # Actividad horaria para hoy/ayer, diaria para 7d/30d.
+        # Se rellenan con 0 los slots sin datos para mostrar el período completo.
+        dias_es = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
         if periodo in ("hoy", "ayer"):
             act_rows = db.execute_query(f"""
                 SELECT DATEPART(HOUR, fechaEjecucion) AS slot, COUNT(*) AS mensajes
@@ -131,9 +133,11 @@ def overview():
                 GROUP BY DATEPART(HOUR, fechaEjecucion)
                 ORDER BY slot
             """)
+            data_map = {int(r["slot"]): int(r["mensajes"]) for r in act_rows}
+            hora_fin = datetime.now().hour if periodo == "hoy" else 23
             actividad = [
-                {"label": f"{int(r['slot'])}h", "mensajes": int(r["mensajes"])}
-                for r in act_rows
+                {"label": f"{h}h", "mensajes": data_map.get(h, 0)}
+                for h in range(0, hora_fin + 1)
             ]
         else:
             act_rows = db.execute_query(f"""
@@ -143,14 +147,13 @@ def overview():
                 GROUP BY CAST(fechaEjecucion AS DATE)
                 ORDER BY slot
             """)
-            # weekday(): 0=lunes … 6=domingo → índice en lista lunes-primero
-            dias_es = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+            data_map = {r["slot"]: int(r["mensajes"]) for r in act_rows}
+            dias_atras = 6 if periodo == "7d" else 29
+            today = date.today()
+            all_days = [today - timedelta(days=i) for i in range(dias_atras, -1, -1)]
             actividad = [
-                {
-                    "label": f"{dias_es[r['slot'].weekday()]} {r['slot'].day}" if hasattr(r['slot'], 'weekday') else str(r['slot']),
-                    "mensajes": int(r["mensajes"]),
-                }
-                for r in act_rows
+                {"label": f"{dias_es[d.weekday()]} {d.day}", "mensajes": data_map.get(d, 0)}
+                for d in all_days
             ]
 
         s  = stats[0] if stats else {}
