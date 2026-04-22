@@ -65,6 +65,7 @@ class GetHistoricalTicketsTool(BaseTool):
                 "Texto formateado con cada ticket en líneas separadas. "
                 "Cada ticket incluye: ID, alerta, detalle y acción correctiva."
             ),
+            usage_hint="Para el historial de incidentes o tickets de un equipo por IP: usa `get_historical_tickets`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

@@ -74,6 +74,7 @@ class GetActiveAlertsTool(BaseTool):
                 "Dict con banco_total, ekt_total, banco (lista de {ip, sensor}) "
                 "y ekt (lista de {ip, sensor})."
             ),
+            usage_hint="Para alertas activas o equipos caídos/en warning: usa `get_active_alerts`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

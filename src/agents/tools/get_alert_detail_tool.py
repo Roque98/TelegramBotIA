@@ -71,6 +71,7 @@ class GetAlertDetailTool(BaseTool):
                 "Dict completo con: evento (estado actual), tickets (historial), "
                 "template, matriz de escalamiento (niveles) y contactos de áreas."
             ),
+            usage_hint="Para el detalle completo de una IP (evento actual, tickets, escalamiento y contactos): usa `get_alert_detail`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

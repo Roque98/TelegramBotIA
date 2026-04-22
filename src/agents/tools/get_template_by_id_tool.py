@@ -65,6 +65,7 @@ class GetTemplateByIdTool(BaseTool):
                 "'id_gerencia_atendedora', 'gerencia_desarrollo', 'id_gerencia_desarrollo', "
                 "'ambiente', 'negocio', 'tipo_template', 'es_aws', 'es_vertical'."
             ),
+            usage_hint="Para datos de un template cuando ya tenés el ID numérico: usa `get_template_by_id`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

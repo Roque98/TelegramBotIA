@@ -57,6 +57,7 @@ class GetInventoryByIpTool(BaseTool):
                 "'urgencia', 'prioridad', 'negocio'. "
                 "Incluye lista 'no_encontradas' con las IPs sin resultado."
             ),
+            usage_hint="Para buscar datos de inventario de uno o varios equipos por IP: usa `get_inventory_by_ip`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

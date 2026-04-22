@@ -60,6 +60,7 @@ class GetEscalationMatrixTool(BaseTool):
                 "NO agregar IP ni otros campos que no estén en este resultado. "
                 "Cada nivel tiene: nivel, nombre, puesto, extension, celular, correo, tiempo_escalacion."
             ),
+            usage_hint="Para la matriz de escalamiento de un equipo (quién atiende, niveles de contacto) cuando tenés la IP: usa `get_escalation_matrix`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
