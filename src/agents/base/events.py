@@ -134,6 +134,7 @@ class UserContext(BaseModel):
     direccion_ids: list[int] = Field(default_factory=list)
     permisos: dict[str, bool] = Field(default_factory=dict)  # {recurso: permitido}
     permisos_loaded: bool = False  # True solo si la carga desde BD fue exitosa
+    last_routed_agent: Optional[str] = None  # Nombre del agente que atendió el turno anterior
 
     model_config = {"frozen": False}
 

@@ -94,10 +94,21 @@ class AgentOrchestrator:
 
         t0 = time.perf_counter()
         t0_dt = datetime.datetime.utcnow()
+
+        # Stickiness: si el turno anterior fue un especialista y la query es ambigua
+        # (número solo, o ≤4 chars sin keywords), reusar ese agente sin clasificar.
+        sticky_agent = self._try_sticky(query, context, definitions)
+
         classify_tracker = CostTracker()
         _classify_token = set_current_tracker(classify_tracker)
         try:
-            classify_result = await self.intent_classifier.classify(query, definitions)
+            if sticky_agent:
+                classify_result_name = sticky_agent
+                from .intent_classifier import ClassifyResult
+                classify_result = ClassifyResult(agent_name=sticky_agent, confidence=1.0)
+            else:
+                classify_result = await self.intent_classifier.classify(query, definitions)
+                classify_result_name = classify_result.agent_name
         finally:
             reset_current_tracker(_classify_token)
         classify_ms = int((time.perf_counter() - t0) * 1000)
@@ -138,6 +149,9 @@ class AgentOrchestrator:
         response.classify_ms = classify_ms
         response.agent_confidence = classify_result.confidence
         response.used_fallback = used_fallback or classify_result.used_fallback
+
+        # Persistir agente usado para stickiness en el siguiente turno
+        context.last_routed_agent = definition.nombre
 
         if response.data is not None:
             config_step = {
@@ -191,6 +205,39 @@ class AgentOrchestrator:
                     cost_summary["model"] = "mixed"
 
         return response
+
+    def _try_sticky(
+        self, query: str, context: UserContext, definitions: list[AgentDefinition]
+    ) -> Optional[str]:
+        """
+        Retorna el nombre del agente anterior si la query es ambigua y debe
+        mantener la conversación con el mismo especialista (stickiness).
+
+        Criterios para considerar ambigua una query:
+        - Es solo un número (selección de lista: "1", "2", "12")
+        - Tiene ≤4 caracteres (respuestas cortísimas: "ok", "sí", "ese", "esa")
+
+        Solo aplica si el agente anterior era un especialista (no generalista).
+        """
+        if not context.last_routed_agent:
+            return None
+
+        # Verificar que el agente anterior existe y no es generalista
+        prev_def = next((d for d in definitions if d.nombre == context.last_routed_agent), None)
+        if prev_def is None or prev_def.es_generalista:
+            return None
+
+        stripped = query.strip()
+        is_ambiguous = stripped.isdigit() or len(stripped) <= 4
+
+        if is_ambiguous:
+            logger.info(
+                f"Orchestrator: stickiness — query ambigua '{stripped}' → "
+                f"manteniendo agente '{context.last_routed_agent}'"
+            )
+            return context.last_routed_agent
+
+        return None
 
     def _resolve(
         self, agent_name: str, definitions: list[AgentDefinition]
