@@ -61,31 +61,52 @@ def overview():
     try:
         db = _get_db()
 
-        stats = db.execute_query("""
+        periodo = request.args.get("periodo", "hoy")
+        if periodo not in ("hoy", "ayer", "7d", "30d"):
+            periodo = "hoy"
+
+        if periodo == "hoy":
+            where     = "CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)"
+            where_ar  = "CAST(ar.fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)"
+            where_prev = "CAST(fechaEjecucion AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)"
+        elif periodo == "ayer":
+            where     = "CAST(fechaEjecucion AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)"
+            where_ar  = "CAST(ar.fechaCreacion AS DATE) = CAST(DATEADD(DAY,-1,GETDATE()) AS DATE)"
+            where_prev = "CAST(fechaEjecucion AS DATE) = CAST(DATEADD(DAY,-2,GETDATE()) AS DATE)"
+        elif periodo == "7d":
+            where     = "fechaEjecucion >= DATEADD(DAY,-6, CAST(GETDATE() AS DATE))"
+            where_ar  = "ar.fechaCreacion >= DATEADD(DAY,-6, CAST(GETDATE() AS DATE))"
+            where_prev = "fechaEjecucion >= DATEADD(DAY,-13,CAST(GETDATE() AS DATE)) AND fechaEjecucion < DATEADD(DAY,-6,CAST(GETDATE() AS DATE))"
+        else:  # 30d
+            where     = "fechaEjecucion >= DATEADD(DAY,-29,CAST(GETDATE() AS DATE))"
+            where_ar  = "ar.fechaCreacion >= DATEADD(DAY,-29,CAST(GETDATE() AS DATE))"
+            where_prev = "fechaEjecucion >= DATEADD(DAY,-59,CAST(GETDATE() AS DATE)) AND fechaEjecucion < DATEADD(DAY,-29,CAST(GETDATE() AS DATE))"
+
+        stats = db.execute_query(f"""
             SELECT
-                COUNT(*)                                                       AS total_mensajes,
-                COUNT(DISTINCT telegramChatId)                                 AS usuarios_activos,
-                SUM(CASE WHEN exitoso = 0 THEN 1 ELSE 0 END)                  AS errores,
-                ISNULL(SUM(costUSD), 0)                                        AS costo_total
+                COUNT(*)                                              AS total_mensajes,
+                COUNT(DISTINCT telegramChatId)                        AS usuarios_activos,
+                SUM(CASE WHEN exitoso = 0 THEN 1 ELSE 0 END)         AS errores,
+                ISNULL(SUM(costUSD), 0)                               AS costo_total
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE {where}
         """)
 
-        percentiles = db.execute_query("""
+        percentiles = db.execute_query(f"""
             SELECT TOP 1
                 PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p50_ms,
                 PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY duracionMs) OVER () AS p90_ms
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaEjecucion AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE {where}
         """)
 
-        prev = db.execute_query("""
-            SELECT COUNT(*) AS total_ayer
+        prev = db.execute_query(f"""
+            SELECT COUNT(*) AS total_prev
             FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE CAST(fechaEjecucion AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+            WHERE {where_prev}
         """)
 
-        agent_rows = db.execute_query("""
+        agent_rows = db.execute_query(f"""
             SELECT
                 ar.agenteSeleccionado,
                 COUNT(*)                                                          AS requests,
@@ -96,33 +117,57 @@ def overview():
             FROM abcmasplus..BotIAv2_AgentRouting ar
             LEFT JOIN abcmasplus..BotIAv2_InteractionLogs il
                 ON ar.correlationId = il.correlationId
-            WHERE CAST(ar.fechaCreacion AS DATE) = CAST(GETDATE() AS DATE)
+            WHERE {where_ar}
             GROUP BY ar.agenteSeleccionado
             ORDER BY requests DESC
         """)
 
-        hourly_rows = db.execute_query("""
-            SELECT DATEPART(HOUR, fechaEjecucion) AS hora, COUNT(*) AS mensajes
-            FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE fechaEjecucion >= DATEADD(HOUR, -12, GETDATE())
-            GROUP BY DATEPART(HOUR, fechaEjecucion)
-            ORDER BY hora
-        """)
+        # Actividad horaria para hoy/ayer, diaria para 7d/30d
+        if periodo in ("hoy", "ayer"):
+            act_rows = db.execute_query(f"""
+                SELECT DATEPART(HOUR, fechaEjecucion) AS slot, COUNT(*) AS mensajes
+                FROM abcmasplus..BotIAv2_InteractionLogs
+                WHERE {where}
+                GROUP BY DATEPART(HOUR, fechaEjecucion)
+                ORDER BY slot
+            """)
+            actividad = [
+                {"label": f"{int(r['slot'])}h", "mensajes": int(r["mensajes"])}
+                for r in act_rows
+            ]
+        else:
+            act_rows = db.execute_query(f"""
+                SELECT CAST(fechaEjecucion AS DATE) AS slot, COUNT(*) AS mensajes
+                FROM abcmasplus..BotIAv2_InteractionLogs
+                WHERE {where}
+                GROUP BY CAST(fechaEjecucion AS DATE)
+                ORDER BY slot
+            """)
+            # weekday(): 0=lunes … 6=domingo → índice en lista lunes-primero
+            dias_es = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+            actividad = [
+                {
+                    "label": f"{dias_es[r['slot'].weekday()]} {r['slot'].day}" if hasattr(r['slot'], 'weekday') else str(r['slot']),
+                    "mensajes": int(r["mensajes"]),
+                }
+                for r in act_rows
+            ]
 
-        s = stats[0] if stats else {}
+        s  = stats[0] if stats else {}
         pc = percentiles[0] if percentiles else {}
-        p = prev[0] if prev else {}
+        p  = prev[0] if prev else {}
 
-        total_hoy = int(s.get("total_mensajes") or 0)
-        total_ayer = int(p.get("total_ayer") or 0)
-        pct = round((total_hoy - total_ayer) / total_ayer * 100) if total_ayer else 0
+        total     = int(s.get("total_mensajes") or 0)
+        total_prev = int(p.get("total_prev") or 0)
+        pct = round((total - total_prev) / total_prev * 100) if total_prev else 0
 
         return jsonify({
-            "mensajes_hoy": total_hoy,
+            "periodo": periodo,
+            "mensajes": total,
             "mensajes_pct_change": pct,
             "usuarios_activos": int(s.get("usuarios_activos") or 0),
-            "errores_hoy": int(s.get("errores") or 0),
-            "costo_hoy": round(float(s.get("costo_total") or 0), 2),
+            "errores": int(s.get("errores") or 0),
+            "costo": round(float(s.get("costo_total") or 0), 2),
             "p50_s": round(float(pc.get("p50_ms") or 0) / 1000, 1),
             "p90_s": round(float(pc.get("p90_ms") or 0) / 1000, 1),
             "agentes": [
@@ -136,10 +181,7 @@ def overview():
                 }
                 for r in agent_rows
             ],
-            "actividad_por_hora": [
-                {"hora": int(r["hora"]), "mensajes": int(r["mensajes"])}
-                for r in hourly_rows
-            ],
+            "actividad": actividad,
         })
     except Exception as e:
         logger.error(f"Dashboard /overview error: {e}")

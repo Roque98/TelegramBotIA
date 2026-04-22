@@ -492,12 +492,18 @@ td.center{text-align:center;padding:10px 8px;}
       <!-- ══ OVERVIEW ══ -->
       <div id="screen-overview" class="screen active">
         <div class="page-header">
-          <div class="flex-row">
+          <div class="flex-row" style="flex-wrap:wrap;gap:10px">
             <div>
               <div class="page-title">Overview</div>
-              <div class="page-sub">Actualizado hace 18s · auto-refresh cada 30s</div>
+              <div class="page-sub" id="overview-page-sub">auto-refresh cada 30s</div>
             </div>
             <div class="spacer"></div>
+            <div class="pill-tabs" id="overview-period-tabs" style="font-size:13px">
+              <div class="pill-tab active" onclick="setOverviewPeriod('hoy',this)">Hoy</div>
+              <div class="pill-tab" onclick="setOverviewPeriod('ayer',this)">Ayer</div>
+              <div class="pill-tab" onclick="setOverviewPeriod('7d',this)">7 días</div>
+              <div class="pill-tab" onclick="setOverviewPeriod('30d',this)">30 días</div>
+            </div>
             <button class="btn" id="btn-refresh-overview" onclick="refreshSection('overview')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Actualizar
@@ -507,12 +513,12 @@ td.center{text-align:center;padding:10px 8px;}
 
         <div class="kpi-grid section-gap">
           <div class="kpi">
-            <div class="kpi-label">MENSAJES HOY</div>
+            <div class="kpi-label" id="kpi-mensajes-label">MENSAJES HOY</div>
             <div class="kpi-value" id="kpi-mensajes">—</div>
             <div class="kpi-sub" id="kpi-mensajes-sub">cargando...</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">USUARIOS ACTIVOS</div>
+            <div class="kpi-label" id="kpi-usuarios-label">USUARIOS ACTIVOS</div>
             <div class="kpi-value" id="kpi-usuarios">—</div>
             <div class="kpi-sub" id="kpi-usuarios-sub">hoy</div>
           </div>
@@ -522,7 +528,7 @@ td.center{text-align:center;padding:10px 8px;}
             <div class="kpi-sub warn" id="kpi-p90-sub">P90: —</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">ERRORES HOY</div>
+            <div class="kpi-label" id="kpi-errores-label">ERRORES HOY</div>
             <div class="kpi-value" id="kpi-errores">—</div>
             <div class="kpi-sub" id="kpi-errores-sub">hoy</div>
           </div>
@@ -542,7 +548,7 @@ td.center{text-align:center;padding:10px 8px;}
         <div class="g2 section-gap">
           <div class="card">
             <div class="card-header">
-              <div><div class="card-title">Actividad por hora</div><div class="card-sub">Mensajes — últimas 12h</div></div>
+              <div><div class="card-title">Actividad</div><div class="card-sub" id="activity-chart-sub">Mensajes — hoy por hora</div></div>
             </div>
             <div class="chart-wrap">
               <div class="bars-container" id="activity-bars">
@@ -561,7 +567,7 @@ td.center{text-align:center;padding:10px 8px;}
         </div>
 
         <div class="card section-gap">
-          <div class="card-header"><div class="card-title">Uso por agente — hoy</div></div>
+          <div class="card-header"><div class="card-title" id="agent-table-title">Uso por agente — hoy</div></div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>AGENTE</th><th>REQUESTS</th><th>ÉXITO</th><th>AVG</th><th>TOKENS</th><th>COSTO</th></tr></thead>
@@ -1287,12 +1293,12 @@ function exportLogDetail() {
 function selectLog(el, correlationId) {
   document.querySelectorAll('.log-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
-  if (window.innerWidth <= 768) switchLogTab('detail', document.querySelectorAll('.pill-tab')[1]);
+  if (window.innerWidth <= 768) switchLogTab('detail', document.querySelectorAll('#log-tabs .pill-tab')[1]);
   if (correlationId) loadLogDetail(correlationId);
 }
 
 function switchLogTab(tab, el) {
-  document.querySelectorAll('.pill-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#log-tabs .pill-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   const list = document.getElementById('log-list-panel');
   const detail = document.getElementById('log-detail-panel');
@@ -1310,7 +1316,7 @@ function initLogLayout() {
     if (logTabs) logTabs.style.display = 'flex';
     if (list) list.style.display = 'flex';
     if (detail) detail.style.display = 'none';
-    const tabs = document.querySelectorAll('.pill-tab');
+    const tabs = document.querySelectorAll('#log-tabs .pill-tab');
     tabs[0]?.classList.add('active');
     tabs[1]?.classList.remove('active');
   } else {
@@ -1366,40 +1372,76 @@ function badgeForAgent(nombre) {
 
 // ── Overview ─────────────────────────────────────────────────────────────────
 
+let _overviewPeriod = 'hoy';
+
+const _PERIODO_META = {
+  hoy:  { mensajes: 'MENSAJES HOY',     errores: 'ERRORES HOY',     usuarios: 'USUARIOS HOY',     vsLabel: 'vs ayer',             agentes: 'Uso por agente — hoy',            chart: 'Mensajes — hoy por hora' },
+  ayer: { mensajes: 'MENSAJES AYER',    errores: 'ERRORES AYER',    usuarios: 'USUARIOS AYER',    vsLabel: 'vs anteayer',         agentes: 'Uso por agente — ayer',           chart: 'Mensajes — ayer por hora' },
+  '7d':  { mensajes: 'MENSAJES 7 DÍAS', errores: 'ERRORES 7 DÍAS',  usuarios: 'USUARIOS 7 DÍAS',  vsLabel: 'vs 7 días previos',   agentes: 'Uso por agente — últimos 7 días', chart: 'Mensajes — últimos 7 días' },
+  '30d': { mensajes: 'MENSAJES 30 DÍAS',errores: 'ERRORES 30 DÍAS', usuarios: 'USUARIOS 30 DÍAS', vsLabel: 'vs 30 días previos',  agentes: 'Uso por agente — últimos 30 días',chart: 'Mensajes — últimos 30 días' },
+};
+
+function setOverviewPeriod(periodo, el) {
+  _overviewPeriod = periodo;
+  document.querySelectorAll('#overview-period-tabs .pill-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadOverview();
+}
+
 async function loadOverview() {
   const tbody = document.getElementById('agent-table-body');
   if (tbody) tbody.innerHTML = skelRows(6);
   ['kpi-mensajes','kpi-usuarios','kpi-p50','kpi-errores','kpi-costo'].forEach(id => setText(id,'—'));
+
+  const meta = _PERIODO_META[_overviewPeriod] || _PERIODO_META['hoy'];
+
+  // Actualizar labels dinámicos
+  const setLabel = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  setLabel('kpi-mensajes-label', meta.mensajes);
+  setLabel('kpi-errores-label',  meta.errores);
+  setLabel('kpi-usuarios-label', meta.usuarios);
+  setLabel('agent-table-title',  meta.agentes);
+  setLabel('activity-chart-sub', meta.chart);
+
   try {
-    const r = await fetch('/api/admin/overview');
+    const r = await fetch('/api/admin/overview?periodo=' + _overviewPeriod);
     if (!r.ok) return;
     const d = await r.json();
 
-    setText('kpi-mensajes', d.mensajes_hoy);
+    setText('kpi-mensajes', d.mensajes);
     const pct = d.mensajes_pct_change;
     const pctEl = document.getElementById('kpi-mensajes-sub');
     if (pctEl) {
-      pctEl.textContent = (pct >= 0 ? '↑ ' : '↓ ') + Math.abs(pct) + '% vs ayer';
+      pctEl.textContent = (pct >= 0 ? '↑ ' : '↓ ') + Math.abs(pct) + '% ' + meta.vsLabel;
       pctEl.className = 'kpi-sub ' + (pct >= 0 ? 'up' : 'down');
     }
 
     setText('kpi-usuarios', d.usuarios_activos);
+    const usuSub = document.getElementById('kpi-usuarios-sub');
+    if (usuSub) usuSub.textContent = meta.vsLabel.replace('vs ', '');
+
     setText('kpi-p50', d.p50_s + 's');
     setText('kpi-p90-sub', 'P90: ' + d.p90_s + 's');
-    setText('kpi-errores', d.errores_hoy);
-    setText('kpi-costo', '$' + d.costo_hoy.toFixed(2));
+    setText('kpi-errores', d.errores);
+    const errSub = document.getElementById('kpi-errores-sub');
+    if (errSub) errSub.textContent = meta.vsLabel.replace('vs ', '');
+
+    setText('kpi-costo', '$' + d.costo.toFixed(2));
+    const costoSub = document.getElementById('kpi-costo-sub');
+    if (costoSub) costoSub.textContent = meta.vsLabel.replace('vs ', '');
 
     const svcBadge = document.getElementById('svc-db-badge');
     if (svcBadge) {
-      svcBadge.className = 'badge ' + (d.mensajes_hoy >= 0 ? 'bg' : 'br');
-      svcBadge.textContent = d.mensajes_hoy >= 0 ? 'Online' : 'Error';
+      svcBadge.className = 'badge ' + (d.mensajes >= 0 ? 'bg' : 'br');
+      svcBadge.textContent = d.mensajes >= 0 ? 'Online' : 'Error';
     }
 
     // Agent usage table
     const tbody = document.getElementById('agent-table-body');
     if (tbody && d.agentes) {
+      const emptyMsg = _overviewPeriod === 'hoy' ? 'Sin datos hoy' : 'Sin datos para este período';
       tbody.innerHTML = d.agentes.length === 0
-        ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin datos hoy</td></tr>'
+        ? `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">${emptyMsg}</td></tr>`
         : d.agentes.map(a => `
           <tr>
             <td><span class="badge ${badgeForAgent(a.nombre)}">${a.nombre}</span></td>
@@ -1413,16 +1455,15 @@ async function loadOverview() {
 
     // Activity bars
     const bars = document.getElementById('activity-bars');
-    if (bars && d.actividad_por_hora && d.actividad_por_hora.length > 0) {
-      const max = Math.max(...d.actividad_por_hora.map(h => h.mensajes), 1);
-      bars.innerHTML = d.actividad_por_hora.map(h =>
-        `<div class="bar-item" style="height:${Math.round(h.mensajes/max*100)}%" title="${h.hora}h: ${h.mensajes} msgs"></div>`
+    if (bars && d.actividad && d.actividad.length > 0) {
+      const max = Math.max(...d.actividad.map(h => h.mensajes), 1);
+      bars.innerHTML = d.actividad.map(h =>
+        `<div class="bar-item" style="height:${Math.round(h.mensajes/max*100)}%" title="${h.label}: ${h.mensajes} msgs"></div>`
       ).join('');
     }
 
-    // Update sub page title
-    const sub = document.querySelector('#screen-overview .page-sub');
-    if (sub) sub.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-MX') + ' · auto-refresh cada 30s';
+    // Update timestamp
+    setLabel('overview-page-sub', 'Actualizado ' + new Date().toLocaleTimeString('es-MX') + ' · auto-refresh cada 30s');
 
   } catch(e) { console.warn('Overview load error', e); }
 }
