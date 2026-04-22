@@ -78,8 +78,10 @@ class IntentClassifier:
             f"{opciones}\n"
             f"- generalista: SOLO si la consulta no tiene ninguna relación con los dominios anteriores\n\n"
             f"IMPORTANTE: Si la consulta menciona IPs, equipos, alertas, sensores, "
-            f"incidentes o infraestructura, preferí el agente especializado aunque "
-            f"el usuario use verbos de acción como 'solucionar', 'atender' o 'resolver'.\n\n"
+            f"incidentes, infraestructura, matrices de escalamiento, templates, "
+            f"contactos de área o nombres de aplicaciones/sistemas monitoreados, "
+            f"preferí el agente especializado aunque el usuario use verbos de acción "
+            f"como 'solucionar', 'atender', 'resolver' o 'ayudar'.\n\n"
             f"Respondé ÚNICAMENTE con el nombre de la categoría.\n\n"
             f"Consulta: {query[:500]}"
         )
