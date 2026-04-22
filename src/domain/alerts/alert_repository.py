@@ -12,6 +12,7 @@ que ya está configurado globalmente en DatabaseManager.
 Nunca lanza excepciones al llamador — retorna [] o None en caso de error.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -370,6 +371,36 @@ class AlertRepository:
         except Exception as e:
             logger.warning(f"AlertRepository.get_template_by_id({template_id}): {e}")
             return None
+
+    async def get_templates_by_nombre(self, nombre: str) -> list[Template]:
+        """
+        Busca templates cuyo nombre de aplicación coincida parcialmente con `nombre`.
+
+        Consulta BAZ y EKT en paralelo (mismo nombre puede existir en ambas instancias)
+        y retorna los resultados combinados ordenados por aplicacion.
+        """
+        params = {"nombre": nombre}
+        sp_baz = "EXEC ABCMASplus.dbo.Template_GetByNombre @nombre = :nombre"
+        sp_ekt = "EXEC ABCMASplus.dbo.Template_GetByNombre_ekt @nombre = :nombre"
+
+        async def _run(sp: str, instancia: str) -> list[Template]:
+            try:
+                rows = await self._db.execute_query_async(sp, params)
+                result = []
+                for row in rows:
+                    try:
+                        result.append(Template.model_validate({**row, "instancia": instancia}))
+                    except Exception as e:
+                        logger.debug(f"get_templates_by_nombre {instancia}: fila inválida ignorada: {e}")
+                return result
+            except Exception as e:
+                logger.warning(f"get_templates_by_nombre {instancia}: {e}")
+                return []
+
+        baz, ekt = await asyncio.gather(_run(sp_baz, "BAZ"), _run(sp_ekt, "EKT"))
+        combined = baz + ekt
+        combined.sort(key=lambda t: (t.aplicacion or "").lower())
+        return combined
 
     async def get_escalation_matrix(
         self, template_id: int, usar_ekt: bool = False
