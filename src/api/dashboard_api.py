@@ -156,20 +156,26 @@ def logs():
         db = _get_db()
         rows = db.execute_query("""
             SELECT TOP 50
-                correlationId,
-                telegramUsername,
-                query,
-                agenteNombre,
-                duracionMs,
-                exitoso,
-                fechaEjecucion,
-                channel,
-                stepsTomados,
-                totalInputTokens,
-                totalOutputTokens,
-                costUSD
-            FROM abcmasplus..BotIAv2_InteractionLogs
-            ORDER BY fechaEjecucion DESC
+                il.correlationId,
+                il.telegramUsername,
+                il.query,
+                il.agenteNombre,
+                il.duracionMs,
+                il.exitoso,
+                il.fechaEjecucion,
+                il.channel,
+                il.stepsTomados,
+                il.totalInputTokens,
+                il.totalOutputTokens,
+                il.costUSD,
+                (
+                    SELECT TOP 1 al.level
+                    FROM abcmasplus..BotIAv2_ApplicationLogs al
+                    WHERE al.correlationId = il.correlationId
+                    ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
+                ) AS app_log_level
+            FROM abcmasplus..BotIAv2_InteractionLogs il
+            ORDER BY il.fechaEjecucion DESC
         """)
         return jsonify([
             {
@@ -185,6 +191,8 @@ def logs():
                 "tokens_in": int(r["totalInputTokens"] or 0),
                 "tokens_out": int(r["totalOutputTokens"] or 0),
                 "costo": round(float(r["costUSD"] or 0), 4),
+                "has_app_logs": r["app_log_level"] is not None,
+                "app_log_level": r["app_log_level"],
             }
             for r in rows
         ])
@@ -221,6 +229,16 @@ def log_detail(correlation_id: str):
             {"cid": correlation_id},
         )
 
+        app_logs_rows = db.execute_query(
+            """
+            SELECT id, level, event, message, module, durationMs, extra, fechaCreacion
+            FROM abcmasplus..BotIAv2_ApplicationLogs
+            WHERE correlationId = :cid
+            ORDER BY fechaCreacion
+            """,
+            {"cid": correlation_id},
+        )
+
         i = interaction[0]
         return jsonify({
             "correlation_id": i["correlationId"],
@@ -251,6 +269,19 @@ def log_detail(correlation_id: str):
                     "salida": s["salida"] or "",
                 }
                 for s in steps
+            ],
+            "app_logs": [
+                {
+                    "id": al["id"],
+                    "level": al["level"],
+                    "event": al["event"] or "",
+                    "message": al["message"] or "",
+                    "module": al["module"] or "",
+                    "duration_ms": al["durationMs"],
+                    "extra": al["extra"] or "",
+                    "fecha": al["fechaCreacion"].strftime("%Y-%m-%d %H:%M:%S") if al.get("fechaCreacion") else None,
+                }
+                for al in app_logs_rows
             ],
         })
     except Exception as e:
@@ -527,13 +558,19 @@ def chat_history(chat_id: str):
         messages = db.execute_query(
             """
             SELECT TOP 300
-                correlationId, query, respuesta, agenteNombre,
-                fechaEjecucion, exitoso, duracionMs, costUSD,
-                mensajeError, channel, stepsTomados,
-                totalInputTokens, totalOutputTokens, memoryMs, reactMs
-            FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE telegramChatId = :cid
-            ORDER BY fechaEjecucion ASC
+                il.correlationId, il.query, il.respuesta, il.agenteNombre,
+                il.fechaEjecucion, il.exitoso, il.duracionMs, il.costUSD,
+                il.mensajeError, il.channel, il.stepsTomados,
+                il.totalInputTokens, il.totalOutputTokens, il.memoryMs, il.reactMs,
+                (
+                    SELECT TOP 1 al.level
+                    FROM abcmasplus..BotIAv2_ApplicationLogs al
+                    WHERE al.correlationId = il.correlationId
+                    ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
+                ) AS app_log_level
+            FROM abcmasplus..BotIAv2_InteractionLogs il
+            WHERE il.telegramChatId = :cid
+            ORDER BY il.fechaEjecucion ASC
             """,
             {"cid": chat_id},
         )
@@ -582,6 +619,8 @@ def chat_history(chat_id: str):
                     "tokens_out": int(m["totalOutputTokens"] or 0),
                     "memory_ms": int(m["memoryMs"] or 0),
                     "react_ms": int(m["reactMs"] or 0),
+                    "has_app_logs": m["app_log_level"] is not None,
+                    "app_log_level": m["app_log_level"],
                 }
                 for m in messages
             ],
@@ -601,9 +640,10 @@ def chat_history(chat_id: str):
 def app_logs():
     try:
         db = _get_db()
-        level   = request.args.get("level", "")        # WARNING, ERROR, CRITICAL
-        module  = request.args.get("module", "")
-        search  = request.args.get("search", "")
+        level          = request.args.get("level", "")        # WARNING, ERROR, CRITICAL
+        module         = request.args.get("module", "")
+        search         = request.args.get("search", "")
+        correlation_id = request.args.get("correlation_id", "")
         limit   = min(int(request.args.get("limit", 100)), 500)
         offset  = int(request.args.get("offset", 0))
 
@@ -619,6 +659,9 @@ def app_logs():
         if search:
             where.append("(message LIKE :search OR event LIKE :search)")
             params["search"] = f"%{search}%"
+        if correlation_id:
+            where.append("correlationId = :correlation_id")
+            params["correlation_id"] = correlation_id
 
         where_sql = " AND ".join(where)
 
