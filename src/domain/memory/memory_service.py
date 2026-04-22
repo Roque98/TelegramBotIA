@@ -104,7 +104,7 @@ class MemoryService:
         if not messages:
             return "Sin conversaciones recientes."
         formatted = []
-        for msg in messages[-5:]:
+        for msg in messages[-10:]:
             role_key = msg.get("role", "user")
             role = "Usuario" if role_key == "user" else "Asistente"
             content = msg.get("content", "")
