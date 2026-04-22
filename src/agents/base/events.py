@@ -222,7 +222,7 @@ class UserContext(BaseModel):
             for msg in self.working_memory[-5:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
-                limit = 120 if role == "user" else 600
+                limit = 200 if role == "user" else 2000
                 if len(content) > limit:
                     cutoff = content.rfind("\n", 0, limit)
                     content = content[: cutoff if cutoff > 0 else limit] + "…"

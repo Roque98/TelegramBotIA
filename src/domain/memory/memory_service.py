@@ -108,7 +108,7 @@ class MemoryService:
             role_key = msg.get("role", "user")
             role = "Usuario" if role_key == "user" else "Asistente"
             content = msg.get("content", "")
-            limit = 120 if role_key == "user" else 600
+            limit = 200 if role_key == "user" else 2000
             if len(content) > limit:
                 cutoff = content.rfind("\n", 0, limit)
                 content = content[: cutoff if cutoff > 0 else limit] + "…"
