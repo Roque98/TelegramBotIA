@@ -121,7 +121,7 @@ O bien esperar que el TTL expire automáticamente.
 
 ## Base de conocimiento
 
-La base de conocimiento son artículos que Amber puede recuperar cuando el usuario pregunta
+La base de conocimiento son artículos que Iris puede recuperar cuando el usuario pregunta
 sobre políticas, procedimientos o información interna.
 
 ### Estructura
@@ -297,7 +297,7 @@ INSERT INTO abcmasplus..BotIAv2_AgenteDef
 VALUES (
     'rrhh',
     'Consultas sobre empleados, nómina, ausentismo y gestión de RRHH',
-    N'Eres Amber, especialista en RRHH...
+    N'Eres Iris, especialista en RRHH...
 
 ## Herramientas Disponibles
 {tools_description}

@@ -2,7 +2,7 @@
 
 # Guía del API REST
 
-El bot expone un endpoint REST que permite integrar Amber en aplicaciones web, portales
+El bot expone un endpoint REST que permite integrar Iris en aplicaciones web, portales
 corporativos o cualquier sistema que pueda hacer requests HTTP.
 
 ---
@@ -130,7 +130,7 @@ import requests
 import time
 from src.utils.encryption_util import EncryptionUtil
 
-def chat_with_amber(employee_id: int, message: str, aes_key: str) -> dict:
+def chat_with_iris(employee_id: int, message: str, aes_key: str) -> dict:
     token_plain = f"{employee_id}:{int(time.time())}"
     token = EncryptionUtil(key=aes_key).encrypt(token_plain)
 
@@ -145,7 +145,7 @@ def chat_with_amber(employee_id: int, message: str, aes_key: str) -> dict:
     )
     return response.json()
 
-result = chat_with_amber(12345, "¿Cuántas ventas hubo ayer?", "mi_clave_de_32_caracteres_aqui")
+result = chat_with_iris(12345, "¿Cuántas ventas hubo ayer?", "mi_clave_de_32_caracteres_aqui")
 print(result["response"])
 ```
 
@@ -171,7 +171,7 @@ print(result["response"])
 - Las respuestas incluyen formato Markdown de Telegram (`*negrita*`, `_cursiva_`). Si tu
   interfaz no soporta Markdown, podés hacer strip del formato antes de mostrar al usuario.
 - El campo `numero_empleado` en la respuesta confirma qué usuario procesó la request.
-- No hay paginación: si la respuesta es muy larga, Amber la divide en múltiples párrafos
+- No hay paginación: si la respuesta es muy larga, Iris la divide en múltiples párrafos
   dentro del mismo campo `response`.
 
 ---

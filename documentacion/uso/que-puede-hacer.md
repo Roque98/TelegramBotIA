@@ -2,7 +2,7 @@
 
 # Qué puede hacer el bot
 
-Amber es el nombre del asistente. Opera principalmente a través de Telegram y responde preguntas
+Iris es el nombre del asistente. Opera principalmente a través de Telegram y responde preguntas
 sobre los sistemas internos de la empresa.
 
 ---
@@ -11,8 +11,8 @@ sobre los sistemas internos de la empresa.
 
 ### Consultas a la base de datos
 
-Amber puede responder preguntas sobre datos de negocio haciendo consultas SQL de forma transparente
-al usuario. El usuario escribe en español; Amber genera y ejecuta el SQL internamente.
+Iris puede responder preguntas sobre datos de negocio haciendo consultas SQL de forma transparente
+al usuario. El usuario escribe en español; Iris genera y ejecuta el SQL internamente.
 
 Ejemplos de consultas que puede responder:
 
@@ -29,7 +29,7 @@ Las consultas pasan por un validador que rechaza cualquier operación que no sea
 
 ### Base de conocimiento empresarial
 
-Amber puede buscar en una base de conocimiento estructurada con artículos sobre políticas,
+Iris puede buscar en una base de conocimiento estructurada con artículos sobre políticas,
 procedimientos, contactos y preguntas frecuentes.
 
 Ejemplos:
@@ -46,7 +46,7 @@ Las categorías disponibles dependen de los permisos del usuario:
 
 ### Cálculos matemáticos
 
-Amber puede resolver cálculos sin inventar resultados:
+Iris puede resolver cálculos sin inventar resultados:
 
 - "¿Cuánto es el 15% de 8.450?"
 - "Si tengo 120 unidades a $350 cada una, ¿cuál es el total con IVA del 21%?"
@@ -63,7 +63,7 @@ Amber puede resolver cálculos sin inventar resultados:
 
 ### Preferencias del usuario
 
-El usuario puede pedirle a Amber que lo recuerde de cierta manera:
+El usuario puede pedirle a Iris que lo recuerde de cierta manera:
 
 - "Llamame Ángel"
 - "Prefiero respuestas cortas"
@@ -75,7 +75,7 @@ Estas preferencias se guardan en la base de datos y persisten entre sesiones.
 
 ### Memoria entre sesiones
 
-Amber puede guardar hechos relevantes del usuario:
+Iris puede guardar hechos relevantes del usuario:
 
 - "Recordá que trabajo en el área de ventas del sur"
 - "Mi número de legajo es 4521"

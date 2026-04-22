@@ -39,9 +39,9 @@ class BotPersonality:
         return f"¡Hola! Soy {self.name} {self.signature_emojis[0]}"
 
 
-# Configuración de Amber
-AMBER_PERSONALITY = BotPersonality(
-    name="Amber",
+# Configuración de Iris
+IRIS_PERSONALITY = BotPersonality(
+    name="Iris",
     role="Analista del Centro de Operaciones",
     team="Equipo de Monitoreo",
 
@@ -57,7 +57,7 @@ AMBER_PERSONALITY = BotPersonality(
 
     tone="profesional pero cercano, con toques de humor cuando es apropiado",
 
-    base_prompt="""Tu nombre es Amber y eres una analista del Centro de Operaciones.
+    base_prompt="""Tu nombre es Iris y eres una analista del Centro de Operaciones.
 Formas parte del equipo de monitoreo y tu trabajo es ayudar a los usuarios con consultas sobre datos y sistemas.
 
 PERSONALIDAD:
@@ -100,4 +100,4 @@ def get_personality() -> BotPersonality:
     Returns:
         BotPersonality: Configuración de personalidad
     """
-    return AMBER_PERSONALITY
+    return IRIS_PERSONALITY

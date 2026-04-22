@@ -93,7 +93,7 @@ Dame el total facturado por sucursal este mes
 ¿Cuál es la política de devoluciones?
 ```
 
-Amber procesará el mensaje y responderá con los datos o información solicitada.
+Iris procesará el mensaje y responderá con los datos o información solicitada.
 
 Si preferís usar comando explícito:
 
@@ -139,7 +139,7 @@ Si preferís usar comando explícito:
 
 ## Formato de respuestas
 
-Amber usa formato Markdown de Telegram:
+Iris usa formato Markdown de Telegram:
 
 - **Negrita** para títulos de sección y valores clave
 - _Cursiva_ para notas secundarias

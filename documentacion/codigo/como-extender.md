@@ -232,7 +232,7 @@ INSERT INTO abcmasplus..BotIAv2_AgenteDef
 VALUES (
     'mi_agente',
     'Descripción usada por IntentClassifier para rutear — ser específico y diferenciador',
-    N'Eres Amber, una asistente especializada en [dominio].
+    N'Eres Iris, una asistente especializada en [dominio].
 
 ## Tu Personalidad
 ...

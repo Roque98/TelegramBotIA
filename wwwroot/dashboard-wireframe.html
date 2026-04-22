@@ -20,8 +20,8 @@
   --text3:#8a8a9e;
   --green:#34c759;
   --green-dim:rgba(52,199,89,.12);
-  --amber:#f5a623;
-  --amber-dim:rgba(245,166,35,.12);
+  --iris:#f5a623;
+  --iris-dim:rgba(245,166,35,.12);
   --red:#ff3b30;
   --red-dim:rgba(255,59,48,.12);
   --blue:#0a84ff;
@@ -120,7 +120,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:13px;font-weight:600;border:1px solid;}
 .bg{color:var(--green);border-color:rgba(52,199,89,.3);background:var(--green-dim);}
-.ba{color:var(--amber);border-color:rgba(245,166,35,.3);background:var(--amber-dim);}
+.ba{color:var(--iris);border-color:rgba(245,166,35,.3);background:var(--iris-dim);}
 .br{color:var(--red);border-color:rgba(255,59,48,.3);background:var(--red-dim);}
 .bb{color:var(--blue);border-color:rgba(10,132,255,.3);background:var(--blue-dim);}
 .bp{color:var(--purple);border-color:rgba(191,90,242,.3);background:var(--purple-dim);}
@@ -154,7 +154,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .kpi-sub{font-size:13px;color:var(--text3);margin-top:4px;}
 .kpi-sub.up{color:var(--green);}
 .kpi-sub.down{color:var(--red);}
-.kpi-sub.warn{color:var(--amber);}
+.kpi-sub.warn{color:var(--iris);}
 
 /* Table */
 .table-wrap{overflow-x:auto;}
@@ -276,7 +276,7 @@ tbody tr:hover td{background:var(--surface2);}
 .perm-dot{display:inline-block;width:10px;height:10px;border-radius:50%;}
 .pd-al{background:var(--green);}
 .pd-de{background:var(--red);}
-.pd-pa{background:var(--amber);}
+.pd-pa{background:var(--iris);}
 .pd-no{background:var(--border2);}
 td.center{text-align:center;padding:10px 8px;}
 
@@ -286,7 +286,7 @@ td.center{text-align:center;padding:10px 8px;}
 .spacer{flex:1;}
 .mono{font-family:'SF Mono',monospace;font-size:13px;}
 .text-green{color:var(--green);}
-.text-amber{color:var(--amber);}
+.text-iris{color:var(--iris);}
 .text-red{color:var(--red);}
 .empty-state{padding:40px;text-align:center;color:var(--text3);}
 .empty-state p{font-size:15px;}
@@ -383,7 +383,7 @@ td.center{text-align:center;padding:10px 8px;}
 .query-box-text{font-size:15px;color:var(--text);font-style:italic;}
 .query-box.response{border-color:rgba(52,199,89,.25);background:var(--green-dim);}
 .query-box.response .query-box-text{font-style:normal;color:var(--text);white-space:pre-wrap;}
-.query-box.prompt{border-color:rgba(245,166,35,.2);background:var(--amber-dim);}
+.query-box.prompt{border-color:rgba(245,166,35,.2);background:var(--iris-dim);}
 .query-box.prompt .query-box-text{font-style:normal;font-family:'SF Mono',monospace;font-size:13px;color:var(--text2);white-space:pre-wrap;max-height:220px;overflow-y:auto;}
 /* ── PROMPT SPLIT VIEW ── */
 .prompt-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:360px;}
@@ -791,7 +791,7 @@ td.center{text-align:center;padding:10px 8px;}
         </div>
         <div class="g3 section-gap">
           <div class="kpi"><div class="kpi-label">CRÍTICAS</div><div class="kpi-value text-red" id="alert-criticos">—</div></div>
-          <div class="kpi"><div class="kpi-label">ADVERTENCIAS</div><div class="kpi-value text-amber" id="alert-warnings">—</div></div>
+          <div class="kpi"><div class="kpi-label">ADVERTENCIAS</div><div class="kpi-value text-iris" id="alert-warnings">—</div></div>
           <div class="kpi"><div class="kpi-label">TOTAL ACTIVAS</div><div class="kpi-value" id="alert-total">—</div></div>
         </div>
         <div class="card">
@@ -939,7 +939,7 @@ td.center{text-align:center;padding:10px 8px;}
         <div class="g3 section-gap">
           <div class="kpi"><div class="kpi-label">REGISTRADOS</div><div class="kpi-value" id="usr-total">—</div></div>
           <div class="kpi"><div class="kpi-label">VERIFICADOS</div><div class="kpi-value" id="usr-verificados">—</div></div>
-          <div class="kpi"><div class="kpi-label">PENDIENTES</div><div class="kpi-value text-amber" id="usr-pendientes">—</div></div>
+          <div class="kpi"><div class="kpi-label">PENDIENTES</div><div class="kpi-value text-iris" id="usr-pendientes">—</div></div>
         </div>
         <div class="card">
           <div class="table-wrap">
@@ -1318,7 +1318,7 @@ async function loadOverview() {
           <tr>
             <td><span class="badge ${badgeForAgent(a.nombre)}">${a.nombre}</span></td>
             <td>${a.requests}</td>
-            <td class="${a.exito_pct >= 95 ? 'text-green' : a.exito_pct >= 80 ? 'text-amber' : 'text-red'}">${a.exito_pct}%</td>
+            <td class="${a.exito_pct >= 95 ? 'text-green' : a.exito_pct >= 80 ? 'text-iris' : 'text-red'}">${a.exito_pct}%</td>
             <td class="mono">${a.avg_ms}ms</td>
             <td class="mono">${a.total_tokens >= 1000 ? Math.round(a.total_tokens/1000) + 'k' : a.total_tokens}</td>
             <td>$${a.costo.toFixed(2)}</td>

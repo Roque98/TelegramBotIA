@@ -716,7 +716,7 @@ class ReActAgent(BaseAgent):
             )
 
             messages = [
-                {"role": "system", "content": "Eres Amber, una asistente amigable."},
+                {"role": "system", "content": "Eres Iris, una asistente amigable."},
                 {"role": "user", "content": synthesis_prompt},
             ]
 
