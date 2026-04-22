@@ -121,6 +121,12 @@ class Template(BaseModel):
         """Coerciona valores de BD: None → default, int → str para campos str."""
         if not isinstance(data, dict):
             return data
+        # Template_GetByNombre puede retornar el ID bajo distintos nombres de columna
+        if data.get("idTemplate") is None:
+            for alt in ("templateid", "id", "Id", "ID", "templateId", "TemplateId", "template_id"):
+                if data.get(alt) is not None:
+                    data["idTemplate"] = data[alt]
+                    break
         for field in ("Aplicacion", "GerenciaDesarrollo", "GerenciaAtendedora",
                       "ambiente", "Negocio", "TipoTemplate"):
             v = data.get(field)
