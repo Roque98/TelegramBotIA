@@ -64,10 +64,21 @@ class GetEscalationMatrixTool(BaseTool):
                     description="Si true, consulta instancia EKT. Usar cuando instancia del template es 'EKT'.",
                     required=False,
                 ),
+                ToolParameter(
+                    name="id_gerencia_atendedora",
+                    param_type="integer",
+                    description=(
+                        "ID de la gerencia atendedora. Pasar cuando ya se conoce (viene de "
+                        "template_search_by_name como 'id_gerencia_atendedora'). Evita una "
+                        "consulta adicional a la BD."
+                    ),
+                    required=False,
+                ),
             ],
             examples=[
                 {"ip": "10.118.57.142"},
                 {"template_id": 15978, "usar_ekt": False},
+                {"template_id": 15978, "usar_ekt": False, "id_gerencia_atendedora": 42},
                 {"template_id": 16046, "usar_ekt": True},
             ],
             returns=(
@@ -85,6 +96,7 @@ class GetEscalationMatrixTool(BaseTool):
         ip: str = kwargs.get("ip", "").strip()
         template_id_direct = kwargs.get("template_id")
         usar_ekt_param: bool = bool(kwargs.get("usar_ekt", False))
+        id_gerencia_atendedora_param = kwargs.get("id_gerencia_atendedora")
 
         if not ip and template_id_direct is None:
             return ToolResult.error_result(
@@ -105,18 +117,33 @@ class GetEscalationMatrixTool(BaseTool):
                 usar_ekt = usar_ekt_param
                 inventario = None
 
-                template, matriz = await asyncio.gather(
-                    self._repo.get_template_info(tid, usar_ekt=usar_ekt),
-                    self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
-                )
+                # Si el caller ya tiene id_gerencia_atendedora (de template_search_by_name),
+                # se salta get_template_info — la info del template ya está disponible.
+                if id_gerencia_atendedora_param is not None:
+                    try:
+                        id_atendedora_known = int(id_gerencia_atendedora_param)
+                    except (ValueError, TypeError):
+                        id_atendedora_known = None
 
-                id_atendedora = template.atendedor_id_gerencia if template else None
-                id_administradora = template.id_gerencia_desarrollo if template else None
-
-                logger.info(
-                    f"GetEscalationMatrixTool: flujo directo template_id={tid} "
-                    f"usar_ekt={usar_ekt} id_atendedora={id_atendedora}"
-                )
+                    template = None
+                    matriz = await self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt)
+                    id_atendedora = id_atendedora_known
+                    id_administradora = None
+                    logger.info(
+                        f"GetEscalationMatrixTool: flujo template_id={tid} "
+                        f"con id_gerencia_atendedora={id_atendedora} (sin get_template_info)"
+                    )
+                else:
+                    template, matriz = await asyncio.gather(
+                        self._repo.get_template_info(tid, usar_ekt=usar_ekt),
+                        self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
+                    )
+                    id_atendedora = template.atendedor_id_gerencia if template else None
+                    id_administradora = template.id_gerencia_desarrollo if template else None
+                    logger.info(
+                        f"GetEscalationMatrixTool: flujo template_id={tid} "
+                        f"usar_ekt={usar_ekt} id_atendedora={id_atendedora}"
+                    )
             else:
                 # Flujo por IP — busca el template asociado
                 template_id_row, inventario = await asyncio.gather(
