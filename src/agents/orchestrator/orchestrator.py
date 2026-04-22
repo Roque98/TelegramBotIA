@@ -206,6 +206,16 @@ class AgentOrchestrator:
 
         return response
 
+    # Palabras de seguimiento que no tienen significado propio fuera del contexto previo
+    _STICKY_WORDS: frozenset[str] = frozenset({
+        "ambos", "ambas", "todos", "todas", "los dos", "las dos",
+        "ese", "esa", "eso", "aquel", "aquella",
+        "el primero", "el segundo", "el tercero",
+        "la primera", "la segunda", "la tercera",
+        "ninguno", "ninguna", "dale", "va", "sale",
+        "claro", "listo", "perfecto", "ok", "bueno",
+    })
+
     def _try_sticky(
         self, query: str, context: UserContext, definitions: list[AgentDefinition]
     ) -> Optional[str]:
@@ -216,6 +226,7 @@ class AgentOrchestrator:
         Criterios para considerar ambigua una query:
         - Es solo un número (selección de lista: "1", "2", "12")
         - Tiene ≤4 caracteres (respuestas cortísimas: "ok", "sí", "ese", "esa")
+        - Es una palabra de seguimiento contextual (ambos, todos, los dos, etc.)
 
         Solo aplica si el agente anterior era un especialista (no generalista).
         """
@@ -228,7 +239,11 @@ class AgentOrchestrator:
             return None
 
         stripped = query.strip()
-        is_ambiguous = stripped.isdigit() or len(stripped) <= 4
+        is_ambiguous = (
+            stripped.isdigit()
+            or len(stripped) <= 4
+            or stripped.lower() in self._STICKY_WORDS
+        )
 
         if is_ambiguous:
             logger.info(

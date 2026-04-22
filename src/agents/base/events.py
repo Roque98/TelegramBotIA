@@ -177,7 +177,7 @@ class UserContext(BaseModel):
         """
         return self.working_memory[-limit:]
 
-    def to_prompt_context(self) -> str:
+    def to_prompt_context(self, tool_scope: Optional[set[str]] = None) -> str:
         """
         Genera bloques <memory> estructurados para el system prompt.
 
@@ -206,6 +206,8 @@ class UserContext(BaseModel):
             user_lines.append(f"Historial conocido: {self.long_term_summary}")
         if self.permisos:
             allowed_tools = [r for r, ok in self.permisos.items() if ok and r.startswith("tool:")]
+            if tool_scope is not None:
+                allowed_tools = [t for t in allowed_tools if t.removeprefix("tool:") in tool_scope]
             if allowed_tools:
                 tool_names = ", ".join(t.removeprefix("tool:").replace("_", " ") for t in allowed_tools)
                 user_lines.append(f"Capacidades disponibles: {tool_names}")
