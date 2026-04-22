@@ -1271,6 +1271,18 @@ function go(id, el, mode) {
 }
 
 let _currentLogId = null;
+let _currentLogDetail = null;
+
+function exportLogDetail() {
+  if (!_currentLogDetail) return;
+  const d = _currentLogDetail;
+  const filename = `log_${d.correlation_id}_${d.fecha ? d.fecha.replace(/[: ]/g,'-') : 'export'}.json`;
+  const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function selectLog(el, correlationId) {
   document.querySelectorAll('.log-item').forEach(i => i.classList.remove('active'));
@@ -1499,11 +1511,13 @@ async function loadLogDetail(correlationId) {
     if (header) {
       const statusClass = d.error ? 'br' : 'bg';
       const statusText = d.error ? 'ERROR' : 'SUCCESS';
+      _currentLogDetail = d;
       header.innerHTML = `
         <div class="flex-row">
           <div><div style="font-size:15px;font-weight:700">@${d.username} — ${d.agente || '?'}</div></div>
           <div class="spacer"></div>
           <span class="badge ${statusClass}">${statusText}</span>
+          <button class="btn-sm" onclick="exportLogDetail()" title="Exportar como JSON">⬇ Exportar</button>
         </div>
         <div class="log-detail-meta">
           <div class="log-detail-meta-item"><span class="log-meta-label">correlation</span><span class="log-meta-value">${d.correlation_id.slice(0,8)}</span></div>
