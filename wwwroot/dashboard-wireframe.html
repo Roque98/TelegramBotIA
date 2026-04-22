@@ -165,10 +165,15 @@ tr:last-child td{border-bottom:none;}
 tbody tr:hover td{background:var(--surface2);}
 .td-mono{font-family:'SF Mono',monospace;font-size:13px;}
 
-/* ── CHART placeholder ── */
-.chart-wrap{padding:16px;height:130px;position:relative;overflow:hidden;}
-.bars-container{display:flex;align-items:flex-end;gap:3px;height:100%;}
-.bar-item{flex:1;border-radius:3px 3px 0 0;background:var(--green);opacity:.2;}
+/* ── CHART ── */
+.chart-wrap{padding:12px 16px 8px;height:170px;position:relative;}
+.bars-container{display:flex;align-items:stretch;gap:2px;height:100%;}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0;}
+.bar-val{font-size:10px;font-weight:600;color:var(--text3);line-height:1;margin-bottom:3px;white-space:nowrap;}
+.bar-area{flex:1;width:100%;display:flex;align-items:flex-end;}
+.bar-fill{width:100%;border-radius:3px 3px 0 0;background:var(--green);opacity:.55;min-height:3px;transition:opacity .12s;}
+.bar-fill:hover{opacity:1;}
+.bar-lbl{font-size:10px;color:var(--text3);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 .chart-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;}
 .chart-note{font-size:13px;color:var(--text3);font-weight:500;}
 
@@ -552,7 +557,7 @@ td.center{text-align:center;padding:10px 8px;}
             </div>
             <div class="chart-wrap">
               <div class="bars-container" id="activity-bars">
-                <div class="bar-item" style="height:20%"></div>
+                <div class="bar-col"><div class="bar-val">—</div><div class="bar-area"><div class="bar-fill" style="height:20%"></div></div></div>
               </div>
             </div>
           </div>
@@ -1457,9 +1462,15 @@ async function loadOverview() {
     const bars = document.getElementById('activity-bars');
     if (bars && d.actividad && d.actividad.length > 0) {
       const max = Math.max(...d.actividad.map(h => h.mensajes), 1);
-      bars.innerHTML = d.actividad.map(h =>
-        `<div class="bar-item" style="height:${Math.round(h.mensajes/max*100)}%" title="${h.label}: ${h.mensajes} msgs"></div>`
-      ).join('');
+      const showLbls = d.actividad.length <= 15;
+      bars.innerHTML = d.actividad.map(h => {
+        const pct = Math.max(3, Math.round(h.mensajes / max * 100));
+        return `<div class="bar-col" title="${h.label}: ${h.mensajes} msgs">
+          <span class="bar-val">${h.mensajes}</span>
+          <div class="bar-area"><div class="bar-fill" style="height:${pct}%"></div></div>
+          ${showLbls ? `<span class="bar-lbl">${h.label}</span>` : ''}
+        </div>`;
+      }).join('');
     }
 
     // Update timestamp
