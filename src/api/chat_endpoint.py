@@ -259,6 +259,74 @@ def generate_token():
     }), 501  # Not Implemented
 
 
+@app.route('/api/tickets', methods=['POST'])
+def tickets():
+    """
+    Consulta tickets históricos de un equipo/IP directamente, sin pasar por el agente.
+
+    Request Body:
+        {
+            "token": "base64_encrypted_token",
+            "ip": "10.118.57.142",
+            "sensor": "Memoria"          (opcional)
+        }
+
+    Response (Success):
+        {
+            "success": true,
+            "ip": "10.118.57.142",
+            "sensor": "Memoria",
+            "total_tickets": 3,
+            "resultado": "3 ticket(s) histórico(s)...",
+            "timestamp": "..."
+        }
+    """
+    try:
+        if not request.is_json:
+            return jsonify({"success": False, "error": "Content-Type debe ser application/json", "error_code": "INVALID_CONTENT_TYPE"}), 400
+
+        data = request.get_json()
+
+        if "token" not in data:
+            return jsonify({"success": False, "error": "Falta campo 'token'", "error_code": "MISSING_FIELD"}), 400
+        if "ip" not in data or not data["ip"].strip():
+            return jsonify({"success": False, "error": "Falta campo 'ip'", "error_code": "MISSING_FIELD"}), 400
+
+        valido, _, error_token = TokenMiddleware.validar_token(data["token"])
+        if not valido:
+            error_code = "EXPIRED_TOKEN" if error_token and "expirado" in error_token.lower() else "INVALID_TOKEN"
+            return jsonify({"success": False, "error": error_token, "error_code": error_code}), 401
+
+        ip: str = data["ip"].strip()
+        sensor: str = data.get("sensor", "").strip()
+
+        db_registry = get_handler_manager().db_registry
+        if db_registry is None:
+            return jsonify({"success": False, "error": "Servicio no inicializado", "error_code": "NOT_READY"}), 503
+
+        from src.domain.alerts.alert_repository import AlertRepository
+        from src.agents.tools.get_historical_tickets_tool import GetHistoricalTicketsTool
+
+        repo = AlertRepository(db_registry.get("monitoreo"))
+        tool = GetHistoricalTicketsTool(repo=repo)
+
+        result = asyncio.run(tool.execute(ip=ip, sensor=sensor))
+
+        return jsonify({
+            "success": result.success,
+            "ip": ip,
+            "sensor": sensor,
+            "total_tickets": (result.metadata or {}).get("total_tickets"),
+            "resultado": result.data if result.success else None,
+            "error": result.error if not result.success else None,
+            "timestamp": datetime.now().isoformat(),
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error en /api/tickets: {e}", exc_info=True)
+        return jsonify({"success": False, "error": "Error interno del servidor", "error_code": "INTERNAL_ERROR"}), 500
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """

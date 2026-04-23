@@ -43,7 +43,9 @@ class TelegramBot:
         # db_registry viene del factory — instancia única compartida
         logger.info("Inicializando MainHandler (ReAct)...")
         self.main_handler, self._admin_notify, self.db_registry = create_main_handler(self.db_manager)
-        get_handler_manager()._handler = self.main_handler
+        hm = get_handler_manager()
+        hm._handler = self.main_handler
+        hm._db_registry = self.db_registry
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
