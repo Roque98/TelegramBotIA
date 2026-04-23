@@ -2377,20 +2377,19 @@ const API_ENDPOINTS = {
   'tickets': {
     method: 'POST', methodClass: 'bb',
     path: '/api/tickets',
-    desc: 'Consultar tickets históricos de un equipo/IP de PRTG directamente, sin pasar por el pipeline del agente. Devuelve incidentes previos con detalle y acción correctiva.',
+    desc: 'Obtiene los tickets históricos de un equipo/IP de PRTG y los envía al LLM para generar un análisis de patrones, causa raíz y acciones correctivas.',
     body: JSON.stringify({token: 'base64_del_token_encriptado', ip: '10.118.57.142', sensor: 'Memoria'}, null, 2),
     request: [
       {name: 'token',  type: 'string', req: true,  desc: 'Token encriptado en Base64 (AES). Mismo formato que /api/chat.'},
       {name: 'ip',     type: 'string', req: true,  desc: 'IP del equipo a consultar en PRTG.'},
-      {name: 'sensor', type: 'string', req: false, desc: 'Nombre del sensor para filtrar tickets (ej: "Memoria", "CPU", "Ping"). Si se omite, se resuelve automáticamente desde alertas activas.'},
+      {name: 'sensor', type: 'string', req: false, desc: 'Sensor para filtrar tickets (ej: "Memoria", "CPU"). Si se omite, se resuelve automáticamente desde alertas activas.'},
     ],
     response: [
-      {name: 'success',       type: 'bool',   desc: 'true si la consulta se realizó correctamente.'},
-      {name: 'ip',            type: 'string', desc: 'IP consultada.'},
-      {name: 'sensor',        type: 'string', desc: 'Sensor usado para el filtro (puede estar vacío).'},
-      {name: 'total_tickets', type: 'int',    desc: 'Cantidad de tickets encontrados.'},
-      {name: 'resultado',     type: 'string', desc: 'Texto formateado con los tickets. null si hubo error.'},
-      {name: 'error',         type: 'string', desc: 'Descripción del error. null si fue exitoso.'},
+      {name: 'success',       type: 'bool',     desc: 'true si la consulta y análisis se realizaron correctamente.'},
+      {name: 'ip',            type: 'string',   desc: 'IP consultada.'},
+      {name: 'sensor',        type: 'string',   desc: 'Sensor usado para el filtro.'},
+      {name: 'total_tickets', type: 'int',      desc: 'Cantidad de tickets históricos encontrados.'},
+      {name: 'analisis',      type: 'string',   desc: 'Análisis generado por el LLM: patrones, causa raíz y acciones correctivas.'},
       {name: 'timestamp',     type: 'ISO 8601', desc: 'Fecha y hora del servidor al responder.'},
     ],
     statuses: [

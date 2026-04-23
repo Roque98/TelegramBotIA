@@ -306,19 +306,37 @@ def tickets():
 
         from src.domain.alerts.alert_repository import AlertRepository
         from src.agents.tools.get_historical_tickets_tool import GetHistoricalTicketsTool
+        from src.agents.providers.openai_provider import OpenAIProvider
+        from src.config.settings import settings
 
-        repo = AlertRepository(db_registry.get("monitoreo"))
-        tool = GetHistoricalTicketsTool(repo=repo)
+        async def _run():
+            repo = AlertRepository(db_registry.get("monitoreo"))
+            tool = GetHistoricalTicketsTool(repo=repo)
+            tickets_result = await tool.execute(ip=ip, sensor=sensor)
 
-        result = asyncio.run(tool.execute(ip=ip, sensor=sensor))
+            if not tickets_result.success or not tickets_result.data:
+                return tickets_result.data or tickets_result.error, (tickets_result.metadata or {}).get("total_tickets", 0)
+
+            llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+            messages = [
+                {"role": "system", "content": (
+                    "Eres un analista de soporte técnico. Se te presentan tickets históricos de un equipo de red/infraestructura. "
+                    "Analiza los patrones, identifica la causa raíz más probable y sugiere acciones correctivas concretas. "
+                    "Sé conciso y estructurado."
+                )},
+                {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}:\n\n{tickets_result.data}"},
+            ]
+            analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
+            return str(analysis), (tickets_result.metadata or {}).get("total_tickets", 0)
+
+        analisis, total = asyncio.run(_run())
 
         return jsonify({
-            "success": result.success,
+            "success": True,
             "ip": ip,
             "sensor": sensor,
-            "total_tickets": (result.metadata or {}).get("total_tickets"),
-            "resultado": result.data if result.success else None,
-            "error": result.error if not result.success else None,
+            "total_tickets": total,
+            "analisis": analisis,
             "timestamp": datetime.now().isoformat(),
         }), 200
 
