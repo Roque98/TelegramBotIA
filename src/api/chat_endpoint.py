@@ -124,11 +124,17 @@ def chat():
         handler = get_handler_manager().handler
 
         try:
+            metadata = {
+                "source": "api",
+                "empleado": numero_empleado,
+                "id_gerencias": datos_token.get("idGerencias", []),
+                "id_consola": datos_token.get("idConsola"),
+            }
             agent_response = asyncio.run(
                 handler.handle_api(
                     user_id=str(numero_empleado),
                     text=message,
-                    metadata={"source": "api", "empleado": numero_empleado},
+                    metadata=metadata,
                 )
             )
             respuesta = agent_response.message if agent_response.success else agent_response.error
