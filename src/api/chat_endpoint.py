@@ -292,11 +292,12 @@ def tickets():
         if "ip" not in data or not data["ip"].strip():
             return jsonify({"success": False, "error": "Falta campo 'ip'", "error_code": "MISSING_FIELD"}), 400
 
-        valido, _, error_token = TokenMiddleware.validar_token(data["token"])
+        valido, datos_token, error_token = TokenMiddleware.validar_token(data["token"])
         if not valido:
             error_code = "EXPIRED_TOKEN" if error_token and "expirado" in error_token.lower() else "INVALID_TOKEN"
             return jsonify({"success": False, "error": error_token, "error_code": error_code}), 401
 
+        numero_empleado: int = datos_token["numero_empleado"]
         ip: str = data["ip"].strip()
         sensor: str = data.get("sensor", "").strip()
 
@@ -309,25 +310,59 @@ def tickets():
         from src.agents.providers.openai_provider import OpenAIProvider
         from src.config.settings import settings
 
+        import time, uuid
+        from src.domain.interaction.interaction_repository import InteractionRepository
+
         async def _run():
+            t0 = time.perf_counter()
             repo = AlertRepository(db_registry.get("monitoreo"))
             tool = GetHistoricalTicketsTool(repo=repo)
             tickets_result = await tool.execute(ip=ip, sensor=sensor)
 
-            if not tickets_result.success or not tickets_result.data:
-                return tickets_result.data or tickets_result.error, (tickets_result.metadata or {}).get("total_tickets", 0)
+            analisis_text = tickets_result.data or tickets_result.error
+            total = (tickets_result.metadata or {}).get("total_tickets", 0)
+            error_msg = None
 
-            llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
-            messages = [
-                {"role": "system", "content": (
-                    "Eres un analista de soporte técnico. Se te presentan tickets históricos de un equipo de red/infraestructura. "
-                    "Analiza los patrones, identifica la causa raíz más probable y sugiere acciones correctivas concretas. "
-                    "Sé conciso y estructurado."
-                )},
-                {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}:\n\n{tickets_result.data}"},
-            ]
-            analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
-            return str(analysis), (tickets_result.metadata or {}).get("total_tickets", 0)
+            if tickets_result.success and tickets_result.data:
+                llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+                messages = [
+                    {"role": "system", "content": (
+                        "Eres un analista de soporte técnico. Se te presentan tickets históricos de un equipo de red/infraestructura. "
+                        "Analiza los patrones, identifica la causa raíz más probable y sugiere acciones correctivas concretas. "
+                        "Sé conciso y estructurado."
+                    )},
+                    {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}:\n\n{tickets_result.data}"},
+                ]
+                analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
+                analisis_text = str(analysis)
+            else:
+                error_msg = tickets_result.error
+
+            total_ms = int((time.perf_counter() - t0) * 1000)
+
+            # Registrar en logs igual que /api/chat
+            handler = get_handler_manager().handler
+            if handler and handler.observability_repo:
+                obs_repo: InteractionRepository = handler.observability_repo
+                await obs_repo.save_interaction(
+                    correlation_id=str(uuid.uuid4()),
+                    user_id=str(numero_empleado),
+                    username=None,
+                    query=f"[tickets] ip={ip} sensor={sensor}",
+                    respuesta=analisis_text if not error_msg else None,
+                    channel="api",
+                    memory_ms=0,
+                    react_ms=total_ms,
+                    save_ms=0,
+                    total_ms=total_ms,
+                    error_message=error_msg,
+                    tools_used=["get_historical_tickets"],
+                    steps_count=1,
+                    agente_nombre="tickets_api",
+                    id_usuario=numero_empleado,
+                )
+
+            return analisis_text, total
 
         analisis, total = asyncio.run(_run())
 
