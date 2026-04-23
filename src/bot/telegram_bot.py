@@ -11,6 +11,7 @@ from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
 from src.bootstrap import create_main_handler
+from src.pipeline.handler_manager import get_handler_manager
 from .handlers import (
     register_command_handlers,
     register_query_handlers,
@@ -42,6 +43,7 @@ class TelegramBot:
         # db_registry viene del factory — instancia única compartida
         logger.info("Inicializando MainHandler (ReAct)...")
         self.main_handler, self._admin_notify, self.db_registry = create_main_handler(self.db_manager)
+        get_handler_manager()._handler = self.main_handler
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
