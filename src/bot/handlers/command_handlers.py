@@ -408,6 +408,33 @@ async def recargar_permisos_command(update: Update, context: ContextTypes.DEFAUL
         await update.message.reply_text("❌ Error al recargar permisos. Intenta de nuevo.")
 
 
+async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Manejar el comando /dashboard — solo para admins.
+
+    Envía el menú principal del dashboard inline.
+    """
+    chat_id = update.effective_user.id
+    db_manager = context.bot_data.get("db_manager")
+
+    try:
+        from src.domain.auth.user_query_repository import UserQueryRepository
+        repo = UserQueryRepository(db_manager)
+        admin_ids = await repo.get_admin_chat_ids()
+        if chat_id not in admin_ids:
+            await update.message.reply_text("⛔ Solo administradores pueden usar el dashboard.")
+            return
+        context.user_data["is_admin"] = True
+    except Exception as e:
+        logger.error(f"Error verificando permisos de admin para /dashboard: {e}")
+        await update.message.reply_text("❌ Error verificando permisos.")
+        return
+
+    from src.bot.dashboard.views import render_menu
+    text, keyboard = render_menu()
+    await update.message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
+
+
 def register_command_handlers(application: Application) -> None:
     """
     Registrar todos los command handlers en la aplicación.
@@ -421,5 +448,6 @@ def register_command_handlers(application: Application) -> None:
     application.add_handler(CommandHandler("cancel", cancel_command))
     application.add_handler(CommandHandler("costo", costo_command))
     application.add_handler(CommandHandler("recargar_permisos", recargar_permisos_command))
+    application.add_handler(CommandHandler("dashboard", dashboard_command))
 
     logger.info("Command handlers registrados exitosamente")
