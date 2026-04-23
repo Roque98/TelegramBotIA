@@ -327,11 +327,16 @@ class MainHandler:
         # 3. Log de consola
         self._log_transaction(event, response, memory_ms, react_ms, save_ms, total_ms)
 
-        # 4. Persistir interacción completa en background (una sola escritura)
+        # 4. Persistir interacción completa
+        # API: await directo porque asyncio.run() cierra el loop al terminar (mata tasks en background)
+        # Telegram: create_task para no bloquear el pipeline
         if self.observability_repo:
-            asyncio.create_task(
-                self._save_interaction(event, response, memory_ms, react_ms, total_ms)
-            )
+            if event.channel == "api":
+                await self._save_interaction(event, response, memory_ms, react_ms, total_ms)
+            else:
+                asyncio.create_task(
+                    self._save_interaction(event, response, memory_ms, react_ms, total_ms)
+                )
 
         return response
 
