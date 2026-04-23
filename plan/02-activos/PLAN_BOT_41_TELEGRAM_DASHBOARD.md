@@ -14,7 +14,7 @@
 | Fase 4: Agentes + Usuarios + Knowledge | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 | Fase 5: Navegación + UX polish | ░░░░░░░░░░ 0% | ⏳ Pendiente |
 
-**Progreso Total**: ░░░░░░░░░░ 0% (0/27 tareas)
+**Progreso Total**: ░░░░░░░░░░ 0% (0/30 tareas)
 
 ---
 
@@ -49,10 +49,16 @@ y pagina listas directamente desde el chat.
 
 ### Tareas
 
+- [ ] **Inyectar `db_registry` en `bot_data`** — requerido para la vista de alertas
+  - Archivo: `src/bot/telegram_bot.py` línea ~56
+  - Agregar: `self.application.bot_data['db_registry'] = self.db_registry`
+  - Sin esto, `DashboardService.get_alerts()` no puede conectarse a la BD de monitoreo
+
 - [ ] **Crear `DashboardService`** — wrapper async sobre las queries de `dashboard_api.py`
   - Archivo: `src/bot/dashboard/dashboard_service.py`
   - Métodos: `get_overview(periodo)`, `get_alerts()`, `get_logs(page)`, `get_agents()`, `get_users()`, `get_knowledge()`
-  - Reutilizar `DatabaseManager` y `DatabaseRegistry` ya en `bot_data`
+  - Usar `db_manager.execute_query_async()` (ya existe, usa `asyncio.to_thread` internamente)
+  - Para alertas: `await repo.get_active_events_all()` directamente — NO copiar el `asyncio.run()` de `dashboard_api.py` (es un workaround de Flask síncrono, aquí ya somos async)
   - No duplicar SQL: extraer las queries de `dashboard_api.py` a este service
 
 - [ ] **Crear `DashboardHandler`** — recibe callbacks `dash:*` y despacha a la vista correcta
@@ -60,6 +66,9 @@ y pagina listas directamente desde el chat.
   - Registrar como `CallbackQueryHandler(pattern=r"^dash:")`
   - Dispatch por token: `dash:menu`, `dash:overview:hoy`, `dash:alerts`, `dash:logs:1`, etc.
   - Auth guard: verificar que `effective_user.id` está en `get_admin_chat_ids`
+  - **Regla de oro**: llamar `await query.answer()` SIEMPRE como primera línea del handler, incluso antes del auth check. Si el callback no responde, Telegram muestra spinner infinito.
+  - **No usar `require_auth`**: el decorador usa `update.message` que es `None` en callbacks. El guard propio es la única barrera.
+  - Cache del admin check: guardar resultado en `context.user_data["is_admin"]` la primera vez para no hacer una query a BD en cada pulsación de botón.
 
 - [ ] **Crear comando `/dashboard`** — punto de entrada, solo admins
   - Archivo: agregar en `src/bot/handlers/command_handlers.py`
@@ -159,7 +168,8 @@ y pagina listas directamente desde el chat.
 - [ ] **Implementar vista de Usuarios**
   - Datos de `DashboardService.get_users()`
   - Por usuario: nombre, rol, estado, última actividad
-  - Máx 15 usuarios por mensaje (sin paginación en primera versión)
+  - Máx 15 usuarios por mensaje — decisión deliberada: el SP puede retornar mucha gente,
+    se mostrará solo los últimos 15 activos; paginación queda como mejora futura
   - Keyboard: `[🔄 Refrescar] [🔙 Menú]`
 
 - [ ] **Implementar vista de Knowledge**
@@ -243,10 +253,14 @@ dash:refresh
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
-| Queries lentas bloquean el loop asyncio | Media | Alto | Ejecutar en `asyncio.to_thread()` si `execute_query` es síncrono |
+| ~~Queries bloquean loop asyncio~~ | ~~Media~~ | ~~Alto~~ | Resuelto: `execute_query_async` ya usa `asyncio.to_thread` internamente |
+| `asyncio.run()` copiado de Flask al service | Alta | Alto | En el service usar `await` directo, no `asyncio.run()` |
+| `db_registry` no disponible para alertas | Alta | Alto | Inyectar en `bot_data` en Fase 1 (tarea explícita) |
+| Spinner infinito en botón por falta de `answer()` | Alta | Medio | `query.answer()` como primera línea del handler, siempre |
 | Mensaje supera 4096 chars | Alta | Medio | Truncar lista con contador "y N más" |
+| Rate limiting de Telegram en `edit_message_text` | Media | Bajo | Catch de `RetryAfter` en Fase 5, reintentar después del delay |
 | Colisión de CallbackQueryHandler | Baja | Medio | Registrar `dash:` handler antes del handler genérico |
-| AlertRepository no disponible | Media | Bajo | Try/except ya en dashboard_api, replicar patrón |
+| AlertRepository no disponible (BD monitoreo offline) | Media | Bajo | Try/except ya en dashboard_api, replicar patrón; mostrar "Sin datos" |
 
 ---
 
@@ -266,3 +280,4 @@ dash:refresh
 | Fecha | Cambio | Autor |
 |-------|--------|-------|
 | 2026-04-22 | Creación del plan | Angel David Roque Ayala |
+| 2026-04-22 | Revisión: gaps de db_registry, answer() obligatorio, asyncio.run, cache admin | Angel David Roque Ayala |
