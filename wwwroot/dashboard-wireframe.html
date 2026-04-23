@@ -1130,6 +1130,11 @@ td.center{text-align:center;padding:10px 8px;}
               <span class="badge bb api-method-badge">POST</span>
               <span class="api-ep-path">/api/chat/validate-token</span>
             </div>
+            <div class="api-ep-section">Monitoreo</div>
+            <div class="api-ep-item" id="api-item-tickets" onclick="selectApiEndpoint('tickets',this)">
+              <span class="badge bb api-method-badge">POST</span>
+              <span class="api-ep-path">/api/tickets</span>
+            </div>
             <div class="api-ep-section">Sistema</div>
             <div class="api-ep-item" id="api-item-health" onclick="selectApiEndpoint('health',this)">
               <span class="badge bg api-method-badge">GET</span>
@@ -2332,13 +2337,13 @@ const API_ENDPOINTS = {
     desc: 'Enviar un mensaje al bot. Requiere un token encriptado AES+Base64 generado por la plataforma externa (C#). La respuesta incluye el texto generado por el agente.',
     body: JSON.stringify({token: 'base64_del_token_encriptado', message: 'Hola, ¿cuál es mi saldo?'}, null, 2),
     request: [
-      {name: 'token',   type: 'string', req: true,  desc: 'Token encriptado en Base64 (AES). Generado por la plataforma C# con número_empleado + timestamp.'},
+      {name: 'token',   type: 'string', req: true,  desc: 'Token encriptado en Base64 (AES). Generado por la plataforma C# — puede contener UserId/fechaExpiracion (nuevo) o numero_empleado/timestamp (legado).'},
       {name: 'message', type: 'string', req: true,  desc: 'Texto del mensaje a procesar por el orquestador de agentes.'},
     ],
     response: [
       {name: 'success',          type: 'bool',     desc: 'true si la petición se procesó correctamente.'},
       {name: 'response',         type: 'string',   desc: 'Respuesta generada por el agente IA.'},
-      {name: 'numero_empleado',  type: 'int',      desc: 'Número de empleado extraído del token.'},
+      {name: 'numero_empleado',  type: 'int',      desc: 'Número de empleado extraído del token (mapeado de UserId si aplica).'},
       {name: 'timestamp',        type: 'ISO 8601', desc: 'Fecha y hora del servidor al responder.'},
     ],
     statuses: [
@@ -2366,6 +2371,33 @@ const API_ENDPOINTS = {
     statuses: [
       {code: '200', cls: 'bg', desc: 'Validación realizada. Ver campo "valid" para el resultado.'},
       {code: '400', cls: 'ba', desc: 'Request malformado o campo "token" faltante.'},
+      {code: '500', cls: 'br', desc: 'Error interno del servidor.'},
+    ]
+  },
+  'tickets': {
+    method: 'POST', methodClass: 'bb',
+    path: '/api/tickets',
+    desc: 'Consultar tickets históricos de un equipo/IP de PRTG directamente, sin pasar por el pipeline del agente. Devuelve incidentes previos con detalle y acción correctiva.',
+    body: JSON.stringify({token: 'base64_del_token_encriptado', ip: '10.118.57.142', sensor: 'Memoria'}, null, 2),
+    request: [
+      {name: 'token',  type: 'string', req: true,  desc: 'Token encriptado en Base64 (AES). Mismo formato que /api/chat.'},
+      {name: 'ip',     type: 'string', req: true,  desc: 'IP del equipo a consultar en PRTG.'},
+      {name: 'sensor', type: 'string', req: false, desc: 'Nombre del sensor para filtrar tickets (ej: "Memoria", "CPU", "Ping"). Si se omite, se resuelve automáticamente desde alertas activas.'},
+    ],
+    response: [
+      {name: 'success',       type: 'bool',   desc: 'true si la consulta se realizó correctamente.'},
+      {name: 'ip',            type: 'string', desc: 'IP consultada.'},
+      {name: 'sensor',        type: 'string', desc: 'Sensor usado para el filtro (puede estar vacío).'},
+      {name: 'total_tickets', type: 'int',    desc: 'Cantidad de tickets encontrados.'},
+      {name: 'resultado',     type: 'string', desc: 'Texto formateado con los tickets. null si hubo error.'},
+      {name: 'error',         type: 'string', desc: 'Descripción del error. null si fue exitoso.'},
+      {name: 'timestamp',     type: 'ISO 8601', desc: 'Fecha y hora del servidor al responder.'},
+    ],
+    statuses: [
+      {code: '200', cls: 'bg', desc: 'Consulta realizada. Ver campo "success" para el resultado.'},
+      {code: '400', cls: 'ba', desc: 'Request malformado, campo "ip" faltante o vacío.'},
+      {code: '401', cls: 'br', desc: 'Token inválido, expirado o malformado.'},
+      {code: '503', cls: 'br', desc: 'Servicio no inicializado (HandlerManager no listo).'},
       {code: '500', cls: 'br', desc: 'Error interno del servidor.'},
     ]
   },
