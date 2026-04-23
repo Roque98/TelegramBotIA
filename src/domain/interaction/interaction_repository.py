@@ -48,7 +48,10 @@ class InteractionRepository:
     ) -> bool:
         """Persiste una interacción completa en BotIAv2_InteractionLogs."""
         try:
-            chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
+            # Para canal api, user_id es el numero_empleado — no es un telegramChatId
+            chat_id_int = None if id_usuario is not None else (
+                int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
+            )
             sql = """
                 EXEC abcmasplus..BotIAv2_sp_GuardarInteraccion
                     @correlationId     = :correlation_id,
