@@ -52,6 +52,12 @@ def admin_static(filename):
     return send_from_directory(os.path.abspath(_WWWROOT), filename)
 
 
+@dashboard_bp.route("/api/docs/download")
+def download_api_docs():
+    docs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "documentacion", "uso"))
+    return send_from_directory(docs_path, "guia-api.md", as_attachment=True, download_name="guia-api.md")
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Overview
 # ──────────────────────────────────────────────────────────────────────────────
