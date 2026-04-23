@@ -386,6 +386,14 @@ class MainHandler:
             total_cost = sum(s.get("costoUSD") or 0.0 for s in step_traces)
             llm_iters = sum(1 for s in step_traces if s.get("tipo") == "llm_call")
 
+            # Para canal api, user_id es el numero_empleado = idUsuario en la BD
+            id_usuario_api: Optional[int] = None
+            if event.channel == "api":
+                try:
+                    id_usuario_api = int(event.user_id)
+                except (ValueError, TypeError):
+                    pass
+
             await self.observability_repo.save_interaction(
                 correlation_id=correlation_id,
                 user_id=event.user_id,
@@ -401,7 +409,6 @@ class MainHandler:
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
                 agente_nombre=response.routed_agent,
-                # OBS-36: métricas multi-agente
                 total_input_tokens=total_in or None,
                 total_output_tokens=total_out or None,
                 llm_iteraciones=llm_iters or None,
@@ -409,6 +416,7 @@ class MainHandler:
                 classify_ms=response.classify_ms,
                 agent_confidence=response.agent_confidence,
                 cost_usd=total_cost or None,
+                id_usuario=id_usuario_api,
             )
 
             # Persistir pasos del loop ReAct
