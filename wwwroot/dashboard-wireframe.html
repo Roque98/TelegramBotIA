@@ -2211,10 +2211,12 @@ function renderChatUserList(users) {
     list.innerHTML = '<div class="empty-state"><p>Sin conversaciones registradas</p></div>';
     return;
   }
-  list.innerHTML = users.map(u => `
-    <div class="chat-user-item" id="cui-${u.chat_id}" onclick="selectChatUser(this,'${u.chat_id}','${escHtml(u.nombre)}','${escHtml(u.username)}')">
+  list.innerHTML = users.map(u => {
+    const displayName = u.nombre_usuario ? toTitleCase(u.nombre_usuario) : u.nombre;
+    return `
+    <div class="chat-user-item" id="cui-${u.chat_id}" onclick="selectChatUser(this,'${u.chat_id}','${escHtml(displayName)}','${escHtml(u.username)}')">
       <div class="chat-ui-top">
-        <span class="chat-ui-name">${escHtml(u.nombre)}</span>
+        <span class="chat-ui-name">${escHtml(displayName)}</span>
         <span class="chat-ui-time">${relativeDate(u.ultima_actividad)}</span>
       </div>
       <div class="chat-ui-bottom">
@@ -2223,7 +2225,8 @@ function renderChatUserList(users) {
         ${u.errores > 0 ? `<span class="chat-ui-err">${u.errores} err</span>` : ''}
       </div>
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function escHtml(s) {
@@ -2235,6 +2238,7 @@ function filterChatUsers(q) {
   const term = q.toLowerCase();
   const filtered = _chatUsers.filter(u =>
     (u.nombre || '').toLowerCase().includes(term) ||
+    (u.nombre_usuario || '').toLowerCase().includes(term) ||
     (u.username || '').toLowerCase().includes(term) ||
     (u.ultimo_query || '').toLowerCase().includes(term)
   );

@@ -604,6 +604,10 @@ def chats():
                     )
                 )                                         AS nombre,
                 ISNULL(u.telegramUsername, il.telegramUsername) AS username,
+                MAX(il.idUsuario)                         AS id_usuario,
+                MAX(cu.Nombre)                            AS nombre_usuario,
+                MAX(cu.email)                             AS email_usuario,
+                MAX(cu.Empresa)                           AS empresa_usuario,
                 COUNT(*)                                  AS total_mensajes,
                 SUM(CASE WHEN il.exitoso = 1 THEN 1 ELSE 0 END) AS exitosos,
                 SUM(CASE WHEN il.exitoso = 0 THEN 1 ELSE 0 END) AS errores,
@@ -618,6 +622,8 @@ def chats():
             FROM abcmasplus..BotIAv2_InteractionLogs il
             LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u
                 ON il.telegramChatId = u.telegramChatId
+            LEFT JOIN abcmasplus..concentradousuarios cu
+                ON il.idUsuario = cu.idUsuario AND il.idUsuario IS NOT NULL
             WHERE il.telegramChatId IS NOT NULL
             GROUP BY
                 il.telegramChatId,
@@ -632,6 +638,10 @@ def chats():
             {
                 "chat_id": str(r["telegramChatId"]),
                 "nombre": r["nombre"] or r["username"] or "Desconocido",
+                "nombre_usuario": r["nombre_usuario"],
+                "email_usuario": r["email_usuario"],
+                "empresa_usuario": r["empresa_usuario"],
+                "id_usuario": r["id_usuario"],
                 "username": r["username"] or "",
                 "total": int(r["total_mensajes"] or 0),
                 "exitosos": int(r["exitosos"] or 0),
