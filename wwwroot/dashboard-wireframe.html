@@ -1592,9 +1592,10 @@ async function loadLogs() {
     const r = await fetch(`/api/admin/logs?page=1&limit=${_LOGS_LIMIT}`);
     if (!r.ok) return;
     const data = await r.json();
-    _logsData = data.items || [];
-    _logsHasMore = data.has_more || false;
-    _logsTotal = data.total || 0;
+    const isPaginated = data && !Array.isArray(data) && Array.isArray(data.items);
+    _logsData = isPaginated ? data.items : (Array.isArray(data) ? data : []);
+    _logsHasMore = isPaginated ? (data.has_more || false) : false;
+    _logsTotal = isPaginated ? (data.total || _logsData.length) : _logsData.length;
     const errCount = _logsData.filter(l => l.error).length;
     const badgeLogs = document.getElementById('badge-logs');
     if (badgeLogs) { badgeLogs.textContent = errCount; badgeLogs.style.display = errCount ? '' : 'none'; }
