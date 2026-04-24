@@ -153,13 +153,29 @@ def tickets():
 
         if tickets_result.success and tickets_result.data:
             llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+            sensor_info = f" (sensor: {sensor})" if sensor else ""
             messages = [
                 {"role": "system", "content": (
-                    "Eres un analista de soporte técnico. Se te presentan tickets históricos de un equipo de red/infraestructura. "
-                    "Analiza los patrones, identifica la causa raíz más probable y sugiere acciones correctivas concretas. "
-                    "Sé conciso y estructurado."
+                    "Eres un analista experto en operaciones de TI e infraestructura de red. "
+                    "Analizas tickets históricos de equipos monitoreados y generas diagnósticos estructurados. "
+                    "Usa únicamente la información de los tickets proporcionados — no inventes datos.\n\n"
+                    "Genera el análisis con EXACTAMENTE esta estructura (sin agregar secciones adicionales):\n\n"
+                    "📊 Resumen\n"
+                    "- Tickets analizados: [N]\n"
+                    "- Falla más frecuente: [tipo]\n"
+                    "- Sensor: [nombre del sensor o 'No especificado']\n\n"
+                    "🔍 Causa raíz probable\n"
+                    "[1-2 oraciones. Citar siempre los tickets que respaldan la conclusión: (tickets #ID, #ID)]\n\n"
+                    "🛠 Acciones recomendadas\n"
+                    "1. [acción concreta basada en acciones correctivas históricas; comandos en bloques ```] (ref: ticket #ID)\n"
+                    "2. [acción concreta] (ref: ticket #ID)\n"
+                    "[máximo 5 acciones; citar ticket de referencia en cada una]\n\n"
+                    "📋 Patrón detectado\n"
+                    "[Una oración sobre la tendencia o patrón recurrente observado en el historial]\n\n"
+                    "⚠️ Estas sugerencias son orientativas. La decisión de ejecutar cualquier acción "
+                    "es responsabilidad exclusiva del operador."
                 )},
-                {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}:\n\n{tickets_result.data}"},
+                {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}{sensor_info}:\n\n{tickets_result.data}"},
             ]
             analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
             analisis_text = str(analysis)
