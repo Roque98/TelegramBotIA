@@ -203,6 +203,11 @@ tbody tr:hover td{background:var(--surface2);}
 .log-load-more button{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:6px 18px;font-size:13px;font-family:var(--font);cursor:pointer;transition:background .12s;}
 .log-load-more button:hover{background:var(--surface3);}
 .log-load-more .log-count{font-size:12px;color:var(--text3);margin-top:4px;}
+.chat-load-more{padding:10px 14px;border-top:1px solid var(--border);text-align:center;flex-shrink:0;}
+.chat-load-more button{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:6px 18px;font-size:13px;font-family:var(--font);cursor:pointer;transition:background .12s;}
+.chat-load-more button:hover{background:var(--surface3);}
+.chat-load-more .chat-count{font-size:12px;color:var(--text3);margin-top:4px;}
+.chat-reload-indicator{font-size:11px;color:var(--text3);padding:4px 14px;text-align:right;flex-shrink:0;}
 .log-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
 .log-item:last-child{border-bottom:none;}
 .log-item:hover{background:var(--surface2);}
@@ -1002,6 +1007,11 @@ td.center{text-align:center;padding:10px 8px;}
             <div class="chat-user-items" id="chat-user-list">
               <div class="section-loading"><div class="section-spinner"></div><span>Cargando...</span></div>
             </div>
+            <div class="chat-load-more" id="chat-load-more" style="display:none">
+              <button onclick="loadMoreChats()">Cargar más</button>
+              <div class="chat-count" id="chat-count"></div>
+            </div>
+            <div class="chat-reload-indicator" id="chat-reload-indicator"></div>
           </div>
           <!-- panel derecho: conversación -->
           <div class="chat-conv-panel" id="chat-conv-panel">
@@ -1287,6 +1297,8 @@ function go(id, el, mode) {
       if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
     });
   }
+  // Detener auto-reload de chats si se sale de la sección
+  if (id !== 'chats') _stopChatAutoReload();
   // Lazy load section data
   if (id === 'logs') { initLogLayout(); loadLogs(); }
   if (id === 'agents') loadAgents();
@@ -2192,17 +2204,122 @@ function tipoBadge(tipo) {
   return `<span class="badge ${map[tipo] || 'bm'}" style="font-size:11px;padding:1px 4px">${tipo || '—'}</span>`;
 }
 
+let _chatPage = 1;
+let _chatHasMore = false;
+let _chatTotal = 0;
+let _chatReloadTimer = null;
+const _CHAT_LIMIT = 30;
+
+function _updateChatFooter() {
+  const footer = document.getElementById('chat-load-more');
+  const countEl = document.getElementById('chat-count');
+  if (!footer) return;
+  if (_chatHasMore) {
+    footer.style.display = '';
+    const btn = footer.querySelector('button');
+    if (btn) btn.style.display = '';
+    if (countEl) countEl.textContent = `Mostrando ${_chatUsers.length} de ${_chatTotal}`;
+  } else {
+    footer.style.display = _chatTotal > _CHAT_LIMIT ? '' : 'none';
+    const btn = footer.querySelector('button');
+    if (btn) btn.style.display = 'none';
+    if (countEl) countEl.textContent = `${_chatTotal} usuario${_chatTotal !== 1 ? 's' : ''} en total`;
+  }
+}
+
+function _setChatReloadIndicator(text) {
+  const el = document.getElementById('chat-reload-indicator');
+  if (el) el.textContent = text;
+}
+
 async function loadChats() {
   const list = document.getElementById('chat-user-list');
   list.innerHTML = '<div class="section-loading"><div class="section-spinner"></div><span>Cargando...</span></div>';
+  _chatPage = 1;
+  _chatUsers = [];
+  _stopChatAutoReload();
   try {
-    const r = await fetch('/api/admin/chats');
+    const r = await fetch(`/api/admin/chats?page=1&limit=${_CHAT_LIMIT}`);
     if (!r.ok) throw new Error(r.statusText);
-    _chatUsers = await r.json();
+    const data = await r.json();
+    _chatUsers = data.items || [];
+    _chatHasMore = data.has_more || false;
+    _chatTotal = data.total || _chatUsers.length;
     renderChatUserList(_chatUsers);
+    _updateChatFooter();
+    _startChatAutoReload();
   } catch(e) {
     list.innerHTML = `<div class="empty-state"><p>Error al cargar: ${e.message}</p></div>`;
   }
+}
+
+async function loadMoreChats() {
+  if (!_chatHasMore) return;
+  const btn = document.querySelector('#chat-load-more button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Cargando...'; }
+  try {
+    _chatPage += 1;
+    const r = await fetch(`/api/admin/chats?page=${_chatPage}&limit=${_CHAT_LIMIT}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    _chatUsers = _chatUsers.concat(data.items || []);
+    _chatHasMore = data.has_more || false;
+    _chatTotal = data.total || _chatTotal;
+    renderChatUserList(_chatUsers);
+    _updateChatFooter();
+  } catch(e) { console.warn('Load more chats error', e); }
+  finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Cargar más'; }
+  }
+}
+
+async function _reloadChats() {
+  // Recarga silenciosa: preserva el usuario seleccionado y el scroll
+  const selectedEl = document.querySelector('.chat-user-item.active');
+  const selectedId = selectedEl ? selectedEl.id.replace('cui-', '') : null;
+  const scrollEl = document.getElementById('chat-user-list');
+  const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+
+  try {
+    // Solo recarga la primera página para detectar usuarios nuevos
+    const r = await fetch(`/api/admin/chats?page=1&limit=${_CHAT_LIMIT}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const newItems = data.items || [];
+    _chatTotal = data.total || _chatTotal;
+
+    // Merge: agrega al frente los chat_ids nuevos sin duplicar
+    const existingIds = new Set(_chatUsers.map(u => u.chat_id));
+    const newUsers = newItems.filter(u => !existingIds.has(u.chat_id));
+    if (newUsers.length) {
+      _chatUsers = newUsers.concat(_chatUsers);
+    }
+    // Actualiza contadores de usuarios ya existentes
+    newItems.forEach(nu => {
+      const idx = _chatUsers.findIndex(u => u.chat_id === nu.chat_id);
+      if (idx !== -1) _chatUsers[idx] = nu;
+    });
+
+    renderChatUserList(_chatUsers);
+    _updateChatFooter();
+    _setChatReloadIndicator('Actualizado ' + new Date().toLocaleTimeString('es-MX'));
+
+    // Restaura selección y scroll
+    if (selectedId) {
+      const el = document.getElementById(`cui-${selectedId}`);
+      if (el) el.classList.add('active');
+    }
+    if (scrollEl) scrollEl.scrollTop = scrollTop;
+  } catch(e) { console.warn('Chat auto-reload error', e); }
+}
+
+function _startChatAutoReload() {
+  _chatReloadTimer = setInterval(_reloadChats, 30000);
+  _setChatReloadIndicator('Auto-refresh cada 30s');
+}
+
+function _stopChatAutoReload() {
+  if (_chatReloadTimer) { clearInterval(_chatReloadTimer); _chatReloadTimer = null; }
 }
 
 function renderChatUserList(users) {

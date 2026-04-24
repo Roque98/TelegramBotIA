@@ -591,8 +591,21 @@ def users():
 def chats():
     try:
         db = _get_db()
-        rows = db.execute_query("""
-            SELECT TOP 150
+        try:
+            page  = max(1, int(request.args.get("page", 1)))
+            limit = min(100, max(10, int(request.args.get("limit", 30))))
+        except (ValueError, TypeError):
+            page, limit = 1, 30
+        offset = (page - 1) * limit
+
+        total_row = db.execute_query(
+            "SELECT COUNT(DISTINCT telegramChatId) AS total FROM abcmasplus..BotIAv2_InteractionLogs WHERE telegramChatId IS NOT NULL"
+        )
+        total = int((total_row[0]["total"] if total_row else 0) or 0)
+
+        rows = db.execute_query(
+            """
+            SELECT
                 il.telegramChatId,
                 ISNULL(
                     u.alias,
@@ -632,25 +645,34 @@ def chats():
                 u.telegramLastName,
                 u.telegramUsername
             ORDER BY MAX(il.fechaEjecucion) DESC
-        """)
-        return jsonify([
-            {
-                "chat_id": str(r["telegramChatId"]),
-                "nombre": r["nombre"] or r["username"] or "Desconocido",
-                "nombre_usuario": r["nombre_usuario"],
-                "email_usuario": r["email_usuario"],
-                "empresa_usuario": r["empresa_usuario"],
-                "id_usuario": r["id_usuario"],
-                "username": r["username"] or "",
-                "total": int(r["total_mensajes"] or 0),
-                "exitosos": int(r["exitosos"] or 0),
-                "errores": int(r["errores"] or 0),
-                "ultima_actividad": str(r["ultima_actividad"] or ""),
-                "primera_actividad": str(r["primera_actividad"] or ""),
-                "ultimo_query": (r["ultimo_query"] or "")[:100],
-            }
-            for r in rows
-        ])
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+            """,
+            {"offset": offset, "limit": limit},
+        )
+        return jsonify({
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": (offset + limit) < total,
+            "items": [
+                {
+                    "chat_id": str(r["telegramChatId"]),
+                    "nombre": r["nombre"] or r["username"] or "Desconocido",
+                    "nombre_usuario": r["nombre_usuario"],
+                    "email_usuario": r["email_usuario"],
+                    "empresa_usuario": r["empresa_usuario"],
+                    "id_usuario": r["id_usuario"],
+                    "username": r["username"] or "",
+                    "total": int(r["total_mensajes"] or 0),
+                    "exitosos": int(r["exitosos"] or 0),
+                    "errores": int(r["errores"] or 0),
+                    "ultima_actividad": str(r["ultima_actividad"] or ""),
+                    "primera_actividad": str(r["primera_actividad"] or ""),
+                    "ultimo_query": (r["ultimo_query"] or "")[:100],
+                }
+                for r in rows
+            ],
+        })
     except Exception as e:
         logger.error(f"Dashboard /chats error: {e}")
         return jsonify({"error": str(e)}), 500
