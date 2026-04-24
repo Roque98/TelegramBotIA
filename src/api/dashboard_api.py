@@ -205,8 +205,22 @@ def overview():
 def logs():
     try:
         db = _get_db()
-        rows = db.execute_query("""
-            SELECT TOP 50
+
+        try:
+            page  = max(1, int(request.args.get("page", 1)))
+            limit = min(200, max(10, int(request.args.get("limit", 50))))
+        except (ValueError, TypeError):
+            page, limit = 1, 50
+        offset = (page - 1) * limit
+
+        total_row = db.execute_query(
+            "SELECT COUNT(*) AS total FROM abcmasplus..BotIAv2_InteractionLogs"
+        )
+        total = int((total_row[0]["total"] if total_row else 0) or 0)
+
+        rows = db.execute_query(
+            """
+            SELECT
                 il.correlationId,
                 il.idUsuario,
                 il.telegramUsername,
@@ -233,30 +247,40 @@ def logs():
             LEFT JOIN abcmasplus..concentradousuarios u
                 ON il.idUsuario = u.idUsuario AND il.idUsuario IS NOT NULL
             ORDER BY il.fechaEjecucion DESC
-        """)
-        return jsonify([
-            {
-                "correlation_id": r["correlationId"],
-                "id_usuario": r["idUsuario"],
-                "username": r["telegramUsername"] or "api",
-                "nombre_usuario": r["nombre_usuario"],
-                "email_usuario": r["email_usuario"],
-                "empresa_usuario": r["empresa_usuario"],
-                "query": (r["query"] or "")[:120],
-                "agente": r["agenteNombre"],
-                "duracion_ms": int(r["duracionMs"] or 0),
-                "error": not bool(r["exitoso"]),
-                "fecha": str(r["fechaEjecucion"]),
-                "channel": r["channel"],
-                "steps": int(r["stepsTomados"] or 0),
-                "tokens_in": int(r["totalInputTokens"] or 0),
-                "tokens_out": int(r["totalOutputTokens"] or 0),
-                "costo": round(float(r["costUSD"] or 0), 4),
-                "has_app_logs": r["app_log_level"] is not None,
-                "app_log_level": r["app_log_level"],
-            }
-            for r in rows
-        ])
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+            """,
+            {"offset": offset, "limit": limit},
+        )
+
+        return jsonify({
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": (offset + limit) < total,
+            "items": [
+                {
+                    "correlation_id": r["correlationId"],
+                    "id_usuario": r["idUsuario"],
+                    "username": r["telegramUsername"] or "api",
+                    "nombre_usuario": r["nombre_usuario"],
+                    "email_usuario": r["email_usuario"],
+                    "empresa_usuario": r["empresa_usuario"],
+                    "query": (r["query"] or "")[:120],
+                    "agente": r["agenteNombre"],
+                    "duracion_ms": int(r["duracionMs"] or 0),
+                    "error": not bool(r["exitoso"]),
+                    "fecha": str(r["fechaEjecucion"]),
+                    "channel": r["channel"],
+                    "steps": int(r["stepsTomados"] or 0),
+                    "tokens_in": int(r["totalInputTokens"] or 0),
+                    "tokens_out": int(r["totalOutputTokens"] or 0),
+                    "costo": round(float(r["costUSD"] or 0), 4),
+                    "has_app_logs": r["app_log_level"] is not None,
+                    "app_log_level": r["app_log_level"],
+                }
+                for r in rows
+            ],
+        })
     except Exception as e:
         logger.error(f"Dashboard /logs error: {e}")
         return jsonify({"error": str(e)}), 500
