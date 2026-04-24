@@ -600,10 +600,10 @@ def chats():
                         NULLIF(LTRIM(
                             ISNULL(u.telegramFirstName,'') + ' ' + ISNULL(u.telegramLastName,'')
                         ), ''),
-                        il.telegramUsername
+                        MAX(il.telegramUsername)
                     )
                 )                                         AS nombre,
-                ISNULL(u.telegramUsername, il.telegramUsername) AS username,
+                ISNULL(u.telegramUsername, MAX(il.telegramUsername)) AS username,
                 MAX(il.idUsuario)                         AS id_usuario,
                 MAX(cu.Nombre)                            AS nombre_usuario,
                 MAX(cu.email)                             AS email_usuario,
@@ -627,7 +627,6 @@ def chats():
             WHERE il.telegramChatId IS NOT NULL
             GROUP BY
                 il.telegramChatId,
-                il.telegramUsername,
                 u.alias,
                 u.telegramFirstName,
                 u.telegramLastName,
