@@ -208,6 +208,7 @@ def logs():
         rows = db.execute_query("""
             SELECT TOP 50
                 il.correlationId,
+                il.idUsuario,
                 il.telegramUsername,
                 il.query,
                 il.agenteNombre,
@@ -219,6 +220,9 @@ def logs():
                 il.totalInputTokens,
                 il.totalOutputTokens,
                 il.costUSD,
+                u.Nombre   AS nombre_usuario,
+                u.email    AS email_usuario,
+                u.Empresa  AS empresa_usuario,
                 (
                     SELECT TOP 1 al.level
                     FROM abcmasplus..BotIAv2_ApplicationLogs al
@@ -226,12 +230,17 @@ def logs():
                     ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
                 ) AS app_log_level
             FROM abcmasplus..BotIAv2_InteractionLogs il
+            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u ON il.idUsuario = u.idUsuario
             ORDER BY il.fechaEjecucion DESC
         """)
         return jsonify([
             {
                 "correlation_id": r["correlationId"],
+                "id_usuario": r["idUsuario"],
                 "username": r["telegramUsername"] or "api",
+                "nombre_usuario": r["nombre_usuario"],
+                "email_usuario": r["email_usuario"],
+                "empresa_usuario": r["empresa_usuario"],
                 "query": (r["query"] or "")[:120],
                 "agente": r["agenteNombre"],
                 "duracion_ms": int(r["duracionMs"] or 0),
@@ -258,11 +267,17 @@ def log_detail(correlation_id: str):
         db = _get_db()
         interaction = db.execute_query(
             """
-            SELECT correlationId, telegramUsername, query, respuesta, agenteNombre,
-                   duracionMs, exitoso, mensajeError, fechaEjecucion, channel, stepsTomados,
-                   memoryMs, reactMs, classifyMs, totalInputTokens, totalOutputTokens, costUSD
-            FROM abcmasplus..BotIAv2_InteractionLogs
-            WHERE correlationId = :cid
+            SELECT il.correlationId, il.idUsuario, il.telegramUsername, il.query, il.respuesta,
+                   il.agenteNombre, il.duracionMs, il.exitoso, il.mensajeError, il.fechaEjecucion,
+                   il.channel, il.stepsTomados, il.memoryMs, il.reactMs, il.classifyMs,
+                   il.totalInputTokens, il.totalOutputTokens, il.costUSD,
+                   u.Nombre  AS nombre_usuario,
+                   u.email   AS email_usuario,
+                   u.Empresa AS empresa_usuario,
+                   u.puesto  AS puesto_usuario
+            FROM abcmasplus..BotIAv2_InteractionLogs il
+            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u ON il.idUsuario = u.idUsuario
+            WHERE il.correlationId = :cid
             """,
             {"cid": correlation_id},
         )
@@ -293,7 +308,12 @@ def log_detail(correlation_id: str):
         i = interaction[0]
         return jsonify({
             "correlation_id": i["correlationId"],
+            "id_usuario": i["idUsuario"],
             "username": i["telegramUsername"] or "api",
+            "nombre_usuario": i["nombre_usuario"],
+            "email_usuario": i["email_usuario"],
+            "empresa_usuario": i["empresa_usuario"],
+            "puesto_usuario": i["puesto_usuario"],
             "query": i["query"],
             "respuesta": i["respuesta"],
             "agente": i["agenteNombre"],
