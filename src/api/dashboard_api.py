@@ -230,7 +230,7 @@ def logs():
                     ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
                 ) AS app_log_level
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..Usuarios u
+            LEFT JOIN abcmasplus..concentradousuarios u
                 ON il.idUsuario = u.idUsuario AND il.idUsuario IS NOT NULL
             ORDER BY il.fechaEjecucion DESC
         """)
@@ -277,7 +277,7 @@ def log_detail(correlation_id: str):
                    u.Empresa AS empresa_usuario,
                    u.puesto  AS puesto_usuario
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..Usuarios u
+            LEFT JOIN abcmasplus..concentradousuarios u
                 ON il.idUsuario = u.idUsuario AND il.idUsuario IS NOT NULL
             WHERE il.correlationId = :cid
             """,
