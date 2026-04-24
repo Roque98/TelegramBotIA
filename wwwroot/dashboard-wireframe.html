@@ -1503,7 +1503,7 @@ function renderLogItems(logs) {
     return;
   }
   container.innerHTML = logs.map((l, i) => {
-    const displayName = l.nombre_usuario ? l.nombre_usuario : ('@' + l.username);
+    const displayName = l.nombre_usuario || (l.id_usuario ? '#' + l.id_usuario : '@' + l.username);
     const subLabel = l.nombre_usuario && l.empresa_usuario
       ? `<span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:4px">${escHtml(l.empresa_usuario)}</span>`
       : '';
@@ -1584,7 +1584,7 @@ async function loadLogDetail(correlationId) {
       const statusClass = d.error ? 'br' : 'bg';
       const statusText = d.error ? 'ERROR' : 'SUCCESS';
       _currentLogDetail = d;
-      const displayName = d.nombre_usuario ? escHtml(d.nombre_usuario) : ('@' + escHtml(d.username));
+      const displayName = d.nombre_usuario ? escHtml(d.nombre_usuario) : (d.id_usuario ? '#' + d.id_usuario : '@' + escHtml(d.username));
       const userSubline = [d.puesto_usuario, d.empresa_usuario].filter(Boolean).map(escHtml).join(' · ');
       header.innerHTML = `
         <div class="flex-row">
