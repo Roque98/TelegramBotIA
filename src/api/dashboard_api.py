@@ -230,7 +230,7 @@ def logs():
                     ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
                 ) AS app_log_level
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u ON il.idUsuario = u.idUsuario
+            LEFT JOIN abcmasplus..Usuarios u ON il.idUsuario = u.idUsuario
             ORDER BY il.fechaEjecucion DESC
         """)
         return jsonify([
@@ -276,7 +276,7 @@ def log_detail(correlation_id: str):
                    u.Empresa AS empresa_usuario,
                    u.puesto  AS puesto_usuario
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..BotIAv2_UsuariosTelegram u ON il.idUsuario = u.idUsuario
+            LEFT JOIN abcmasplus..Usuarios u ON il.idUsuario = u.idUsuario
             WHERE il.correlationId = :cid
             """,
             {"cid": correlation_id},
