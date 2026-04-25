@@ -139,7 +139,9 @@ def tickets():
     from src.agents.tools.get_historical_tickets_tool import GetHistoricalTicketsTool
     from src.config.settings import settings
     from src.domain.alerts.alert_repository import AlertRepository
+    from src.domain.alerts.ticket_cache_repository import TicketAnalysisCacheRepository
     from src.domain.interaction.interaction_repository import InteractionRepository
+    from src.infra.database.connection import DatabaseManager
 
     async def _run():
         t0 = time.perf_counter()
@@ -152,45 +154,58 @@ def tickets():
         error_msg = None
 
         if tickets_result.success and tickets_result.data:
-            llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
             sensor_info = f" (sensor: {sensor})" if sensor else ""
-            DIV = "───────────────────"
-            messages = [
-                {"role": "system", "content": (
-                    "Eres un analista experto en operaciones de TI e infraestructura de red. "
-                    "Analizas tickets históricos de equipos monitoreados y generas diagnósticos estructurados. "
-                    "Usa únicamente la información de los tickets proporcionados — no inventes datos. "
-                    "El resultado DEBE estar en formato Markdown completo: "
-                    "usa ## para títulos de sección, ### para subtítulos, "
-                    "emojis como íconos junto a cada título, "
-                    "viñetas (- o •) para listas, y bloques de código (```) para comandos de terminal.\n\n"
-                    f"Genera el análisis con EXACTAMENTE esta estructura:\n\n"
-                    f"# 🖥 Historial de Tickets — {ip}{sensor_info}\n\n"
-                    f"{DIV}\n"
-                    f"## 📊 Resumen\n"
-                    f"- Tickets analizados: [N]\n"
-                    f"- Falla más frecuente: [tipo de falla]\n"
-                    f"- Sensor: [nombre del sensor o 'No especificado']\n\n"
-                    f"{DIV}\n"
-                    f"## 🔍 Causa Raíz Probable\n"
-                    f"[1-2 oraciones. Citar los tickets que respaldan la conclusión: (tickets #ID, #ID)]\n\n"
-                    f"{DIV}\n"
-                    f"## 🛠 Acciones Recomendadas\n"
-                    f"1. [acción concreta; usa ``` para comandos de terminal si aplica]\n"
-                    f"   - Si la acción proviene de un ticket con acción correctiva documentada: agregar `(ref: ticket #ID)`\n"
-                    f"   - Si es conocimiento técnico general porque el ticket no tiene acción documentada: agregar `(práctica estándar)`\n"
-                    f"2. [ídem — máximo 5 acciones]\n\n"
-                    f"{DIV}\n"
-                    f"## 📋 Patrón Detectado\n"
-                    f"[Una oración sobre la tendencia o patrón recurrente observado en el historial]\n\n"
-                    f"---\n"
-                    f"⚠️ *Estas sugerencias son orientativas. La decisión de ejecutar cualquier acción "
-                    f"es responsabilidad exclusiva del operador.*"
-                )},
-                {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}{sensor_info}:\n\n{tickets_result.data}"},
-            ]
-            analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
-            analisis_text = str(analysis)
+
+            # Extraer última acción correctiva para clave de caché
+            tickets_raw = await repo.get_historical_tickets(ip=ip, sensor=sensor or "")
+            ultima_accion = tickets_raw[0].accion_correctiva if tickets_raw else ""
+
+            cache_repo = TicketAnalysisCacheRepository(DatabaseManager())
+            cached = await cache_repo.lookup(ip, sensor, total, ultima_accion)
+            if cached:
+                analisis_text = cached
+                logger.info(f"Cache hit /api/tickets ip={ip} sensor={sensor} total={total}")
+            else:
+                llm = OpenAIProvider(api_key=settings.openai_api_key, model=settings.openai_data_model)
+                DIV = "───────────────────"
+                messages = [
+                    {"role": "system", "content": (
+                        "Eres un analista experto en operaciones de TI e infraestructura de red. "
+                        "Analizas tickets históricos de equipos monitoreados y generas diagnósticos estructurados. "
+                        "Usa únicamente la información de los tickets proporcionados — no inventes datos. "
+                        "El resultado DEBE estar en formato Markdown completo: "
+                        "usa ## para títulos de sección, ### para subtítulos, "
+                        "emojis como íconos junto a cada título, "
+                        "viñetas (- o •) para listas, y bloques de código (```) para comandos de terminal.\n\n"
+                        f"Genera el análisis con EXACTAMENTE esta estructura:\n\n"
+                        f"# 🖥 Historial de Tickets — {ip}{sensor_info}\n\n"
+                        f"{DIV}\n"
+                        f"## 📊 Resumen\n"
+                        f"- Tickets analizados: [N]\n"
+                        f"- Falla más frecuente: [tipo de falla]\n"
+                        f"- Sensor: [nombre del sensor o 'No especificado']\n\n"
+                        f"{DIV}\n"
+                        f"## 🔍 Causa Raíz Probable\n"
+                        f"[1-2 oraciones. Citar los tickets que respaldan la conclusión: (tickets #ID, #ID)]\n\n"
+                        f"{DIV}\n"
+                        f"## 🛠 Acciones Recomendadas\n"
+                        f"1. [acción concreta; usa ``` para comandos de terminal si aplica]\n"
+                        f"   - Si la acción proviene de un ticket con acción correctiva documentada: agregar `(ref: ticket #ID)`\n"
+                        f"   - Si es conocimiento técnico general porque el ticket no tiene acción documentada: agregar `(práctica estándar)`\n"
+                        f"2. [ídem — máximo 5 acciones]\n\n"
+                        f"{DIV}\n"
+                        f"## 📋 Patrón Detectado\n"
+                        f"[Una oración sobre la tendencia o patrón recurrente observado en el historial]\n\n"
+                        f"---\n"
+                        f"⚠️ *Estas sugerencias son orientativas. La decisión de ejecutar cualquier acción "
+                        f"es responsabilidad exclusiva del operador.*"
+                    )},
+                    {"role": "user", "content": f"Analiza los siguientes tickets históricos del equipo {ip}{sensor_info}:\n\n{tickets_result.data}"},
+                ]
+                analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
+                analisis_text = str(analysis)
+                await cache_repo.save(ip, sensor, total, ultima_accion, analisis_text)
+                logger.info(f"Cache guardado /api/tickets ip={ip} sensor={sensor} total={total}")
         else:
             error_msg = tickets_result.error
 
