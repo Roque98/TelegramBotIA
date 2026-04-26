@@ -234,9 +234,9 @@ def logs():
                 il.totalInputTokens,
                 il.totalOutputTokens,
                 il.costUSD,
-                u.Nombre   AS nombre_usuario,
-                u.email    AS email_usuario,
-                u.Empresa  AS empresa_usuario,
+                COALESCE(cu.Nombre,  bu.Nombre)  AS nombre_usuario,
+                COALESCE(cu.email,   bu.email)   AS email_usuario,
+                COALESCE(cu.Empresa, bu.Empresa) AS empresa_usuario,
                 (
                     SELECT TOP 1 al.level
                     FROM abcmasplus..BotIAv2_ApplicationLogs al
@@ -244,8 +244,10 @@ def logs():
                     ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
                 ) AS app_log_level
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..concentradousuarios u
-                ON il.idUsuario = u.idUsuario AND il.idUsuario IS NOT NULL
+            LEFT JOIN abcmasplus..concentradousuarios cu
+                ON il.idUsuario = cu.idUsuario AND il.idUsuario IS NOT NULL
+            LEFT JOIN dbo.Usuarios bu
+                ON il.idUsuario = bu.idUsuario AND il.idUsuario IS NOT NULL
             ORDER BY il.fechaEjecucion DESC
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
             """,
@@ -261,7 +263,7 @@ def logs():
                 {
                     "correlation_id": r["correlationId"],
                     "id_usuario": r["idUsuario"],
-                    "username": r["telegramUsername"] or "api",
+                    "username": r["telegramUsername"] or r["nombre_usuario"] or "api",
                     "nombre_usuario": r["nombre_usuario"],
                     "email_usuario": r["email_usuario"],
                     "empresa_usuario": r["empresa_usuario"],
@@ -296,13 +298,15 @@ def log_detail(correlation_id: str):
                    il.agenteNombre, il.duracionMs, il.exitoso, il.mensajeError, il.fechaEjecucion,
                    il.channel, il.stepsTomados, il.memoryMs, il.reactMs, il.classifyMs,
                    il.totalInputTokens, il.totalOutputTokens, il.costUSD,
-                   u.Nombre  AS nombre_usuario,
-                   u.email   AS email_usuario,
-                   u.Empresa AS empresa_usuario,
-                   u.puesto  AS puesto_usuario
+                   COALESCE(cu.Nombre,  bu.Nombre)  AS nombre_usuario,
+                   COALESCE(cu.email,   bu.email)   AS email_usuario,
+                   COALESCE(cu.Empresa, bu.Empresa) AS empresa_usuario,
+                   COALESCE(cu.puesto,  bu.puesto)  AS puesto_usuario
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..concentradousuarios u
-                ON il.idUsuario = u.idUsuario AND il.idUsuario IS NOT NULL
+            LEFT JOIN abcmasplus..concentradousuarios cu
+                ON il.idUsuario = cu.idUsuario AND il.idUsuario IS NOT NULL
+            LEFT JOIN dbo.Usuarios bu
+                ON il.idUsuario = bu.idUsuario AND il.idUsuario IS NOT NULL
             WHERE il.correlationId = :cid
             """,
             {"cid": correlation_id},
