@@ -162,6 +162,27 @@ Tabla append-only. El trigger `TR_AgenteDef_VersionHistorial` inserta automátic
 | `modificadoPor` | VARCHAR(100) | Usuario de BD que realizó el UPDATE (`SYSTEM_USER`) |
 | `fechaCreacion` | DATETIME2 | — |
 
+### BotIAv2_TicketAnalysisCache — caché de análisis LLM de tickets
+
+Evita llamadas redundantes al LLM cuando los datos de tickets no han cambiado.
+La clave de caché es la combinación `(ip, sensor, total_tickets, ultima_accion)`.
+
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| `ip` | VARCHAR(50) | IP del equipo en PRTG |
+| `sensor` | VARCHAR(500) | Nombre del sensor |
+| `total_tickets` | INT | Cantidad total de tickets históricos |
+| `ultima_accion` | VARCHAR(500) | `accionCorrectiva` del ticket más reciente (truncado a 500 chars) |
+| `analisis` | NVARCHAR(MAX) | Texto del análisis generado por el LLM |
+| `fechaCreacion` | DATETIME | Fecha de creación o última actualización |
+
+**Estrategia de invalidación**: si cambia `total_tickets` o `ultima_accion`, hay un cache miss
+y se genera un nuevo análisis LLM. El upsert usa `MERGE` — si la clave ya existe, solo actualiza
+`analisis` y `fechaCreacion`. Repositorio: `TicketAnalysisCacheRepository` en
+`src/domain/alerts/ticket_cache_repository.py`.
+
+---
+
 ### BotIAv2_AgentRouting — auditoría de decisiones de ruteo
 
 Una fila por request. Registra qué agente eligió el orchestrator y con qué confianza.
@@ -286,6 +307,15 @@ Retorna: `idUsuario`, `Nombre`, `idRol`, `rolNombre`, `telegramChatId`, `telegra
 | `009_fix_alertas_system_prompt.sql` | Corrige el system prompt del agente `alertas` |
 | `010_feat37_alert_tools_refactor.sql` | FEAT-37: refactor de alert tools (4 tools estructuradas) |
 | `016_sp_get_all_usuarios_telegram.sql` | Crea `BotIAv2_sp_GetAllUsuariosTelegram` — lista todos los usuarios Telegram activos con rol (usado por panel admin) |
+| `017_fix_alertas_prompt_cleanup.sql` | Limpia el system prompt del agente alertas |
+| `018_template_search_by_name_tool.sql` | Agrega SP `BotIAv2_sp_SearchTemplatesByNombre` y registra `tool:template_search_by_name` en SEC-01 |
+| `019_fix_alertas_template_search_format.sql` | Ajusta formato de resultados de template search |
+| `020_fix_alertas_seleccion_template.sql` | Corrige lógica de selección de template en agente alertas |
+| `021_fix_alertas_no_pedir_ip_con_template.sql` | Evita pedir IP cuando ya hay template seleccionado |
+| `022_fix_alertas_template_search_truncado.sql` | Maneja resultados truncados en template search |
+| `023_fix_alertas_present_templates.sql` | Mejora presentación de templates encontrados |
+| `024_pass_id_gerencia_en_escalamiento.sql` | Pasa `id_gerencia_atendedora` en escalamiento para evitar llamada redundante a `get_template_info` |
+| `025_ticket_analysis_cache.sql` | Crea tabla `BotIAv2_TicketAnalysisCache` para caché de análisis LLM de tickets |
 
 ---
 

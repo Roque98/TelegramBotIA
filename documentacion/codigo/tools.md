@@ -31,7 +31,8 @@ src/agents/tools/
 ├── get_escalation_matrix_tool.py    ← GetEscalationMatrixTool (get_escalation_matrix)
 ├── get_inventory_by_ip_tool.py      ← GetInventoryByIpTool (get_inventory_by_ip)
 ├── get_template_by_id_tool.py       ← GetTemplateByIdTool (get_template_by_id)
-└── get_contacto_gerencia_tool.py    ← GetContactoGerenciaTool (get_contacto_gerencia)
+├── get_contacto_gerencia_tool.py    ← GetContactoGerenciaTool (get_contacto_gerencia)
+└── template_search_by_name_tool.py  ← TemplateSearchByNameTool (template_search_by_name)
 ```
 
 ---
@@ -92,9 +93,9 @@ class ToolCategory(str, Enum):
 
 ---
 
-## Las 17 tools
+## Las 18 tools
 
-Las 8 tools del grupo de alertas PRTG tienen documentación detallada en
+Las tools del grupo de alertas PRTG tienen documentación detallada en
 [tools-alertas.md](tools-alertas.md): entidades, repository, flujos internos y prompts.
 
 ---
@@ -295,7 +296,7 @@ ToolRegistry.reset()
 ```
 
 Las tools se registran en `pipeline/factory.py → create_tool_registry()`.
-Las 17 tools disponibles cubren las categorías: `database`, `knowledge`, `calculation`,
+Las 18 tools disponibles cubren las categorías: `database`, `knowledge`, `calculation`,
 `datetime`, `utility` y `monitoring`.
 
 ---
@@ -346,9 +347,9 @@ Y agregar el recurso en la BD para que el sistema de permisos la controle
 
 ---
 
-## Tools de alertas PRTG (6 adicionales)
+## Tools de alertas PRTG (7 adicionales)
 
-Las siguientes 6 tools comparten la misma infraestructura (`AlertRepository`,
+Las siguientes 7 tools comparten la misma infraestructura (`AlertRepository`,
 entidades Pydantic, fallback BAZ→EKT). Su documentación detallada está en
 **[tools-alertas.md](tools-alertas.md)**.
 
@@ -361,6 +362,27 @@ entidades Pydantic, fallback BAZ→EKT). Su documentación detallada está en
 | `get_inventory_by_ip` | [`GetInventoryByIpTool`](../../src/agents/tools/get_inventory_by_ip_tool.py) | Ficha del equipo: área, OS, ambiente, impacto, urgencia |
 | `get_template_by_id` | [`GetTemplateByIdTool`](../../src/agents/tools/get_template_by_id_tool.py) | Ficha de aplicación por ID de template |
 | `get_contacto_gerencia` | [`GetContactoGerenciaTool`](../../src/agents/tools/get_contacto_gerencia_tool.py) | Correo y extensiones de una gerencia por ID |
+| `template_search_by_name` | [`TemplateSearchByNameTool`](../../src/agents/tools/template_search_by_name_tool.py) | Busca templates por nombre de aplicación en BAZ y EKT en paralelo |
+
+### template_search_by_name
+
+**Clase**: `TemplateSearchByNameTool` | **Archivo**: [`template_search_by_name_tool.py`](../../src/agents/tools/template_search_by_name_tool.py) | **Categoría**: `MONITORING`
+
+Busca templates de monitoreo cuyo nombre de aplicación coincida parcialmente con el texto dado.
+Consulta BAZ y EKT en paralelo (máx 5 resultados por instancia = 10 total).
+
+| Parámetro | Tipo | Descripción |
+|-----------|------|-------------|
+| `nombre` | string | Nombre o parte del nombre de la app (mínimo 2 caracteres) |
+
+**Retorna**: Lista de templates con `template_id`, `aplicacion`, `instancia` (`BAZ`\|`EKT`),
+`gerencia_atendedora`, `id_gerencia_atendedora`, `gerencia_desarrollo`, `id_gerencia_desarrollo`,
+`ambiente`, `negocio`, `tipo_template`, `es_aws`, `es_vertical`.
+
+El campo `instancia` es clave: indica si las calls posteriores (`get_escalation_matrix`,
+`get_historical_tickets`, etc.) deben usar `usar_ekt=true` (EKT) o `usar_ekt=false` (BAZ).
+
+**usage_hint**: `Para encontrar el template de una aplicación por nombre (cuando no tenés el ID): usa template_search_by_name. Úsala antes de get_escalation_matrix cuando el usuario menciona el nombre de una app.`
 
 ---
 

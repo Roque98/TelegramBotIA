@@ -237,8 +237,148 @@ Las llamadas a `/api/chat` y `/api/tickets` quedan registradas en `BotIAv2_Inter
 
 ## Dashboard interactivo
 
-El panel en `/admin` incluye una sección **API Reference** con documentación y playground
-para probar los endpoints directamente desde el navegador.
+El panel de administración está disponible en `/admin` (sirve `wwwroot/dashboard-wireframe.html`).
+No requiere autenticación adicional al estar dentro de la red. Incluye una sección
+**API Reference** con playground para probar los endpoints directamente desde el navegador,
+y un botón para descargar esta guía en `GET /api/docs/download`.
+
+---
+
+## Endpoints del panel de administración
+
+Todos los endpoints `/api/admin/*` son de **solo lectura** (excepto `PUT /api/admin/agents/:id/prompt`)
+y no requieren token AES — están pensados para consumo desde el panel web dentro de la red.
+
+### `GET /api/admin/overview`
+
+Métricas de uso para el período seleccionado.
+
+| Query param | Valores | Default |
+|-------------|---------|---------|
+| `periodo` | `hoy`, `ayer`, `7d`, `30d` | `hoy` |
+
+**Response 200**
+```json
+{
+  "periodo": "hoy",
+  "mensajes": 42,
+  "mensajes_pct_change": 15,
+  "usuarios_activos": 8,
+  "errores": 1,
+  "costo": 0.12,
+  "p50_s": 2.3,
+  "p90_s": 5.1,
+  "agentes": [
+    { "nombre": "datos", "requests": 20, "exito_pct": 95, "avg_ms": 2100, "total_tokens": 18000, "costo": 0.06 }
+  ],
+  "actividad": [
+    { "label": "9h", "mensajes": 3 },
+    { "label": "10h", "mensajes": 7 }
+  ]
+}
+```
+
+---
+
+### `GET /api/admin/logs`
+
+Historial paginado de interacciones.
+
+| Query param | Descripción | Default |
+|-------------|-------------|---------|
+| `page` | Página (1-based) | `1` |
+| `limit` | Filas por página (10–200) | `50` |
+
+**Response 200**
+```json
+{
+  "page": 1,
+  "limit": 50,
+  "total": 340,
+  "has_more": true,
+  "items": [
+    {
+      "correlation_id": "uuid",
+      "username": "jgarcia",
+      "nombre_usuario": "Juan García",
+      "query": "¿Cuántas ventas hubo ayer?",
+      "agente": "datos",
+      "duracion_ms": 2100,
+      "error": false,
+      "fecha": "2026-04-23 10:30:00",
+      "channel": "telegram",
+      "steps": 3,
+      "tokens_in": 800,
+      "tokens_out": 320,
+      "costo": 0.0042,
+      "has_app_logs": false,
+      "app_log_level": null
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/admin/logs/:correlation_id`
+
+Detalle completo de una interacción: steps del loop ReAct, app logs y datos del usuario.
+
+---
+
+### `GET /api/admin/agents`
+
+Lista de agentes LLM activos con su configuración, métricas del día e historial de prompts.
+
+---
+
+### `PUT /api/admin/agents/:id/prompt`
+
+Actualiza el `systemPrompt` de un agente. El trigger de BD incrementa `version` automáticamente
+e inserta el historial.
+
+**Request**
+```json
+{
+  "prompt": "Nuevo system prompt...",
+  "razon": "Ajuste de tono",
+  "por": "admin"
+}
+```
+
+**Response 200**
+```json
+{ "ok": true, "version": 5 }
+```
+
+---
+
+### `GET /api/admin/knowledge`
+
+Estadísticas de la base de conocimiento: total de categorías, entradas activas y búsquedas del día.
+
+---
+
+### `GET /api/admin/users`
+
+Lista de usuarios Telegram registrados (vía `BotIAv2_sp_GetAllUsuariosTelegram`).
+
+---
+
+### `GET /api/admin/chats`
+
+Historial de conversaciones agrupado por chat Telegram, con paginación.
+
+| Query param | Descripción | Default |
+|-------------|-------------|---------|
+| `page` | Página | `1` |
+| `limit` | Chats por página (10–100) | `30` |
+
+---
+
+### `GET /api/docs/download`
+
+Descarga este archivo (`guia-api.md`) como attachment.
 
 ---
 
