@@ -100,6 +100,7 @@ class Settings(BaseSettings):
     # Application
     log_level: str = "INFO"
     environment: str = "development"
+    api_port: int = 5000
 
     # Retry Configuration
     retry_llm_max_attempts: int = 3

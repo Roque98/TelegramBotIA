@@ -291,7 +291,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    from src.config.settings import settings
     from src.infra.database.connection import DatabaseManager
     get_handler_manager().initialize(DatabaseManager())
     logger.info("HandlerManager inicializado correctamente")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=settings.api_port, debug=True)
