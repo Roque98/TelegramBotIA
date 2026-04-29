@@ -145,8 +145,6 @@ def tickets():
     from src.domain.interaction.interaction_repository import InteractionRepository
     from src.infra.database.connection import DatabaseManager
 
-    tiene_datos_dynatrace = bool(ctx_dt)
-
     def _build_dynatrace_context() -> str:
         if not ctx_dt:
             return ""
@@ -195,8 +193,7 @@ def tickets():
             ultima_accion = tickets_raw[0].accion_correctiva if tickets_raw else ""
 
             cache_repo = TicketAnalysisCacheRepository(DatabaseManager())
-            # Saltear caché cuando hay datos Dynatrace para incorporarlos al análisis
-            cached = None if tiene_datos_dynatrace else await cache_repo.lookup(ip, sensor, total, ultima_accion)
+            cached = await cache_repo.lookup(ip, sensor, total, ultima_accion)
             if cached:
                 analisis_text = cached
                 logger.info(f"Cache hit /api/tickets ip={ip} sensor={sensor} total={total}")
@@ -267,9 +264,8 @@ def tickets():
                 ]
                 analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
                 analisis_text = str(analysis)
-                if not tiene_datos_dynatrace:
-                    await cache_repo.save(ip, sensor, total, ultima_accion, analisis_text)
-                    logger.info(f"Cache guardado /api/tickets ip={ip} sensor={sensor} total={total}")
+                await cache_repo.save(ip, sensor, total, ultima_accion, analisis_text)
+                logger.info(f"Cache guardado /api/tickets ip={ip} sensor={sensor} total={total}")
         else:
             error_msg = tickets_result.error
 
