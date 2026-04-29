@@ -130,7 +130,10 @@ def tickets():
     numero_empleado: int = datos_token["numero_empleado"]
     ip: str = data["ip"].strip()
     sensor: str = data.get("sensor", "").strip()
-    mensaje_alerta: str = data.get("mensaje_alerta", "").strip()
+    mensaje_alerta: str = data.get("mensaje_alerta", data.get("mensaje", "")).strip()
+    dynatrace_host: dict = data.get("dynatraceHost") or {}
+    servicios: list = data.get("servicios") or []
+    eventos_dynatrace: list = data.get("eventosDynatrace") or []
 
     db_registry = get_handler_manager().db_registry
     if db_registry is None:
@@ -143,6 +146,41 @@ def tickets():
     from src.domain.alerts.ticket_cache_repository import TicketAnalysisCacheRepository
     from src.domain.interaction.interaction_repository import InteractionRepository
     from src.infra.database.connection import DatabaseManager
+
+    tiene_datos_dynatrace = bool(dynatrace_host or servicios or eventos_dynatrace)
+
+    def _build_dynatrace_context() -> str:
+        parts = []
+        if dynatrace_host:
+            tags_str = ", ".join(
+                f"{t['key']}={t['value']}" for t in dynatrace_host.get("tags", []) if isinstance(t, dict)
+            )
+            zones_str = ", ".join(dynatrace_host.get("managementZones", []))
+            lines = [
+                "\nDatos Dynatrace del host:",
+                f"- Nombre: {dynatrace_host.get('displayName', 'N/D')}",
+                f"- SO: {dynatrace_host.get('os', 'N/D')}",
+                f"- Modo de monitoreo: {dynatrace_host.get('monitoringMode', 'N/D')}",
+                f"- OneAgent: {dynatrace_host.get('oneAgentVersion', 'N/D')}",
+                f"- Network Zone: {dynatrace_host.get('networkZone', 'N/D')}",
+                f"- Estado: {dynatrace_host.get('state', 'N/D')}",
+                f"- Zonas de gestión: {zones_str or 'N/D'}",
+            ]
+            if tags_str:
+                lines.append(f"- Tags: {tags_str}")
+            parts.append("\n".join(lines))
+        if servicios:
+            lines = ["\nServicios detectados en el host:"]
+            for s in servicios:
+                db = s.get("baseDatos") or "N/D"
+                lines.append(f"- {s.get('nombre', '?')} ({s.get('tipo', '?')}) — {s.get('tecnologia', '?')} — BD: {db}")
+            parts.append("\n".join(lines))
+        if eventos_dynatrace:
+            lines = ["\nEventos recientes en Dynatrace:"]
+            for e in eventos_dynatrace:
+                lines.append(f"- [{e.get('tipo', '?')}] {e.get('titulo', '?')} (hace {e.get('hace', '?')})")
+            parts.append("\n".join(lines))
+        return "\n".join(parts)
 
     async def _run():
         t0 = time.perf_counter()
@@ -165,7 +203,8 @@ def tickets():
             ultima_accion = tickets_raw[0].accion_correctiva if tickets_raw else ""
 
             cache_repo = TicketAnalysisCacheRepository(DatabaseManager())
-            cached = await cache_repo.lookup(ip, sensor, total, ultima_accion)
+            # Saltear caché cuando hay datos Dynatrace para incorporarlos al análisis
+            cached = None if tiene_datos_dynatrace else await cache_repo.lookup(ip, sensor, total, ultima_accion)
             if cached:
                 analisis_text = cached
                 logger.info(f"Cache hit /api/tickets ip={ip} sensor={sensor} total={total}")
@@ -176,6 +215,7 @@ def tickets():
                     f"\nAlerta activa: {mensaje_alerta}" if mensaje_alerta
                     else "\n(No se proporcionó mensaje de alerta activa)"
                 )
+                dynatrace_context = _build_dynatrace_context()
                 if inventario:
                     inv = inventario
                     inventario_context = (
@@ -229,14 +269,15 @@ def tickets():
                         f"es responsabilidad exclusiva del operador.*"
                     )},
                     {"role": "user", "content": (
-                        f"Equipo: {ip}{sensor_info}{alerta_context}{inventario_context}\n\n"
+                        f"Equipo: {ip}{sensor_info}{alerta_context}{inventario_context}{dynatrace_context}\n\n"
                         f"Tickets históricos:\n{tickets_result.data}"
                     )},
                 ]
                 analysis = await llm.generate_messages(messages=messages, max_tokens=1024)
                 analisis_text = str(analysis)
-                await cache_repo.save(ip, sensor, total, ultima_accion, analisis_text)
-                logger.info(f"Cache guardado /api/tickets ip={ip} sensor={sensor} total={total}")
+                if not tiene_datos_dynatrace:
+                    await cache_repo.save(ip, sensor, total, ultima_accion, analisis_text)
+                    logger.info(f"Cache guardado /api/tickets ip={ip} sensor={sensor} total={total}")
         else:
             error_msg = tickets_result.error
 
