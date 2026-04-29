@@ -12,6 +12,7 @@ que ya está configurado globalmente en DatabaseManager.
 Nunca lanza excepciones al llamador — retorna [] o None en caso de error.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -371,6 +372,36 @@ class AlertRepository:
             logger.warning(f"AlertRepository.get_template_by_id({template_id}): {e}")
             return None
 
+    async def get_templates_by_nombre(self, nombre: str) -> list[Template]:
+        """
+        Busca templates cuyo nombre de aplicación coincida parcialmente con `nombre`.
+
+        Consulta BAZ y EKT en paralelo (mismo nombre puede existir en ambas instancias)
+        y retorna los resultados combinados ordenados por aplicacion.
+        """
+        params = {"nombre": nombre}
+        sp_baz = "EXEC ABCMASplus.dbo.Template_GetByNombre @nombre = :nombre"
+        sp_ekt = "EXEC ABCMASplus.dbo.Template_GetByNombre_ekt @nombre = :nombre"
+
+        async def _run(sp: str, instancia: str) -> list[Template]:
+            try:
+                rows = await self._db.execute_query_async(sp, params)
+                result = []
+                for row in rows:
+                    try:
+                        result.append(Template.model_validate({**row, "instancia": instancia}))
+                    except Exception as e:
+                        logger.debug(f"get_templates_by_nombre {instancia}: fila inválida ignorada: {e}")
+                return result
+            except Exception as e:
+                logger.warning(f"get_templates_by_nombre {instancia}: {e}")
+                return []
+
+        baz, ekt = await asyncio.gather(_run(sp_baz, "BAZ"), _run(sp_ekt, "EKT"))
+        combined = baz + ekt
+        combined.sort(key=lambda t: (t.aplicacion or "").lower())
+        return combined
+
     async def get_escalation_matrix(
         self, template_id: int, usar_ekt: bool = False
     ) -> list[EscalationLevel]:
@@ -508,6 +539,96 @@ class AlertRepository:
 
         logger.warning(f"AlertRepository.get_inventory_by_ip({ip}): no encontrado en ningún inventario")
         return None
+
+    def _normalize_inventory_row(self, row: dict, fuente: str) -> Optional[InventoryItem]:
+        if fuente == "Fisico":
+            normalized = {
+                "ip":                     row.get("ip", ""),
+                "hostname":               row.get("hostname", ""),
+                "id_area_atendedora":     row.get("idAreaAtendedora"),
+                "id_area_administradora": row.get("idAreaAdministradora"),
+                "area_atendedora":        row.get("AreaAtendedora", ""),
+                "area_administradora":    row.get("AreaAdministradora", ""),
+                "fuente":                 fuente,
+                "tipo_equipo":            row.get("TipoEquipoFisico", ""),
+                "version_os":             row.get("VersionOS", ""),
+                "status":                 row.get("Status", ""),
+                "capa":                   row.get("Capa", ""),
+                "ambiente":               row.get("Ambiente", ""),
+                "impacto":                row.get("Impacto", ""),
+                "urgencia":               row.get("Urgencia", ""),
+                "prioridad":              row.get("prioridad", ""),
+                "negocio":                row.get("Negocio", ""),
+                "grupo_correo":           row.get("GrupoDeCorreo", ""),
+            }
+        else:
+            normalized = {
+                "ip":                     row.get("IPMaquinaVirtual", ""),
+                "hostname":               row.get("Hostname", ""),
+                "id_area_atendedora":     row.get("IdAreaAtiende"),
+                "id_area_administradora": row.get("IdAreaAdmin"),
+                "area_atendedora":        row.get("AreaAtiende", ""),
+                "area_administradora":    row.get("AreaAdmin", ""),
+                "fuente":                 fuente,
+                "tipo_equipo":            "",
+                "version_os":             row.get("VersionOS", ""),
+                "status":                 row.get("Status", ""),
+                "capa":                   row.get("Capa", ""),
+                "ambiente":               row.get("Ambiente", ""),
+                "impacto":                row.get("Impacto", ""),
+                "urgencia":               row.get("Urgencia", ""),
+                "prioridad":              row.get("Prioridad", ""),
+                "negocio":                "",
+                "grupo_correo":           "",
+            }
+        try:
+            return InventoryItem.model_validate(normalized)
+        except Exception:
+            return None
+
+    async def get_inventory_by_ip_list(self, ips: list[str]) -> list[InventoryItem]:
+        """
+        Busca múltiples equipos por IP usando los SPs de lista.
+
+        Orden de búsqueda por prioridad (primero encontrado gana):
+          1. EquiposFisicos_GetByIpList       (BAZ)
+          2. MaquinasVirtuales_GetByIpList    (BAZ)
+          3. EquiposFisicos_GetByIpList_EKT   (EKT)
+          4. MaquinasVirtuales_GetByIpList_Ekt (EKT)
+        """
+        if not ips:
+            return []
+
+        candidates = [
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIpList @ips = :ips",        "Fisico"),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIpList @ips = :ips",     "Virtual"),
+            ("EXEC ABCMASplus.dbo.EquiposFisicos_GetByIpList_EKT @ips = :ips",    "Fisico"),
+            ("EXEC ABCMASplus.dbo.MaquinasVirtuales_GetByIpList_Ekt @ips = :ips", "Virtual"),
+        ]
+
+        found: dict[str, InventoryItem] = {}
+
+        for sp, fuente in candidates:
+            remaining = [ip for ip in ips if ip not in found]
+            if not remaining:
+                break
+            try:
+                rows = await self._db.execute_query_async(sp, {"ips": ",".join(remaining)})
+                for row in rows:
+                    item = self._normalize_inventory_row(row, fuente)
+                    if item and item.ip and item.ip not in found:
+                        found[item.ip] = item
+                logger.info(
+                    f"AlertRepository.get_inventory_by_ip_list: {sp.split()[1]} → {len(rows)} filas"
+                )
+            except Exception as e:
+                logger.warning(f"AlertRepository.get_inventory_by_ip_list [{sp.split()[1]}]: {e}")
+
+        not_found = [ip for ip in ips if ip not in found]
+        if not_found:
+            logger.warning(f"AlertRepository.get_inventory_by_ip_list: sin resultado para {not_found}")
+
+        return list(found.values())
 
     # ─────────────────────────────────────────────────────────────────────────
     # Helpers privados

@@ -26,6 +26,7 @@ from src.domain.cost.cost_repository import CostRepository
 from src.domain.memory.memory_service import MemoryService
 from src.gateway.message_gateway import MessageGateway
 from src.domain.interaction.interaction_repository import InteractionRepository
+from src.domain.auth.user_query_repository import UserQueryRepository
 
 try:
     from src.infra.observability import get_tracer
@@ -95,6 +96,7 @@ class MainHandler:
         observability_repo: Optional[InteractionRepository] = None,
         cost_repository: Optional[CostRepository] = None,
         admin_notifier: Optional[AdminNotifier] = None,
+        user_query_repo: Optional[UserQueryRepository] = None,
     ):
         """
         Inicializa el handler.
@@ -114,6 +116,7 @@ class MainHandler:
         self.observability_repo = observability_repo
         self.cost_repo = cost_repository
         self._admin_notifier = admin_notifier
+        self._user_query_repo = user_query_repo
         self.gateway = MessageGateway()
 
         logger.info(
@@ -324,11 +327,16 @@ class MainHandler:
         # 3. Log de consola
         self._log_transaction(event, response, memory_ms, react_ms, save_ms, total_ms)
 
-        # 4. Persistir interacción completa en background (una sola escritura)
+        # 4. Persistir interacción completa
+        # API: await directo porque asyncio.run() cierra el loop al terminar (mata tasks en background)
+        # Telegram: create_task para no bloquear el pipeline
         if self.observability_repo:
-            asyncio.create_task(
-                self._save_interaction(event, response, memory_ms, react_ms, total_ms)
-            )
+            if event.channel == "api":
+                await self._save_interaction(event, response, memory_ms, react_ms, total_ms)
+            else:
+                asyncio.create_task(
+                    self._save_interaction(event, response, memory_ms, react_ms, total_ms)
+                )
 
         return response
 
@@ -378,6 +386,14 @@ class MainHandler:
             total_cost = sum(s.get("costoUSD") or 0.0 for s in step_traces)
             llm_iters = sum(1 for s in step_traces if s.get("tipo") == "llm_call")
 
+            # Para canal api, user_id es el numero_empleado = idUsuario en la BD
+            id_usuario_api: Optional[int] = None
+            if event.channel == "api":
+                try:
+                    id_usuario_api = int(event.user_id)
+                except (ValueError, TypeError):
+                    pass
+
             await self.observability_repo.save_interaction(
                 correlation_id=correlation_id,
                 user_id=event.user_id,
@@ -393,7 +409,6 @@ class MainHandler:
                 tools_used=tools_used,
                 steps_count=response.steps_taken,
                 agente_nombre=response.routed_agent,
-                # OBS-36: métricas multi-agente
                 total_input_tokens=total_in or None,
                 total_output_tokens=total_out or None,
                 llm_iteraciones=llm_iters or None,
@@ -401,6 +416,7 @@ class MainHandler:
                 classify_ms=response.classify_ms,
                 agent_confidence=response.agent_confidence,
                 cost_usd=total_cost or None,
+                id_usuario=id_usuario_api,
             )
 
             # Persistir pasos del loop ReAct
@@ -418,8 +434,14 @@ class MainHandler:
                     used_fallback=response.used_fallback,
                 )
 
-            # Actualizar contador de interacciones en perfil
+            # Actualizar contador de interacciones y última actividad
             await self.memory.repository.increment_interaction_count(event.user_id)
+            if self._user_query_repo and event.channel == "telegram":
+                try:
+                    chat_id = int(event.user_id)
+                    await self._user_query_repo.update_last_activity(chat_id)
+                except Exception:
+                    pass
 
             # Persistir costo si está disponible
             cost = (response.data or {}).get("cost")

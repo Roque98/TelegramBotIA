@@ -14,12 +14,12 @@ src/config/personality.py     ← Personalidad del bot
 **Archivo**: `src/agents/react/prompts.py`
 **Variable**: `REACT_SYSTEM_PROMPT`
 
-El prompt del sistema define a **"Amber"** (nombre que usa el bot en el API REST / contexto genérico). En Telegram el bot puede presentarse distinto según `personality.py`.
+El prompt del sistema define a **"Iris"** (nombre que usa el bot en el API REST / contexto genérico). En Telegram el bot puede presentarse distinto según `personality.py`.
 
 **Estructura del prompt**:
 ```
 1. Definición de identidad y personalidad
-   - Nombre: Amber
+   - Nombre: Iris
    - Tono: cálida, profesional, español
    - REGLA CRÍTICA: nunca revelar proceso interno al usuario
 
@@ -40,7 +40,7 @@ El prompt del sistema define a **"Amber"** (nombre que usa el bot en el API REST
 
 **Plantilla**:
 ```python
-REACT_SYSTEM_PROMPT = """Eres Amber, una asistente virtual...
+REACT_SYSTEM_PROMPT = """Eres Iris, una asistente virtual...
 
 ## Herramientas Disponibles
 {tools_description}
@@ -130,7 +130,7 @@ def get_personality_prompt() -> str:
     """Genera string de personalidad para incluir en prompts."""
 ```
 
-> **Nota**: El API REST usa "Amber" (hardcodeado en `react/prompts.py`). El bot de Telegram usa "Iris" vía `personality.py`. Estos pueden unificarse en el futuro.
+> **Nota**: El API REST usa "Iris" (hardcodeado en `react/prompts.py`). El bot de Telegram usa "Iris" vía `personality.py`. Estos pueden unificarse en el futuro.
 
 ---
 

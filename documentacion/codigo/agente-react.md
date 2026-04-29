@@ -77,7 +77,7 @@ con el prompt por defecto del código (comportamiento anterior a ARQ-35).
 
 ### Secciones típicas del prompt (por convención)
 
-1. **Personalidad de Amber**: tono, idioma, uso de emojis
+1. **Personalidad de Iris**: tono, idioma, uso de emojis
 2. **Formato de mensajes Telegram**: cuándo usar negrita, listas, bloques de código
 3. **Regla crítica**: nunca revelar el proceso interno al usuario
 4. **Cómo razonar**: descripción del loop Think-Act-Observe

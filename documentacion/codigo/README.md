@@ -10,11 +10,12 @@ Asume familiaridad con Python async/await, patrones de diseño y SQL Server.
 | [Arquitectura](arquitectura.md) | Las 5 capas del sistema, patrones de diseño, contratos clave |
 | [Flujos del sistema](flujos.md) | Paso a paso: mensaje Telegram, request API, loop ReAct |
 | [Agente ReAct](agente-react.md) | Cómo razona el LLM: prompts, scratchpad, filtrado de tools |
-| [Sistema de tools](tools.md) | Las 8 tools disponibles, ToolRegistry, cómo crear nuevas |
+| [Sistema de tools](tools.md) | Las 18 tools disponibles, ToolRegistry, cómo crear nuevas |
 | [Pipeline y factory](pipeline.md) | MainHandler, composición de dependencias, gateway |
 | [Dominio](dominio.md) | Auth, Memory, Knowledge, Cost — lógica de negocio |
 | [Infraestructura](infraestructura.md) | BD, observabilidad, eventos, utilidades |
 | [Base de datos](base-de-datos.md) | Esquema completo de tablas `BotIAv2_*` y relaciones |
+| [Dashboard Telegram](dashboard.md) | Panel admin inline: handler, service, views, callback scheme |
 | [Cómo extender](como-extender.md) | Recetas: nueva tool, nuevo comando, nuevo dominio |
 
 ## Punto de entrada recomendado

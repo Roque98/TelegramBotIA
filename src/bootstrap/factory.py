@@ -107,6 +107,7 @@ def create_main_handler(
         observability_repo=obs_repo,
         cost_repository=cost_repo,
         admin_notifier=admin_notify,
+        user_query_repo=_user_query_repo,
     )
 
     logger.info("MainHandler created with AgentOrchestrator (ARQ-35 dynamic N-way)")

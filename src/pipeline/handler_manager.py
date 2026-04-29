@@ -20,6 +20,7 @@ class HandlerManager:
 
     _instance: Optional["HandlerManager"] = None
     _handler: Optional[MainHandler] = None
+    _db_registry: Any = None
 
     def __new__(cls) -> "HandlerManager":
         if cls._instance is None:
@@ -37,6 +38,10 @@ class HandlerManager:
     def handler(self) -> Optional[MainHandler]:
         return self._handler
 
+    @property
+    def db_registry(self) -> Any:
+        return self._db_registry
+
     def is_initialized(self) -> bool:
         return self._handler is not None
 
@@ -44,6 +49,7 @@ class HandlerManager:
     def reset(cls) -> None:
         cls._instance = None
         cls._handler = None
+        cls._db_registry = None
 
 
 def get_handler_manager() -> HandlerManager:

@@ -70,12 +70,19 @@ class TokenMiddleware:
                 logger.warning(f"Token con JSON inválido: {e}")
                 return False, None, f"Token inválido: JSON malformado ({e})"
 
-            # 3. Validar estructura
+            # 3. Normalizar campos: soporta formato nuevo (UserId/fechaExpiracion)
+            #    y formato original (numero_empleado/timestamp)
+            if "UserId" in datos and "numero_empleado" not in datos:
+                datos["numero_empleado"] = datos["UserId"]
+            if "fechaExpiracion" in datos and "timestamp" not in datos:
+                datos["timestamp"] = datos["fechaExpiracion"]
+                datos["_usa_expiracion"] = True  # indica que el campo es fecha de expiración, no de creación
+
             if "numero_empleado" not in datos:
-                return False, None, "Token inválido: falta 'numero_empleado'"
+                return False, None, "Token inválido: falta 'numero_empleado' o 'UserId'"
 
             if "timestamp" not in datos:
-                return False, None, "Token inválido: falta 'timestamp'"
+                return False, None, "Token inválido: falta 'timestamp' o 'fechaExpiracion'"
 
             # 4. Validar tipo de numero_empleado
             if not isinstance(datos["numero_empleado"], (int, str)):
@@ -88,21 +95,20 @@ class TokenMiddleware:
             except (ValueError, TypeError):
                 return False, None, f"Token inválido: 'numero_empleado' no es un número válido"
 
-            # 5. Validar timestamp
+            # 5. Parsear fecha
             try:
-                # Soportar múltiples formatos
                 timestamp_str = datos["timestamp"]
-
-                # Intentar ISO 8601
                 try:
                     timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                 except ValueError:
-                    # Intentar formato con milisegundos
                     try:
                         timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%f")
                     except ValueError:
-                        # Intentar formato sin milisegundos
                         timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
+
+                # Quitar tzinfo para comparar con datetime.now() naive
+                if timestamp.tzinfo is not None:
+                    timestamp = timestamp.replace(tzinfo=None)
 
                 datos["timestamp_parsed"] = timestamp
 
@@ -110,19 +116,22 @@ class TokenMiddleware:
                 logger.warning(f"Timestamp inválido: {e}")
                 return False, None, f"Token inválido: timestamp mal formado ({e})"
 
-            # 6. Validar antigüedad del token (máximo 3 minutos)
+            # 6. Validar vigencia
             ahora = datetime.now()
-            edad_token = ahora - timestamp
 
-            if edad_token.total_seconds() < 0:
-                # Token del futuro
-                return False, None, "Token inválido: timestamp es del futuro"
-
-            max_edad = timedelta(minutes=cls.MAX_TOKEN_AGE_MINUTES)
-
-            if edad_token > max_edad:
-                minutos_transcurridos = int(edad_token.total_seconds() / 60)
-                return False, None, f"Token expirado: han pasado {minutos_transcurridos} minutos (máximo {cls.MAX_TOKEN_AGE_MINUTES})"
+            if datos.get("_usa_expiracion"):
+                # fechaExpiracion: el token es válido si aún no expiró
+                if ahora > timestamp:
+                    return False, None, "Token expirado: la fecha de expiración ya pasó"
+            else:
+                # timestamp de creación: válido solo si tiene menos de MAX_TOKEN_AGE_MINUTES
+                edad_token = ahora - timestamp
+                if edad_token.total_seconds() < 0:
+                    return False, None, "Token inválido: timestamp es del futuro"
+                max_edad = timedelta(minutes=cls.MAX_TOKEN_AGE_MINUTES)
+                if edad_token > max_edad:
+                    minutos_transcurridos = int(edad_token.total_seconds() / 60)
+                    return False, None, f"Token expirado: han pasado {minutos_transcurridos} minutos (máximo {cls.MAX_TOKEN_AGE_MINUTES})"
 
             # 7. Token válido
             logger.debug(f"Token válido para empleado {numero_empleado}")

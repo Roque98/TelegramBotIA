@@ -44,10 +44,14 @@ class InteractionRepository:
         classify_ms: Optional[int] = None,
         agent_confidence: Optional[float] = None,
         cost_usd: Optional[float] = None,
+        id_usuario: Optional[int] = None,
     ) -> bool:
         """Persiste una interacción completa en BotIAv2_InteractionLogs."""
         try:
-            chat_id_int = int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
+            # Para canal api, user_id es el numero_empleado — no es un telegramChatId
+            chat_id_int = None if id_usuario is not None else (
+                int(user_id) if user_id and str(user_id).lstrip("-").isdigit() else None
+            )
             sql = """
                 EXEC abcmasplus..BotIAv2_sp_GuardarInteraccion
                     @correlationId     = :correlation_id,
@@ -70,7 +74,8 @@ class InteractionRepository:
                     @usedFallback      = :used_fallback,
                     @classifyMs        = :classify_ms,
                     @agentConfidence   = :agent_confidence,
-                    @costUSD           = :cost_usd
+                    @costUSD           = :cost_usd,
+                    @idUsuario         = :id_usuario
             """
             await self.db_manager.execute_non_query_async(sql, {
                 "correlation_id": correlation_id[:50] if correlation_id else None,
@@ -94,6 +99,7 @@ class InteractionRepository:
                 "classify_ms": classify_ms,
                 "agent_confidence": agent_confidence,
                 "cost_usd": cost_usd,
+                "id_usuario": id_usuario,
             })
             return True
         except Exception as e:

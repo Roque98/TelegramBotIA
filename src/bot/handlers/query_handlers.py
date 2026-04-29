@@ -83,7 +83,7 @@ class QueryHandler:
 
         db_manager = context.bot_data.get("db_manager")
 
-        async with StatusMessage(update, initial_message="🔍 Amber analizando tu consulta...") as status:
+        async with StatusMessage(update, initial_message="🔍 Iris analizando tu consulta...") as status:
             try:
                 async def on_agent_event(event):
                     await status.set_phase(event.status_text)

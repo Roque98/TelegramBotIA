@@ -35,24 +35,51 @@ class GetEscalationMatrixTool(BaseTool):
         return ToolDefinition(
             name="get_escalation_matrix",
             description=(
-                "Retorna la matriz de escalamiento de un equipo dado su IP, incluyendo "
+                "Retorna la matriz de escalamiento de un equipo, incluyendo "
                 "los contactos de las áreas responsables (atendedora y administradora). "
                 "Incluye niveles de escalamiento con nombre, puesto, extensión, celular, correo y tiempo de respuesta. "
                 "Usar cuando el usuario pregunta a quién escalar, con quién reportar una alerta, "
-                "quién atiende un equipo o necesita los contactos de escalamiento."
+                "quién atiende un equipo o necesita los contactos de escalamiento. "
+                "Acepta IP o template_id directamente."
             ),
             category=ToolCategory.MONITORING,
             parameters=[
                 ToolParameter(
                     name="ip",
                     param_type="string",
-                    description="IP del equipo para obtener su matriz de escalamiento",
-                    required=True,
+                    description="IP del equipo (usar cuando se conoce la IP)",
+                    required=False,
                     examples=["10.118.57.142", "10.53.34.130"],
+                ),
+                ToolParameter(
+                    name="template_id",
+                    param_type="integer",
+                    description="ID del template (usar cuando se obtuvo de template_search_by_name, en lugar de la IP)",
+                    required=False,
+                    examples=["15978", "16046"],
+                ),
+                ToolParameter(
+                    name="usar_ekt",
+                    param_type="boolean",
+                    description="Si true, consulta instancia EKT. Usar cuando instancia del template es 'EKT'.",
+                    required=False,
+                ),
+                ToolParameter(
+                    name="id_gerencia_atendedora",
+                    param_type="integer",
+                    description=(
+                        "ID de la gerencia atendedora. Pasar cuando ya se conoce (viene de "
+                        "template_search_by_name como 'id_gerencia_atendedora'). Evita una "
+                        "consulta adicional a la BD."
+                    ),
+                    required=False,
                 ),
             ],
             examples=[
                 {"ip": "10.118.57.142"},
+                {"template_id": 15978, "usar_ekt": False},
+                {"template_id": 15978, "usar_ekt": False, "id_gerencia_atendedora": 42},
+                {"template_id": 16046, "usar_ekt": True},
             ],
             returns=(
                 "Dict con campos: 'encabezado' (string con formato '📌 #id nombre | instancia', mostrar tal cual como '- Template: {encabezado}'), "
@@ -60,76 +87,116 @@ class GetEscalationMatrixTool(BaseTool):
                 "NO agregar IP ni otros campos que no estén en este resultado. "
                 "Cada nivel tiene: nivel, nombre, puesto, extension, celular, correo, tiempo_escalacion."
             ),
+            usage_hint="Para la matriz de escalamiento de un equipo (quién atiende, niveles de contacto) cuando tenés la IP: usa `get_escalation_matrix`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:
         t0 = time.perf_counter()
 
         ip: str = kwargs.get("ip", "").strip()
+        template_id_direct = kwargs.get("template_id")
+        usar_ekt_param: bool = bool(kwargs.get("usar_ekt", False))
+        id_gerencia_atendedora_param = kwargs.get("id_gerencia_atendedora")
 
-        if not ip:
+        if not ip and template_id_direct is None:
             return ToolResult.error_result(
-                error="El parámetro 'ip' es requerido.",
+                error="Se requiere 'ip' o 'template_id'.",
                 execution_time_ms=0,
             )
 
         try:
-            # Obtener template_id e inventario en paralelo — el inventario es
-            # la fuente de verdad para área atendedora y administradora.
-            template_id_row, inventario = await asyncio.gather(
-                self._repo.get_template_id(ip=ip),
-                self._repo.get_inventory_by_ip(ip=ip),
-            )
+            if template_id_direct is not None:
+                # Flujo directo por template_id — viene de template_search_by_name
+                try:
+                    tid = int(template_id_direct)
+                except (ValueError, TypeError):
+                    return ToolResult.error_result(
+                        error=f"'template_id' debe ser un entero, recibido: {template_id_direct!r}",
+                        execution_time_ms=0,
+                    )
+                usar_ekt = usar_ekt_param
+                inventario = None
 
-            if not template_id_row:
-                elapsed = (time.perf_counter() - t0) * 1000
-                return ToolResult.success_result(
-                    data={
-                        "ip": ip,
-                        "template": None,
-                        "gerencia_desarrollo": None,
-                        "area_atendedora": None,
-                        "area_administradora": None,
-                        "niveles": [],
-                        "mensaje": "No se encontró template asociado a esta IP.",
-                    },
-                    execution_time_ms=elapsed,
+                # Si el caller ya tiene id_gerencia_atendedora (de template_search_by_name),
+                # se salta get_template_info — la info del template ya está disponible.
+                if id_gerencia_atendedora_param is not None:
+                    try:
+                        id_atendedora_known = int(id_gerencia_atendedora_param)
+                    except (ValueError, TypeError):
+                        id_atendedora_known = None
+
+                    template = None
+                    matriz = await self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt)
+                    id_atendedora = id_atendedora_known
+                    id_administradora = None
+                    logger.info(
+                        f"GetEscalationMatrixTool: flujo template_id={tid} "
+                        f"con id_gerencia_atendedora={id_atendedora} (sin get_template_info)"
+                    )
+                else:
+                    template, matriz = await asyncio.gather(
+                        self._repo.get_template_info(tid, usar_ekt=usar_ekt),
+                        self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
+                    )
+                    id_atendedora = template.atendedor_id_gerencia if template else None
+                    id_administradora = template.id_gerencia_desarrollo if template else None
+                    logger.info(
+                        f"GetEscalationMatrixTool: flujo template_id={tid} "
+                        f"usar_ekt={usar_ekt} id_atendedora={id_atendedora}"
+                    )
+            else:
+                # Flujo por IP — busca el template asociado
+                template_id_row, inventario = await asyncio.gather(
+                    self._repo.get_template_id(ip=ip),
+                    self._repo.get_inventory_by_ip(ip=ip),
                 )
 
-            tid = template_id_row.get("idTemplate")
-            instancia = template_id_row.get("instancia", "")
-            usar_ekt = str(instancia).upper() == "COMERCIO"
+                if not template_id_row:
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    return ToolResult.success_result(
+                        data={
+                            "ip": ip,
+                            "template": None,
+                            "gerencia_desarrollo": None,
+                            "area_atendedora": None,
+                            "area_administradora": None,
+                            "niveles": [],
+                            "mensaje": "No se encontró template asociado a esta IP.",
+                        },
+                        execution_time_ms=elapsed,
+                    )
 
-            if not tid:
-                elapsed = (time.perf_counter() - t0) * 1000
-                return ToolResult.success_result(
-                    data={
-                        "ip": ip,
-                        "template": None,
-                        "gerencia_desarrollo": None,
-                        "area_atendedora": None,
-                        "area_administradora": None,
-                        "niveles": [],
-                        "mensaje": "No se encontró template asociado a esta IP.",
-                    },
-                    execution_time_ms=elapsed,
+                tid = template_id_row.get("idTemplate")
+                instancia = template_id_row.get("instancia", "")
+                usar_ekt = str(instancia).upper() == "COMERCIO"
+
+                if not tid:
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    return ToolResult.success_result(
+                        data={
+                            "ip": ip,
+                            "template": None,
+                            "gerencia_desarrollo": None,
+                            "area_atendedora": None,
+                            "area_administradora": None,
+                            "niveles": [],
+                            "mensaje": "No se encontró template asociado a esta IP.",
+                        },
+                        execution_time_ms=elapsed,
+                    )
+
+                template, matriz = await asyncio.gather(
+                    self._repo.get_template_info(tid, usar_ekt=usar_ekt),
+                    self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
                 )
 
-            # Obtener template y matriz en paralelo
-            template, matriz = await asyncio.gather(
-                self._repo.get_template_info(tid, usar_ekt=usar_ekt),
-                self._repo.get_escalation_matrix(tid, usar_ekt=usar_ekt),
-            )
-
-            # IDs de área desde el inventario (fuente de verdad)
-            logger.info(
-                f"GetEscalationMatrixTool: inventario para {ip} → "
-                f"inventario={inventario!r} "
-                f"id_atendedora={inventario.id_area_atendedora if inventario else None} "
-                f"id_administradora={inventario.id_area_administradora if inventario else None}"
-            )
-            id_atendedora    = inventario.id_area_atendedora    if inventario else None
-            id_administradora = inventario.id_area_administradora if inventario else None
+                logger.info(
+                    f"GetEscalationMatrixTool: inventario para {ip} → "
+                    f"id_atendedora={inventario.id_area_atendedora if inventario else None} "
+                    f"id_administradora={inventario.id_area_administradora if inventario else None}"
+                )
+                id_atendedora     = inventario.id_area_atendedora    if inventario else None
+                id_administradora = inventario.id_area_administradora if inventario else None
 
             contacto_atendedora_task = (
                 self._repo.get_contacto_gerencia(id_atendedora, usar_ekt=usar_ekt)
@@ -178,8 +245,9 @@ class GetEscalationMatrixTool(BaseTool):
                 except AttributeError:
                     return None
 
+            ref = ip if ip else f"template_id={tid}"
             logger.info(
-                f"GetEscalationMatrixTool: {len(niveles)} niveles para {ip} "
+                f"GetEscalationMatrixTool: {len(niveles)} niveles para {ref} "
                 f"(template={template.aplicacion if template else 'N/A'}) en {elapsed:.0f}ms"
             )
 

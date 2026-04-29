@@ -11,12 +11,14 @@ from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
 from src.infra.database.connection import DatabaseManager
 from src.bootstrap import create_main_handler
+from src.pipeline.handler_manager import get_handler_manager
 from .handlers import (
     register_command_handlers,
     register_query_handlers,
     register_registration_handlers,
     register_tools_handlers
 )
+from .dashboard import register_dashboard_handlers
 from .middleware import setup_logging_middleware, setup_auth_middleware
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,9 @@ class TelegramBot:
         # db_registry viene del factory — instancia única compartida
         logger.info("Inicializando MainHandler (ReAct)...")
         self.main_handler, self._admin_notify, self.db_registry = create_main_handler(self.db_manager)
+        hm = get_handler_manager()
+        hm._handler = self.main_handler
+        hm._db_registry = self.db_registry
         logger.info("MainHandler inicializado correctamente")
 
         # Inicializar aplicación de Telegram
@@ -52,6 +57,7 @@ class TelegramBot:
 
         # Inyectar dependencias en bot_data para acceso global
         self.application.bot_data['db_manager'] = self.db_manager
+        self.application.bot_data['db_registry'] = self.db_registry
         self.application.bot_data['main_handler'] = self.main_handler
         self.application.bot_data['admin_notify'] = self._admin_notify
 
@@ -101,8 +107,11 @@ class TelegramBot:
         # IMPORTANTE: Estos van primero porque no requieren autenticación
         register_registration_handlers(self.application, self.db_manager)
 
-        # Registrar command handlers (/start, /help, /stats, etc.)
+        # Registrar command handlers (/start, /help, /stats, /dashboard, etc.)
         register_command_handlers(self.application)
+
+        # Registrar dashboard handler (callbacks dash:*) — antes del query handler genérico
+        register_dashboard_handlers(self.application)
 
         # Registrar tools handlers (/ia, /query) - usan MainHandler
         # IMPORTANTE: Va antes de query_handlers para que los comandos tengan prioridad

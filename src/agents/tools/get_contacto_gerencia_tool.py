@@ -66,6 +66,7 @@ class GetContactoGerenciaTool(BaseTool):
                 "'responsable' es el nombre del gerente/responsable del área. "
                 "'correos' y 'extensiones' pueden ser cadenas vacías si no hay datos."
             ),
+            usage_hint="Para los contactos de una gerencia cuando tenés el id_gerencia: usa `get_contacto_gerencia`",
         )
 
     async def execute(self, **kwargs: Any) -> ToolResult:

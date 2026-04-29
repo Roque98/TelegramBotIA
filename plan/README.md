@@ -60,6 +60,7 @@ plan/
 
 | Plan | Progreso | Rama | Pendiente |
 |------|----------|------|-----------|
+| [BOT-41 Dashboard Inline Keyboard](02-activos/PLAN_BOT_41_TELEGRAM_DASHBOARD.md) | 0% | `feature/bot-41-telegram-dashboard` | Pendiente iniciar |
 | [OBS-32 Mejoras al sistema de logs](02-activos/PLAN_OBS_32_LOG_IMPROVEMENTS.md) | 80% | `develop` | Usuario ejecuta 2 ALTER TABLE en BD |
 | [ARQ-35 Orchestrator con Agentes Dinámicos](02-activos/PLAN_ARQ_35_DYNAMIC_ORCHESTRATOR.md) | 0% | `feature/arq-35-dynamic-orchestrator` | Pendiente iniciar |
 | [AUTH-SP Migración Auth a Stored Procedures](02-activos/PLAN_AUTH_SP_MIGRATION.md) | 0% | `master` | Pendiente iniciar |

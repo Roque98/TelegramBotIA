@@ -157,7 +157,7 @@ class StatusMessage:
         "read_attachment": "📎 Leyendo archivo adjunto...",
     }
 
-    # Mensajes de progreso con personalidad de Amber
+    # Mensajes de progreso con personalidad de Iris
     PROCESSING_MESSAGES = [
         "🔄 Analizando tu consulta...",
         "💭 Pensando en la mejor respuesta...",
@@ -449,7 +449,7 @@ class StatusMessage:
 
     async def error(self, error_message: str = "Oh no, tuve un problema procesando eso") -> None:
         """
-        Marcar operación como fallida y mostrar mensaje de error (con personalidad de Amber).
+        Marcar operación como fallida y mostrar mensaje de error (con personalidad de Iris).
 
         Args:
             error_message: Mensaje de error a mostrar

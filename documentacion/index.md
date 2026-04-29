@@ -1,6 +1,6 @@
 # Iris Bot — Documentación
 
-Iris Bot (Amber) es un asistente virtual para Telegram impulsado por LLM. Permite a los empleados
+Iris Bot es un asistente virtual para Telegram impulsado por LLM. Permite a los empleados
 de la empresa hacer consultas en lenguaje natural sobre datos de negocio, políticas internas y
 procedimientos, sin necesidad de conocer SQL ni sistemas internos.
 

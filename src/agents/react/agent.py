@@ -195,6 +195,7 @@ class ReActAgent(BaseAgent):
                     usage_hints=usage_hints,
                 )
             messages = [{"role": "system", "content": system_prompt}]
+            _first_llm_call = True
 
             while not scratchpad.is_full():
                 t_llm_start = datetime.datetime.utcnow()
@@ -210,11 +211,19 @@ class ReActAgent(BaseAgent):
                 # Registrar step de LLM call
                 step_num += 1
                 last_turn = cost_tracker.turns[-1] if cost_tracker.turns else None
+                # Para el primer llamado, guardar la query original directamente —
+                # messages[-2] es el user_prompt completo (con memoria) y puede
+                # ocultar la pregunta del usuario al truncarse a 4000 chars.
+                if _first_llm_call:
+                    step_entrada = query[:4000]
+                    _first_llm_call = False
+                else:
+                    step_entrada = (messages[-2]["content"] if len(messages) >= 2 else "")[:4000]
                 step_traces.append({
                     "stepNum": step_num,
                     "tipo": "llm_call",
                     "nombre": getattr(self.llm, "model", "unknown"),
-                    "entrada": (messages[-2]["content"] if len(messages) >= 2 else "")[:4000],
+                    "entrada": step_entrada,
                     "salida": (messages[-1]["content"] if messages else "")[:4000],
                     "tokensIn": last_turn.input_tokens if last_turn else None,
                     "tokensOut": last_turn.output_tokens if last_turn else None,
@@ -460,7 +469,7 @@ class ReActAgent(BaseAgent):
         """
         # Construir prompt de usuario
         if scratchpad.is_empty():
-            prompt_context = context.to_prompt_context()
+            prompt_context = context.to_prompt_context(tool_scope=self.tool_scope)
             logger.debug(f"User context for prompt:\n{prompt_context}")
             user_prompt = build_user_prompt(
                 query=query,
@@ -716,7 +725,7 @@ class ReActAgent(BaseAgent):
             )
 
             messages = [
-                {"role": "system", "content": "Eres Amber, una asistente amigable."},
+                {"role": "system", "content": "Eres Iris, una asistente amigable."},
                 {"role": "user", "content": synthesis_prompt},
             ]
 

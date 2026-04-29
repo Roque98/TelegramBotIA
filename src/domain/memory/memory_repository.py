@@ -125,22 +125,27 @@ class MemoryRepository:
             results = await self.db_manager.execute_query_async(query, {"user_id": str(user_id), "limit": limit})
 
             messages = []
-            for row in reversed(results):
+            for row in results:
+                fecha = row.get("fecha", datetime.now(UTC))
+                ts = fecha.isoformat() if hasattr(fecha, "isoformat") else str(fecha)
                 user_query = row.get("user_query", "")
                 if user_query:
                     messages.append({
                         "role": "user",
                         "content": user_query,
-                        "timestamp": row.get("fecha", datetime.now(UTC)).isoformat(),
+                        "timestamp": ts,
                     })
                 respuesta = row.get("respuesta", "")
                 if respuesta:
                     messages.append({
                         "role": "assistant",
                         "content": respuesta,
-                        "timestamp": row.get("fecha", datetime.now(UTC)).isoformat(),
+                        "timestamp": ts,
                     })
 
+            # Ordenar cronológicamente (más antiguo primero) sin depender del orden del SP.
+            # [-5:] en to_prompt_context() da correctamente los 5 mensajes más recientes.
+            messages.sort(key=lambda m: m["timestamp"])
             return messages
 
         except Exception as e:

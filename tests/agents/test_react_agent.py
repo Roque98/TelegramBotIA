@@ -272,7 +272,7 @@ class TestPrompts:
         prompt = build_system_prompt(tools_desc)
 
         assert "database_query" in prompt
-        assert "Amber" in prompt
+        assert "Iris" in prompt
         assert "ReAct" in prompt or "Thought" in prompt
 
     def test_build_user_prompt(self):

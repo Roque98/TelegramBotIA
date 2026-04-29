@@ -26,12 +26,13 @@ async def main():
     setup_logging()
     logger = logging.getLogger(__name__)
 
+    logger.info("Iniciando bot de Telegram...")
+    bot = TelegramBot()  # inicializa HandlerManager antes de arrancar Flask
+
     flask_thread = threading.Thread(target=_start_flask, daemon=True, name="flask-api")
     flask_thread.start()
     logger.info("API REST iniciada en http://0.0.0.0:5000 (dashboard: /admin)")
 
-    logger.info("Iniciando bot de Telegram...")
-    bot = TelegramBot()
     await bot.run()
 
 
