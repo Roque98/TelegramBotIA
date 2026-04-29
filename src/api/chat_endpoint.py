@@ -131,9 +131,7 @@ def tickets():
     ip: str = data["ip"].strip()
     sensor: str = data.get("sensor", "").strip()
     mensaje_alerta: str = data.get("mensaje_alerta", data.get("mensaje", "")).strip()
-    dynatrace_host: dict = data.get("dynatraceHost") or {}
-    servicios: list = data.get("servicios") or []
-    eventos_dynatrace: list = data.get("eventosDynatrace") or []
+    ctx_dt: dict = data.get("contexto_dynatrace") or {}
 
     db_registry = get_handler_manager().db_registry
     if db_registry is None:
@@ -147,39 +145,33 @@ def tickets():
     from src.domain.interaction.interaction_repository import InteractionRepository
     from src.infra.database.connection import DatabaseManager
 
-    tiene_datos_dynatrace = bool(dynatrace_host or servicios or eventos_dynatrace)
+    tiene_datos_dynatrace = bool(ctx_dt)
 
     def _build_dynatrace_context() -> str:
-        parts = []
-        if dynatrace_host:
-            tags_str = ", ".join(
-                f"{t['key']}={t['value']}" for t in dynatrace_host.get("tags", []) if isinstance(t, dict)
-            )
-            zones_str = ", ".join(dynatrace_host.get("managementZones", []))
-            lines = [
-                "\nDatos Dynatrace del host:",
-                f"- Nombre: {dynatrace_host.get('displayName', 'N/D')}",
-                f"- SO: {dynatrace_host.get('os', 'N/D')}",
-                f"- Modo de monitoreo: {dynatrace_host.get('monitoringMode', 'N/D')}",
-                f"- OneAgent: {dynatrace_host.get('oneAgentVersion', 'N/D')}",
-                f"- Network Zone: {dynatrace_host.get('networkZone', 'N/D')}",
-                f"- Estado: {dynatrace_host.get('state', 'N/D')}",
-                f"- Zonas de gestión: {zones_str or 'N/D'}",
-            ]
-            if tags_str:
-                lines.append(f"- Tags: {tags_str}")
-            parts.append("\n".join(lines))
+        if not ctx_dt:
+            return ""
+        parts = [
+            "\nContexto Dynatrace del host:",
+            f"- SO: {ctx_dt.get('os', 'N/D')}",
+            f"- Modo de monitoreo: {ctx_dt.get('monitoring_mode', 'N/D')}",
+            f"- Network Zone: {ctx_dt.get('network_zone', 'N/D')}",
+            f"- Versión OneAgent: {ctx_dt.get('agent_version', 'N/D')}",
+            f"- Estado: {ctx_dt.get('state', 'N/D')}",
+            f"- Host Group: {ctx_dt.get('host_group', 'N/D')}",
+        ]
+        servicios = ctx_dt.get("servicios") or []
         if servicios:
-            lines = ["\nServicios detectados en el host:"]
+            parts.append("\nServicios en el host:")
             for s in servicios:
-                db = s.get("baseDatos") or "N/D"
-                lines.append(f"- {s.get('nombre', '?')} ({s.get('tipo', '?')}) — {s.get('tecnologia', '?')} — BD: {db}")
-            parts.append("\n".join(lines))
-        if eventos_dynatrace:
-            lines = ["\nEventos recientes en Dynatrace:"]
-            for e in eventos_dynatrace:
-                lines.append(f"- [{e.get('tipo', '?')}] {e.get('titulo', '?')} (hace {e.get('hace', '?')})")
-            parts.append("\n".join(lines))
+                parts.append(f"- {s.get('nombre', '?')} ({s.get('tipo', '?')}) — {s.get('tecnologia', '?')}")
+        eventos = ctx_dt.get("eventos_recientes") or []
+        if eventos:
+            parts.append("\nEventos recientes en Dynatrace:")
+            for e in eventos:
+                parts.append(
+                    f"- [{e.get('tipo', '?')}] {e.get('titulo', '?')} "
+                    f"| estado: {e.get('estado', '?')} | inicio: {e.get('fecha_inicio', '?')}"
+                )
         return "\n".join(parts)
 
     async def _run():
