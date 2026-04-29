@@ -244,10 +244,16 @@ def logs():
                     ORDER BY CASE al.level WHEN 'CRITICAL' THEN 3 WHEN 'ERROR' THEN 2 WHEN 'WARNING' THEN 1 ELSE 0 END DESC
                 ) AS app_log_level
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..concentradousuarios cu
-                ON il.idUsuario = cu.idUsuario AND il.idUsuario IS NOT NULL
-            LEFT JOIN dbo.Usuarios bu
-                ON il.idUsuario = bu.idUsuario AND il.idUsuario IS NOT NULL
+            OUTER APPLY (
+                SELECT TOP 1 Nombre, email, Empresa
+                FROM abcmasplus..concentradousuarios
+                WHERE idUsuario = il.idUsuario AND il.idUsuario IS NOT NULL
+            ) cu
+            OUTER APPLY (
+                SELECT TOP 1 Nombre, email, Empresa
+                FROM dbo.Usuarios
+                WHERE idUsuario = il.idUsuario AND il.idUsuario IS NOT NULL
+            ) bu
             ORDER BY il.fechaEjecucion DESC
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
             """,
@@ -303,10 +309,16 @@ def log_detail(correlation_id: str):
                    COALESCE(cu.Empresa, bu.Empresa) AS empresa_usuario,
                    COALESCE(cu.puesto,  bu.puesto)  AS puesto_usuario
             FROM abcmasplus..BotIAv2_InteractionLogs il
-            LEFT JOIN abcmasplus..concentradousuarios cu
-                ON il.idUsuario = cu.idUsuario AND il.idUsuario IS NOT NULL
-            LEFT JOIN dbo.Usuarios bu
-                ON il.idUsuario = bu.idUsuario AND il.idUsuario IS NOT NULL
+            OUTER APPLY (
+                SELECT TOP 1 Nombre, email, Empresa, puesto
+                FROM abcmasplus..concentradousuarios
+                WHERE idUsuario = il.idUsuario AND il.idUsuario IS NOT NULL
+            ) cu
+            OUTER APPLY (
+                SELECT TOP 1 Nombre, email, Empresa, puesto
+                FROM dbo.Usuarios
+                WHERE idUsuario = il.idUsuario AND il.idUsuario IS NOT NULL
+            ) bu
             WHERE il.correlationId = :cid
             """,
             {"cid": correlation_id},
