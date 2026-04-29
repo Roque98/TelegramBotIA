@@ -6,6 +6,7 @@ Intercepta y loggea todas las actualizaciones del bot para tracking y debugging.
 import logging
 import time
 from telegram import Update
+from telegram.error import Conflict as TelegramConflict
 from telegram.error import NetworkError as TelegramNetworkError
 from telegram.ext import Application, BaseHandler
 from typing import Callable
@@ -87,6 +88,10 @@ class LoggingMiddleware:
 
         if isinstance(error, TelegramNetworkError):
             logger.warning("NetworkError transitorio (ignorado): %s", error)
+            return
+
+        if isinstance(error, TelegramConflict):
+            logger.warning("Conflict de polling (reinicio del bot, ignorado): %s", error)
             return
 
         # Información del usuario

@@ -6,6 +6,7 @@ Toda la lógica de handlers está delegada a módulos especializados.
 """
 import logging
 from telegram import Update
+from telegram.error import Conflict as TelegramConflict
 from telegram.error import NetworkError as TelegramNetworkError
 from telegram.ext import Application, ContextTypes
 from src.config.settings import settings
@@ -93,6 +94,9 @@ class TelegramBot:
         async def _handle_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
             if isinstance(context.error, TelegramNetworkError):
                 logger.warning("NetworkError transitorio (polling): %s", context.error)
+                return
+            if isinstance(context.error, TelegramConflict):
+                logger.warning("Conflict de polling (reinicio del bot, ignorado): %s", context.error)
                 return
             logger.error("Error no controlado en el bot", exc_info=context.error)
 

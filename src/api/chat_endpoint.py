@@ -130,7 +130,8 @@ def tickets():
     numero_empleado: int = datos_token["numero_empleado"]
     ip: str = data["ip"].strip()
     sensor: str = data.get("sensor", "").strip()
-    mensaje_alerta: str = data.get("mensaje_alerta", "").strip()
+    mensaje_alerta: str = data.get("mensaje_alerta", data.get("mensaje", "")).strip()
+    ctx_dt: dict = data.get("contexto_dynatrace") or {}
 
     db_registry = get_handler_manager().db_registry
     if db_registry is None:
@@ -143,6 +144,33 @@ def tickets():
     from src.domain.alerts.ticket_cache_repository import TicketAnalysisCacheRepository
     from src.domain.interaction.interaction_repository import InteractionRepository
     from src.infra.database.connection import DatabaseManager
+
+    def _build_dynatrace_context() -> str:
+        if not ctx_dt:
+            return ""
+        parts = [
+            "\nContexto Dynatrace del host:",
+            f"- SO: {ctx_dt.get('os', 'N/D')}",
+            f"- Modo de monitoreo: {ctx_dt.get('monitoring_mode', 'N/D')}",
+            f"- Network Zone: {ctx_dt.get('network_zone', 'N/D')}",
+            f"- Versión OneAgent: {ctx_dt.get('agent_version', 'N/D')}",
+            f"- Estado: {ctx_dt.get('state', 'N/D')}",
+            f"- Host Group: {ctx_dt.get('host_group', 'N/D')}",
+        ]
+        servicios = ctx_dt.get("servicios") or []
+        if servicios:
+            parts.append("\nServicios en el host:")
+            for s in servicios:
+                parts.append(f"- {s.get('nombre', '?')} ({s.get('tipo', '?')}) — {s.get('tecnologia', '?')}")
+        eventos = ctx_dt.get("eventos_recientes") or []
+        if eventos:
+            parts.append("\nEventos recientes en Dynatrace:")
+            for e in eventos:
+                parts.append(
+                    f"- [{e.get('tipo', '?')}] {e.get('titulo', '?')} "
+                    f"| estado: {e.get('estado', '?')} | inicio: {e.get('fecha_inicio', '?')}"
+                )
+        return "\n".join(parts)
 
     async def _run():
         t0 = time.perf_counter()
@@ -176,6 +204,7 @@ def tickets():
                     f"\nAlerta activa: {mensaje_alerta}" if mensaje_alerta
                     else "\n(No se proporcionó mensaje de alerta activa)"
                 )
+                dynatrace_context = _build_dynatrace_context()
                 if inventario:
                     inv = inventario
                     inventario_context = (
@@ -229,7 +258,7 @@ def tickets():
                         f"es responsabilidad exclusiva del operador.*"
                     )},
                     {"role": "user", "content": (
-                        f"Equipo: {ip}{sensor_info}{alerta_context}{inventario_context}\n\n"
+                        f"Equipo: {ip}{sensor_info}{alerta_context}{inventario_context}{dynatrace_context}\n\n"
                         f"Tickets históricos:\n{tickets_result.data}"
                     )},
                 ]
