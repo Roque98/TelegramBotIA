@@ -157,8 +157,11 @@ def tickets():
         if tickets_result.success and tickets_result.data:
             sensor_info = f" (sensor: {sensor})" if sensor else ""
 
-            # Extraer última acción correctiva para clave de caché
-            tickets_raw = await repo.get_historical_tickets(ip=ip, sensor=sensor or "")
+            # Extraer última acción correctiva para clave de caché e inventario del equipo
+            tickets_raw, inventario = await asyncio.gather(
+                repo.get_historical_tickets(ip=ip, sensor=sensor or ""),
+                repo.get_inventory_by_ip(ip),
+            )
             ultima_accion = tickets_raw[0].accion_correctiva if tickets_raw else ""
 
             cache_repo = TicketAnalysisCacheRepository(DatabaseManager())
@@ -173,6 +176,19 @@ def tickets():
                     f"\nAlerta activa: {mensaje_alerta}" if mensaje_alerta
                     else "\n(No se proporcionó mensaje de alerta activa)"
                 )
+                if inventario:
+                    inv = inventario
+                    inventario_context = (
+                        f"\nEquipo en inventario:"
+                        f"\n- Hostname: {inv.hostname or 'N/D'}"
+                        f"\n- SO: {inv.version_os or 'N/D'}"
+                        f"\n- Tipo: {inv.tipo_equipo or inv.fuente or 'N/D'}"
+                        f"\n- Ambiente: {inv.ambiente or 'N/D'}"
+                        f"\n- Capa: {inv.capa or 'N/D'}"
+                        f"\n- Impacto: {inv.impacto or 'N/D'}"
+                    )
+                else:
+                    inventario_context = "\n(Equipo no encontrado en inventario)"
                 messages = [
                     {"role": "system", "content": (
                         "Eres un analista experto en operaciones de TI e infraestructura de red. "
@@ -213,7 +229,7 @@ def tickets():
                         f"es responsabilidad exclusiva del operador.*"
                     )},
                     {"role": "user", "content": (
-                        f"Equipo: {ip}{sensor_info}{alerta_context}\n\n"
+                        f"Equipo: {ip}{sensor_info}{alerta_context}{inventario_context}\n\n"
                         f"Tickets históricos:\n{tickets_result.data}"
                     )},
                 ]
