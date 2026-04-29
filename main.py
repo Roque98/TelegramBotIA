@@ -19,7 +19,7 @@ def setup_logging():
 
 def _start_flask():
     from src.api.chat_endpoint import app
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=settings.api_port, debug=False, use_reloader=False)
 
 
 async def main():
@@ -31,7 +31,7 @@ async def main():
 
     flask_thread = threading.Thread(target=_start_flask, daemon=True, name="flask-api")
     flask_thread.start()
-    logger.info("API REST iniciada en http://0.0.0.0:5000 (dashboard: /admin)")
+    logger.info(f"API REST iniciada en http://0.0.0.0:{settings.api_port} (dashboard: /admin)")
 
     await bot.run()
 
